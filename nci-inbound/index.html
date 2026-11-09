@@ -1,0 +1,1403 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>NCI/Greif Inbound Exceptions</title>
+<link rel="icon" href="../assets/ceva-logo.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700;800&display=swap">
+<style>
+/* Layout: board = navy brand band + two equal panels (waiting on CEVA | waiting on NCI/Greif) filling one screen, paginating rows;
+   work screen = one column of issue cards with bottom-sheet editors (issue form, update thread). Dark-first. */
+:root{
+  --navy:#1D2546; --red:#E30613;
+  --bg:#071a33; --panel:#0c2445; --row:#10294d; --row-p1:#2a2645; --line:#1f3d68;
+  --fg:#f1f5fb; --muted:#9fb1cc; --faint:#6a80a2;
+  --head:#1D2546; --on-head:#ffffff; --head-muted:#a9bfe0; --head-line:rgba(255,255,255,.16);
+  --head-alert:#ff6a5e; --head-warn:#ffbf47; --head-btn:rgba(255,255,255,.1);
+  --p1:#ff5a4e; --p1-fill:#e6100d; --on-p1:#ffffff;
+  --p2:#ffb020; --p2-fill:#f5a00f; --on-p2:#1b1300;
+  --p3:#8ea3c2; --p3-fill:#24416b; --on-p3:#dce6f4;
+  --ok:#35c97a; --warn:#ffb020;
+  --ceva:#4f8ff0; --ceva-fill:#1f4f9e; --on-ceva:#ffffff;
+  --partner:#3fc0a0; --partner-fill:#0f6b56; --on-partner:#ffffff;
+  --mine:#ffd166;
+  --input:#081d3a; --btn:#163259; --btn-fg:#f1f5fb; --primary:#3d7ee0; --on-primary:#ffffff;
+  --focus:#8cbcff; --scrim:rgba(2,10,24,.66); --toast:#f1f5fb; --on-toast:#071a33;
+  --f-display:"Barlow Condensed","Arial Narrow","Roboto Condensed",system-ui,sans-serif;
+  --f-body:"Barlow",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    --bg:#eef2f8; --panel:#ffffff; --row:#ffffff; --row-p1:#fdeceb; --line:#d2dbe8;
+    --fg:#0b1a33; --muted:#4f6383; --faint:#7a8aa5;
+    --p1:#c80f0b; --p1-fill:#e6100d; --on-p1:#ffffff;
+    --p2:#985700; --p2-fill:#ffb020; --on-p2:#1b1300;
+    --p3:#566b8c; --p3-fill:#dfe6f0; --on-p3:#22344f;
+    --ok:#1b9152; --warn:#9a5d00;
+    --ceva:#1f4f9e; --ceva-fill:#1f4f9e; --on-ceva:#ffffff;
+    --partner:#0f6b56; --partner-fill:#0f6b56; --on-partner:#ffffff;
+    --mine:#8a5a00;
+    --input:#ffffff; --btn:#e6ecf5; --btn-fg:#0b1a33; --primary:#002048; --on-primary:#ffffff;
+    --focus:#1f5fbf; --scrim:rgba(10,20,40,.45); --toast:#0b1a33; --on-toast:#ffffff;
+    color-scheme:light;
+  }
+}
+:root[data-theme="light"]{
+  --bg:#eef2f8; --panel:#ffffff; --row:#ffffff; --row-p1:#fdeceb; --line:#d2dbe8;
+  --fg:#0b1a33; --muted:#4f6383; --faint:#7a8aa5;
+  --p1:#c80f0b; --p1-fill:#e6100d; --on-p1:#ffffff;
+  --p2:#985700; --p2-fill:#ffb020; --on-p2:#1b1300;
+  --p3:#566b8c; --p3-fill:#dfe6f0; --on-p3:#22344f;
+  --ok:#1b9152; --warn:#9a5d00;
+  --ceva:#1f4f9e; --ceva-fill:#1f4f9e; --on-ceva:#ffffff;
+  --partner:#0f6b56; --partner-fill:#0f6b56; --on-partner:#ffffff;
+  --mine:#8a5a00;
+  --input:#ffffff; --btn:#e6ecf5; --btn-fg:#0b1a33; --primary:#002048; --on-primary:#ffffff;
+  --focus:#1f5fbf; --scrim:rgba(10,20,40,.45); --toast:#0b1a33; --on-toast:#ffffff;
+  color-scheme:light;
+}
+/* The board forces the dark palette unless an admin picks "Match screen" */
+:root.force-dark{
+  --bg:#071a33; --panel:#0c2445; --row:#10294d; --row-p1:#2a2645; --line:#1f3d68;
+  --fg:#f1f5fb; --muted:#9fb1cc; --faint:#6a80a2;
+  --p1:#ff5a4e; --p1-fill:#e6100d; --on-p1:#ffffff;
+  --p2:#ffb020; --p2-fill:#f5a00f; --on-p2:#1b1300;
+  --p3:#8ea3c2; --p3-fill:#24416b; --on-p3:#dce6f4;
+  --ok:#35c97a; --warn:#ffb020;
+  --ceva:#4f8ff0; --ceva-fill:#1f4f9e; --on-ceva:#ffffff;
+  --partner:#3fc0a0; --partner-fill:#0f6b56; --on-partner:#ffffff;
+  --mine:#ffd166;
+  --input:#081d3a; --btn:#163259; --btn-fg:#f1f5fb; --primary:#3d7ee0; --on-primary:#ffffff;
+  --focus:#8cbcff; --scrim:rgba(2,10,24,.66); --toast:#f1f5fb; --on-toast:#071a33;
+  color-scheme:dark;
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html{height:100%;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+img{max-width:100%}
+body{height:100%;margin:0;background:var(--bg);color:var(--fg);font-family:var(--f-body);-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--head)}
+#app{height:100%}
+[hidden]{display:none!important}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+
+/* ───────── BOARD ───────── */
+.board{min-height:100%;display:flex;flex-direction:column;font-size:15px}
+.gut{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.b-head{background:var(--head);color:var(--on-head);display:flex;flex-wrap:wrap;align-items:center;gap:.8em 1.4em;padding-block:.8em}
+.b-brand{display:flex;align-items:center;gap:1em;min-width:0}
+.logo-plate{height:2.9em;display:flex;align-items:center}
+.logo-plate img{height:100%;width:auto;max-width:14em;object-fit:contain;display:block}
+.b-eyebrow{font:600 .8em/1.1 var(--f-display);letter-spacing:.14em;text-transform:uppercase;color:var(--head-muted)}
+.b-title{margin:.1em 0 0;font:700 2.1em/1 var(--f-display);letter-spacing:.02em;text-transform:uppercase;text-wrap:balance}
+.b-stats{display:flex;flex-wrap:wrap;margin:0;margin-left:auto}
+.b-stats>div{padding:.2em .9em;border-left:1px solid var(--head-line)}
+.b-stats dt{font:600 .72em/1.15 var(--f-display);letter-spacing:.12em;text-transform:uppercase;color:var(--head-muted);white-space:nowrap}
+.b-stats dd{margin:0;font:700 2.2em/1 var(--f-display);font-variant-numeric:tabular-nums}
+.b-stats .hot dd{color:var(--head-alert)}
+.b-stats .warn dd{color:var(--head-warn)}
+.b-clock{padding-left:1.1em;border-left:1px solid var(--head-line);text-align:right}
+.b-clock .t{font:700 2.6em/1 var(--f-display);font-variant-numeric:tabular-nums;white-space:nowrap}
+.b-clock .t small{font-size:.45em;margin-left:.2em;letter-spacing:.06em}
+.b-clock .d{font:600 .8em/1.2 var(--f-display);letter-spacing:.1em;text-transform:uppercase;color:var(--head-muted);white-space:nowrap}
+.b-rule{height:.3em;background:var(--red);flex:none}
+
+.b-cols{display:grid;grid-template-columns:1fr;gap:1.4em;padding-block:1em .8em;flex:1}
+.b-panel{display:flex;flex-direction:column;min-width:0;min-height:0}
+.p-head{display:flex;align-items:baseline;gap:.55em;padding-bottom:.45em;border-bottom:2px solid var(--line)}
+.p-head h2{margin:0;font:700 1.5em/1 var(--f-display);letter-spacing:.06em;text-transform:uppercase;display:flex;align-items:center;gap:.4em}
+.p-head h2 i{display:inline-block;width:.55em;height:.55em;border-radius:50%;background:var(--ceva)}
+.b-panel.partner .p-head h2 i{background:var(--partner)}
+.p-count{font:700 1.5em/1 var(--f-display);color:var(--muted);font-variant-numeric:tabular-nums}
+.p-page{margin-left:auto;font:600 .8em/1 var(--f-display);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.p-cols{display:none;column-gap:.8em;padding:.55em 0 .35em}
+.p-cols span{font:600 .68em/1 var(--f-display);letter-spacing:.14em;text-transform:uppercase;color:var(--faint);white-space:nowrap}
+.p-list{display:flex;flex-direction:column;gap:.35em;padding-top:.5em}
+
+.row{display:grid;grid-template-columns:3.4em minmax(0,1fr) auto;grid-template-areas:"prio unit when" "prio type when" "prio last last" "prio who who";column-gap:.8em;row-gap:.2em;align-items:center;background:var(--row);border-radius:.2em;overflow:hidden;min-height:3.7em;padding-right:.8em}
+.row.p1{background:var(--row-p1);box-shadow:inset 0 0 0 1px var(--p1-fill)}
+.c-prio{grid-area:prio;align-self:stretch;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.2em;background:var(--p3-fill);color:var(--on-p3)}
+.c-prio .pn{font:800 1.35em/1 var(--f-display)}
+.c-prio .pl{font:700 .55em/1 var(--f-display);letter-spacing:.05em;text-transform:uppercase}
+.p1 .c-prio{background:var(--p1-fill);color:var(--on-p1)}
+.p2 .c-prio{background:var(--p2-fill);color:var(--on-p2)}
+.c-unit{grid-area:unit;min-width:0;padding-top:.5em}
+.u-main{font:700 1.35em/1.1 var(--f-display);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.u-main .b{font-weight:500;color:var(--muted);margin-left:.4em}
+.u-sub{margin-top:.2em;font:500 .8em/1.2 var(--f-body);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.c-type{grid-area:type;min-width:0}
+.chip{display:inline-block;font:700 .7em/1 var(--f-display);letter-spacing:.1em;text-transform:uppercase;padding:.3em .5em;border-radius:.2em;background:var(--p3-fill);color:var(--on-p3);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;vertical-align:middle}
+.chip.ceva{background:var(--ceva-fill);color:var(--on-ceva)}
+.chip.partner{background:var(--partner-fill);color:var(--on-partner)}
+.chip.open{background:var(--p2-fill);color:var(--on-p2)}
+.chip.resolved{background:var(--ok);color:#04150b}
+.c-when{grid-area:when;text-align:right;padding-top:.5em;align-self:start}
+.c-when .v{font:700 1.35em/1 var(--f-display);font-variant-numeric:tabular-nums;white-space:nowrap}
+.c-when .s{margin-top:.25em;font:600 .68em/1.1 var(--f-display);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.c-when.late .v{color:var(--p1)}
+.tag-late{display:inline-block;background:var(--p1-fill);color:var(--on-p1);padding:.18em .45em;border-radius:.15em;letter-spacing:.1em;font-weight:700}
+.c-last{grid-area:last;min-width:0;font:500 .92em/1.25 var(--f-body);color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.c-last b{color:var(--fg);font-weight:600}
+.c-who{grid-area:who;min-width:0;font:600 .95em/1.1 var(--f-display);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-bottom:.5em;color:var(--muted)}
+.c-who b{color:var(--fg)}
+.k{font:600 .62em/1 var(--f-display);letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
+
+.empty{border:2px dashed var(--line);border-radius:.3em;padding:1.4em 1.2em;color:var(--muted);display:flex;flex-direction:column;gap:.35em}
+.empty strong{font:700 1.3em/1.1 var(--f-display);text-transform:uppercase;letter-spacing:.06em;color:var(--fg)}
+.empty span{font-size:.9em;line-height:1.4}
+
+.b-foot{display:flex;flex-wrap:wrap;align-items:center;gap:.6em 1.2em;padding-block:.55em .7em;border-top:1px solid var(--line)}
+.legend{display:flex;gap:.5em;flex:none;flex-wrap:wrap}
+.legend span{display:inline-flex;align-items:center;gap:.35em;font:700 .72em/1 var(--f-display);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.legend b{display:inline-block;padding:.25em .4em;border-radius:.15em;background:var(--p3-fill);color:var(--on-p3);font-weight:800}
+.legend .l1 b{background:var(--p1-fill);color:var(--on-p1)}
+.legend .l2 b{background:var(--p2-fill);color:var(--on-p2)}
+.b-live{display:flex;align-items:center;gap:.45em;font:600 .78em/1 var(--f-display);letter-spacing:.06em;color:var(--muted);white-space:nowrap;margin-left:auto}
+.dot{width:.65em;height:.65em;border-radius:50%;background:var(--warn);flex:none}
+.dot.ok{background:var(--ok)}
+.dot.bad{background:var(--p1)}
+.b-ctrl{display:flex;gap:.4em;transition:opacity .4s}
+.b-ctrl button{font:600 .75em/1 var(--f-display);letter-spacing:.1em;text-transform:uppercase;background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:.25em;padding:.6em .8em;cursor:pointer;min-height:2.6em}
+.b-ctrl button:hover{color:var(--fg);border-color:var(--muted)}
+.demo-banner{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 5.5rem);z-index:15;display:flex;align-items:center;gap:.8em;background:var(--p2-fill);color:var(--on-p2);font:700 .9rem/1 var(--f-display);letter-spacing:.08em;text-transform:uppercase;padding:.5em .6em .5em .9em;border-radius:.3em;box-shadow:0 6px 20px rgba(0,0,0,.3);white-space:nowrap}
+.demo-banner button{background:var(--on-p2);color:var(--p2-fill);border:0;border-radius:.2em;font:700 .8rem/1 var(--f-display);letter-spacing:.08em;text-transform:uppercase;padding:.55em .7em;cursor:pointer}
+
+@media (min-width:1000px) and (min-aspect-ratio:5/4){
+  .board{height:100%;min-height:0;display:grid;grid-template-rows:auto auto minmax(0,1fr) auto;font-size:clamp(13px,1.04vw,48px);overflow:hidden}
+  .board .gut{padding-left:max(16px,1.3em,env(safe-area-inset-left,0px));padding-right:max(16px,1.3em,env(safe-area-inset-right,0px))}
+  .b-head{flex-wrap:nowrap}
+  .b-stats{flex-wrap:nowrap}
+  .b-cols{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:1.3em;min-height:0}
+  .p-list{flex:1;min-height:0;overflow:hidden}
+  .p-cols,.row{grid-template-columns:3.4em minmax(0,1.35fr) 7.2em 5.4em minmax(0,1.3fr) 6.6em}
+  .p-cols{display:grid;padding-right:.8em}
+  .p-cols span:nth-child(4){text-align:right}
+  .row{grid-template-areas:"prio unit type when last who";height:3.7em;min-height:0}
+  .row{row-gap:0}
+  .c-unit,.c-when{padding-top:0}
+  .c-when{align-self:center}
+  .c-who{padding-bottom:0}
+  .c-who{white-space:normal;line-height:1.15}
+  .board.idle{cursor:none}
+  .board.idle .b-ctrl{opacity:0}
+}
+
+/* ───────── WORK SCREEN ───────── */
+.edit{min-height:100%;font-size:16px;display:flex;flex-direction:column}
+.e-top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--head);color:var(--on-head);display:flex;align-items:center;gap:.75rem;padding-block:.65rem;border-bottom:4px solid var(--red)}
+.e-title{min-width:0;flex:1}
+.e-title .a{font:700 1.35rem/1 var(--f-display);text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:520px){.hbtn#btnNotif .t{display:none}.hbtn#btnNotif{padding:0 .7rem}.e-title .b #eMe{display:none}}
+.e-title .b{font:600 .72rem/1.3 var(--f-display);letter-spacing:.14em;text-transform:uppercase;color:var(--head-muted);display:flex;align-items:center;gap:.4rem;margin-top:.2rem;flex-wrap:wrap}
+.hbtn{background:var(--head-btn);color:var(--on-head);border:1px solid var(--head-line);border-radius:.4rem;min-height:2.75rem;padding:0 .9rem;font:600 .95rem/1 var(--f-body);cursor:pointer;white-space:nowrap}
+.hbtn.on{background:var(--mine);color:#1b1300;border-color:transparent}
+.e-wrap{width:100%;max-width:820px;margin:0 auto;padding-block:1rem 5rem;display:flex;flex-direction:column;gap:1rem}
+.note{background:var(--panel);border:1px solid var(--line);border-radius:.5rem;padding:.8rem 1rem;color:var(--muted);line-height:1.45}
+.e-bar{display:flex;gap:.6rem;align-items:center;flex-wrap:wrap}
+.tabs{display:flex;gap:.3rem;overflow-x:auto;flex:1 1 auto;min-width:0;padding-bottom:2px}
+.tab{flex:none;background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:2rem;min-height:2.6rem;padding:0 .9rem;font:600 .95rem/1 var(--f-body);cursor:pointer;display:inline-flex;align-items:center;gap:.4rem}
+.tab .n{font:700 .85rem/1 var(--f-display);background:var(--btn);color:var(--btn-fg);border-radius:1rem;padding:.2rem .45rem;font-variant-numeric:tabular-nums}
+.tab[aria-selected="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.tab[aria-selected="true"] .n{background:var(--bg);color:var(--fg)}
+.tab.mine .n{background:var(--mine);color:#1b1300}
+.btn{background:var(--btn);color:var(--btn-fg);border:1px solid var(--line);border-radius:.4rem;min-height:2.75rem;padding:0 1rem;font:600 .95rem/1 var(--f-body);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:.4rem}
+.btn.primary{background:var(--primary);color:var(--on-primary);border-color:transparent}
+.btn.go{background:var(--ok);color:#04150b;border-color:transparent}
+.btn.hand{background:var(--partner-fill);color:var(--on-partner);border-color:transparent}
+.btn.hand.to-ceva{background:var(--ceva-fill);color:var(--on-ceva)}
+.btn.danger{color:var(--p1);border-color:var(--p1)}
+.btn.danger.armed{background:var(--p1-fill);color:var(--on-p1);border-color:transparent}
+.btn.ghost{background:transparent}
+.btn:disabled{opacity:.5;cursor:default}
+.e-list{display:flex;flex-direction:column;gap:.6rem}
+.filt{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center}
+.filt .inp{flex:1 1 12rem;min-height:2.6rem}
+.filt select.inp{flex:0 1 11rem}
+.card{display:grid;grid-template-columns:3.4rem minmax(0,1fr);background:var(--panel);border:1px solid var(--line);border-radius:.5rem;overflow:hidden;cursor:pointer}
+.card.p1{border-color:var(--p1-fill)}
+.card>.c-prio{grid-area:auto;grid-row:1;grid-column:1}
+.card-b{grid-row:1;grid-column:2}
+.card.mine{box-shadow:inset 3px 0 0 var(--mine)}
+.card .c-prio .pn{font-size:1.4rem}
+.card .c-prio .pl{font-size:.6rem}
+.card-b{padding:.75rem .85rem;display:flex;flex-direction:column;gap:.55rem;min-width:0}
+.card-top{display:flex;align-items:flex-start;gap:.6rem}
+.card-id{flex:1;min-width:0}
+.card-id .u-main{font-size:1.3rem;white-space:normal}
+.card-id .u-sub{font-size:.85rem;white-space:normal}
+.meta{display:flex;flex-wrap:wrap;gap:.35rem .9rem;font-size:.92rem;color:var(--muted);align-items:center}
+.meta b{color:var(--fg);font-weight:600}
+.meta .late{color:var(--p1);font-weight:700}
+.card-last{font-size:.92rem;color:var(--muted);line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.card-last b{color:var(--fg);font-weight:600}
+.card-acts{display:flex;flex-wrap:wrap;gap:.5rem}
+.e-empty{border:2px dashed var(--line);border-radius:.5rem;padding:1.2rem;color:var(--muted);line-height:1.45}
+.e-empty strong{display:block;color:var(--fg);font:700 1.15rem/1.2 var(--f-display);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.25rem}
+
+.settings{display:flex;flex-direction:column;gap:1rem}
+.set{background:var(--panel);border:1px solid var(--line);border-radius:.5rem;padding:1rem;display:flex;flex-direction:column;gap:.6rem}
+.set h3{margin:0;font:700 1.05rem/1.2 var(--f-display);text-transform:uppercase;letter-spacing:.08em}
+.set p{margin:0;color:var(--muted);font-size:.9rem;line-height:1.45;max-width:64ch}
+.row-btns{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center}
+
+.fld{display:flex;flex-direction:column;gap:.35rem;min-width:0}
+.fld>label,.fld>.lab{font:600 .78rem/1 var(--f-display);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.inp{width:100%;min-height:2.85rem;background:var(--input);color:var(--fg);border:1px solid var(--line);border-radius:.4rem;padding:.55rem .7rem;font-size:16px}
+textarea.inp{min-height:5.5rem;resize:vertical;line-height:1.4}
+.inp:focus{border-color:var(--focus);outline:none;box-shadow:0 0 0 2px var(--focus)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.8rem}
+.segm{display:flex;border:1px solid var(--line);border-radius:.45rem;overflow:hidden;background:var(--input)}
+.segm label{flex:1;position:relative;display:flex}
+.segm input{position:absolute;opacity:0;pointer-events:none}
+.segm span{flex:1;display:flex;align-items:center;justify-content:center;min-height:2.75rem;padding:0 .6rem;font:600 .95rem/1 var(--f-body);color:var(--muted);cursor:pointer;text-align:center}
+.segm label+label span{border-left:1px solid var(--line)}
+.segm input:checked+span{background:var(--fg);color:var(--bg)}
+.segm input:focus-visible+span{outline:3px solid var(--focus);outline-offset:-3px}
+.segm.prio input[value="1"]:checked+span{background:var(--p1-fill);color:var(--on-p1)}
+.segm.prio input[value="2"]:checked+span{background:var(--p2-fill);color:var(--on-p2)}
+.segm.prio input[value="3"]:checked+span{background:var(--p3-fill);color:var(--on-p3)}
+.segm.co input[value="ceva"]:checked+span{background:var(--ceva-fill);color:var(--on-ceva)}
+.segm.co input[value="partner"]:checked+span{background:var(--partner-fill);color:var(--on-partner)}
+
+.sheet{position:fixed;inset:0;z-index:20;background:var(--scrim);display:flex;align-items:flex-end;justify-content:center}
+.sheet-card{width:100%;max-width:680px;max-height:94%;overflow:auto;background:var(--panel);border-radius:.9rem .9rem 0 0;padding:1rem max(16px,env(safe-area-inset-right,0px)) calc(1rem + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:.9rem;animation:up .2s ease-out}
+.sheet-h{display:flex;align-items:center;gap:.6rem}
+.sheet-h h2{margin:0;flex:1;font:700 1.4rem/1 var(--f-display);text-transform:uppercase;letter-spacing:.04em;min-width:0;overflow-wrap:anywhere}
+.err{color:var(--p1);font-weight:600;font-size:.92rem}
+.sheet-f{display:flex;flex-wrap:wrap;gap:.5rem;padding-top:.3rem;border-top:1px solid var(--line)}
+.sheet-f .sp{flex:1}
+@media (min-width:700px){.sheet{align-items:center}.sheet-card{border-radius:.9rem}}
+@media (max-width:420px){.grid2,.grid3{grid-template-columns:1fr}}
+
+/* detail sheet */
+.d-status{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center}
+.d-status .big{font:700 1.05rem/1.2 var(--f-display);text-transform:uppercase;letter-spacing:.06em}
+.d-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(9rem,1fr));gap:.6rem .9rem;background:var(--bg);border:1px solid var(--line);border-radius:.5rem;padding:.8rem}
+.d-grid div{min-width:0}
+.d-grid .k{display:block;margin-bottom:.2rem}
+.d-grid .v{font-weight:600;overflow-wrap:anywhere}
+.d-desc{white-space:pre-wrap;line-height:1.45;color:var(--fg);overflow-wrap:anywhere}
+.thread{display:flex;flex-direction:column;gap:.5rem}
+.thread h3{margin:.2rem 0 0;font:700 .85rem/1 var(--f-display);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.upd{display:grid;grid-template-columns:.3rem 1fr;gap:.6rem}
+.upd i{display:block;border-radius:.2rem;background:var(--ceva-fill)}
+.upd.partner i{background:var(--partner-fill)}
+.upd.sys i{background:var(--line)}
+.upd-b{min-width:0;padding:.1rem 0}
+.upd-h{display:flex;flex-wrap:wrap;gap:.2rem .6rem;align-items:baseline;font-size:.85rem;color:var(--muted)}
+.upd-h b{color:var(--fg);font-weight:600}
+.upd-t{margin-top:.15rem;white-space:pre-wrap;line-height:1.4;overflow-wrap:anywhere}
+.upd.sys .upd-t{color:var(--muted);font-style:italic}
+.compose{display:flex;flex-direction:column;gap:.6rem;border-top:1px solid var(--line);padding-top:.8rem}
+.compose textarea.inp{min-height:4.5rem}
+.compose .row-btns .btn{flex:1 1 auto}
+
+.toast{position:fixed;left:50%;bottom:calc(1.2rem + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:30;background:var(--toast);color:var(--on-toast);padding:.75rem 1.1rem;border-radius:.45rem;font:600 .95rem/1.3 var(--f-body);box-shadow:0 8px 24px rgba(0,0,0,.3);max-width:calc(100% - 32px);animation:up .18s ease-out}
+
+/* ───────── SIGN-IN GATE ───────── */
+.gate{min-height:100%;display:flex;align-items:center;justify-content:center;padding-block:2rem;background:var(--bg)}
+.gate-card{width:100%;max-width:420px;background:var(--panel);border:1px solid var(--line);border-radius:.6rem;overflow:hidden;display:flex;flex-direction:column}
+.gate-head{background:var(--head);padding:1.1rem 1.25rem;border-bottom:4px solid var(--red)}
+.gate-head img{height:2.6rem;width:auto;display:block}
+.gate-body{padding:1.1rem 1.25rem 1.25rem;display:flex;flex-direction:column;gap:.9rem}
+.gate-title{margin:0;font:700 1.6rem/1 var(--f-display);text-transform:uppercase;letter-spacing:.03em}
+.gate-p{margin:0;color:var(--muted);line-height:1.45;font-size:.95rem}
+.gate-p b{color:var(--fg)}
+.gate form{display:flex;flex-direction:column;gap:.8rem}
+.uid{display:flex;gap:.5rem;align-items:center;background:var(--input);border:1px solid var(--line);border-radius:.4rem;padding:.4rem .4rem .4rem .7rem}
+.uid code{flex:1;min-width:0;overflow-wrap:anywhere;font-size:.85rem;user-select:all}
+.gate-alt{border-top:1px solid var(--line);padding-top:.8rem}
+.people{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:.45rem;overflow:hidden}
+.person{display:flex;align-items:center;gap:.6rem;padding:.6rem .75rem;border-top:1px solid var(--line);flex-wrap:wrap}
+.person:first-child{border-top:0}
+.person .who{flex:1;min-width:10rem}
+.person .who b{display:block;font-weight:600}
+.person .who span{font-size:.8rem;color:var(--muted);overflow-wrap:anywhere}
+.role-chip{font:700 .7rem/1 var(--f-display);letter-spacing:.12em;text-transform:uppercase;padding:.35rem .5rem;border-radius:.2rem;background:var(--btn);color:var(--btn-fg)}
+.role-chip.admin{background:var(--fg);color:var(--bg)}
+.person .btn{min-height:2.4rem;padding:0 .75rem;font-size:.85rem}
+@keyframes up{from{transform:translate(var(--tx,0),12px);opacity:.4}to{transform:translate(var(--tx,0),0);opacity:1}}
+.toast{--tx:-50%}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<noscript><p style="padding:1rem">This tool needs JavaScript turned on.</p></noscript>
+<div id="app">
+  <!-- SIGN-IN GATE -->
+  <section id="gate" class="gate gut" aria-label="Sign in" hidden>
+    <div class="gate-card">
+      <div class="gate-head"><img src="../assets/ceva-logo-white.svg" alt="CEVA Logistics"></div>
+      <div class="gate-body">
+        <h1 class="gate-title">NCI/Greif Inbound</h1>
+        <p class="gate-p" id="gateWait">Connecting…</p>
+        <p class="gate-p" id="gateSetup" hidden>This tool isn’t connected to its database yet. Add the Firebase web config to <code>nci-inbound/firebase-config.js</code> in the repository.</p>
+        <form id="gateLogin" novalidate hidden>
+          <p class="gate-p">Sign in with the account your admin set up. CEVA and NCI/Greif people use the same page; what you see depends on your company.</p>
+          <div class="fld"><label for="lEmail">Email</label><input class="inp" id="lEmail" type="email" autocomplete="username" inputmode="email"></div>
+          <div class="fld"><label for="lPass">Password</label><input class="inp" id="lPass" type="password" autocomplete="current-password"></div>
+          <div class="err" id="lErr" role="alert" hidden></div>
+          <button class="btn primary" type="submit" id="lGo">Sign in</button>
+        </form>
+        <div id="gateDenied" hidden>
+          <p class="gate-p">Signed in as <b id="dEmail"></b>, but this account hasn’t been added to the tool. Send your admin this user ID:</p>
+          <div class="uid" style="margin-top:.7rem"><code id="dUid"></code><button type="button" class="btn" id="dCopy">Copy</button></div>
+          <div class="row-btns" style="margin-top:.7rem"><button type="button" class="btn ghost" id="dOut">Sign out</button></div>
+        </div>
+        <div class="gate-alt"><button type="button" class="btn ghost" id="gDemo">Preview with example issues</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- OPEN ITEMS BOARD -->
+  <section id="board" class="board" aria-label="Open inbound exceptions" hidden>
+    <header class="b-head gut">
+      <div class="b-brand">
+        <div class="logo-plate"><img src="../assets/ceva-logo-white.svg" alt="CEVA Logistics"></div>
+        <div>
+          <div class="b-eyebrow" id="siteName">NCI / Greif</div>
+          <h1 class="b-title">Inbound Exceptions</h1>
+        </div>
+      </div>
+      <dl class="b-stats">
+        <div><dt>Open</dt><dd id="stOpen">0</dd></div>
+        <div><dt id="stCevaLbl">On CEVA</dt><dd id="stCeva">0</dd></div>
+        <div><dt id="stPartLbl">On NCI/Greif</dt><dd id="stPart">0</dd></div>
+        <div id="tileLate"><dt>Overdue</dt><dd id="stLate">0</dd></div>
+        <div id="tileP1"><dt>P1 open</dt><dd id="stP1">0</dd></div>
+        <div><dt>Resolved today</dt><dd id="stRes">0</dd></div>
+      </dl>
+      <div class="b-clock"><div class="t" id="clkTime">--:--</div><div class="d" id="clkDate"></div></div>
+    </header>
+    <div class="b-rule"></div>
+    <main class="b-cols gut">
+      <section class="b-panel ceva" aria-labelledby="hCeva">
+        <header class="p-head"><h2 id="hCeva"><i aria-hidden="true"></i><span id="hCevaTxt">Waiting on CEVA</span></h2><span class="p-count" id="cntCeva"></span><span class="p-page" id="pgCeva"></span></header>
+        <div class="p-cols" aria-hidden="true"><span>Pri</span><span>Shipment · Carrier</span><span>Issue</span><span>Waiting</span><span>Last update</span><span>Raised by</span></div>
+        <div class="p-list" id="listCeva" role="list"></div>
+      </section>
+      <section class="b-panel partner" aria-labelledby="hPart">
+        <header class="p-head"><h2 id="hPart"><i aria-hidden="true"></i><span id="hPartTxt">Waiting on NCI / Greif</span></h2><span class="p-count" id="cntPart"></span><span class="p-page" id="pgPart"></span></header>
+        <div class="p-cols" aria-hidden="true"><span>Pri</span><span>Shipment · Carrier</span><span>Issue</span><span>Waiting</span><span>Last update</span><span>Raised by</span></div>
+        <div class="p-list" id="listPart" role="list"></div>
+      </section>
+    </main>
+    <footer class="b-foot gut">
+      <div class="legend" aria-label="Priority levels"><span class="l1"><b>P1</b>Critical</span><span class="l2"><b>P2</b>High</span><span class="l3"><b>P3</b>Standard</span><span><b id="legSla">24h</b>Overdue after</span></div>
+      <div class="b-live"><span class="dot" id="liveDot"></span><span id="liveTxt">Connecting…</span></div>
+      <div class="b-ctrl"><button type="button" id="btnFull">Full screen</button><button type="button" id="btnToEdit">Work items</button></div>
+    </footer>
+    <div class="demo-banner" id="demoBanner" hidden>Example issues · not live <button type="button" id="btnExitDemo">Exit preview</button></div>
+  </section>
+
+  <!-- WORK SCREEN -->
+  <section id="edit" class="edit" aria-label="Work inbound exceptions" hidden>
+    <header class="e-top gut">
+      <div class="e-title"><div class="a">Inbound Exceptions</div><div class="b"><span class="dot" id="eDot"></span><span id="eLive">Connecting…</span><span id="eMe"></span></div></div>
+      <button type="button" class="hbtn" id="btnNotif" title="Browser notifications" aria-pressed="false">🔔 <span class="t">Alerts off</span></button>
+      <button type="button" class="hbtn" id="btnToBoard">Board</button>
+    </header>
+    <div class="e-wrap gut">
+      <div class="note" id="eAccess" hidden></div>
+      <div class="e-bar">
+        <div class="tabs" role="tablist" aria-label="Issue lists">
+          <button type="button" class="tab mine" role="tab" data-tab="mine" id="tab-mine"><span id="tabMineTxt">Needs us</span> <span class="n" id="nMine">0</span></button>
+          <button type="button" class="tab" role="tab" data-tab="theirs" id="tab-theirs"><span id="tabTheirsTxt">Waiting on them</span> <span class="n" id="nTheirs">0</span></button>
+          <button type="button" class="tab" role="tab" data-tab="all" id="tab-all">All open <span class="n" id="nAll">0</span></button>
+          <button type="button" class="tab" role="tab" data-tab="resolved" id="tab-resolved">Resolved <span class="n" id="nRes">0</span></button>
+          <button type="button" class="tab" role="tab" data-tab="settings" id="tab-settings">Settings</button>
+        </div>
+        <button type="button" class="btn primary" id="btnAdd">Raise issue</button>
+      </div>
+      <div class="filt" id="filt">
+        <input class="inp" id="fSearch" type="search" placeholder="Search shipment, PO, carrier, SKU…" autocomplete="off">
+        <select class="inp" id="fType"><option value="">All issue types</option></select>
+      </div>
+      <div class="e-list" id="eList" role="tabpanel"></div>
+
+      <div class="settings" id="setPanel" role="tabpanel" hidden>
+        <div class="set" id="setAccount">
+          <h3>Account</h3>
+          <p id="acctLine"></p>
+          <div class="row-btns"><button type="button" class="btn ghost" id="acctOut">Sign out</button></div>
+        </div>
+        <div class="set">
+          <h3>Notifications</h3>
+          <p>With alerts on, this browser shows a notification when an issue lands on your company or the other company posts an update. The tab title also shows how many items need your company. Alerts are per device; turn them on wherever you work.</p>
+          <div class="row-btns"><button type="button" class="btn" id="sNotif">Turn alerts on</button><button type="button" class="btn ghost" id="sNotifTest">Send a test</button></div>
+          <p id="sNotifState"></p>
+        </div>
+        <div class="set" id="setPeople" hidden>
+          <h3>People</h3>
+          <p>Create each login in the Firebase console under Authentication → Users → Add user, then paste its User UID here. Pick the company the person works for: that decides which items count as “Needs us” and which alerts they get.</p>
+          <div class="people" id="peopleList"></div>
+          <div class="grid2">
+            <div class="fld"><label for="pUid">User UID</label><input class="inp" id="pUid" maxlength="128" autocomplete="off" spellcheck="false"></div>
+            <div class="fld"><label for="pName">Name</label><input class="inp" id="pName" maxlength="40" autocomplete="off" placeholder="J. Ruiz"></div>
+          </div>
+          <div class="grid2">
+            <div class="fld"><span class="lab" id="lblCo">Company</span>
+              <div class="segm co" role="radiogroup" aria-labelledby="lblCo">
+                <label><input type="radio" name="pCo" id="pCoC" value="ceva" checked><span id="pCoCTxt">CEVA</span></label>
+                <label><input type="radio" name="pCo" id="pCoP" value="partner"><span id="pCoPTxt">NCI / Greif</span></label>
+              </div>
+            </div>
+            <div class="fld"><span class="lab" id="lblRole">Role</span>
+              <div class="segm" role="radiogroup" aria-labelledby="lblRole">
+                <label><input type="radio" name="pRole" id="pRoleV" value="viewer"><span>Viewer</span></label>
+                <label><input type="radio" name="pRole" id="pRoleU" value="user" checked><span>User</span></label>
+                <label><input type="radio" name="pRole" id="pRoleA" value="admin"><span>Admin</span></label>
+              </div>
+            </div>
+          </div>
+          <div class="err" id="pErr" role="alert" hidden></div>
+          <div class="row-btns"><button type="button" class="btn primary" id="pSave">Add or update person</button></div>
+        </div>
+        <div class="set" id="setAdmin" hidden>
+          <h3>Companies and emails</h3>
+          <p>Only admins see this section. Emails go out through the optional Firebase “Trigger Email” extension (see the README). Leave a box empty to send none for that company.</p>
+          <div class="grid2">
+            <div class="fld"><label for="sNameC">CEVA side shows as</label><input class="inp" id="sNameC" maxlength="30" placeholder="CEVA"></div>
+            <div class="fld"><label for="sNameP">Partner side shows as</label><input class="inp" id="sNameP" maxlength="30" placeholder="NCI / Greif"></div>
+          </div>
+          <div class="grid2">
+            <div class="fld"><label for="sMailC">CEVA notification emails</label><textarea class="inp" id="sMailC" placeholder="one per line or comma-separated"></textarea></div>
+            <div class="fld"><label for="sMailP">Partner notification emails</label><textarea class="inp" id="sMailP" placeholder="one per line or comma-separated"></textarea></div>
+          </div>
+          <div class="grid2">
+            <div class="fld"><label for="sSite">Site or lane name (above the board title)</label><input class="inp" id="sSite" maxlength="60" placeholder="NCI / Greif · Atlanta"></div>
+            <div class="fld"><label for="sSla">Overdue after (hours waiting)</label><input class="inp" id="sSla" type="number" min="1" max="720" inputmode="numeric" placeholder="24"></div>
+          </div>
+          <div class="fld"><span class="lab">Board colors</span>
+            <div class="segm" role="radiogroup" aria-label="Board colors">
+              <label><input type="radio" name="sTheme" id="sThemeDark" value="dark"><span>Dark (best on TVs)</span></label>
+              <label><input type="radio" name="sTheme" id="sThemeScreen" value="screen"><span>Match screen</span></label>
+            </div>
+          </div>
+          <div class="row-btns"><button type="button" class="btn primary" id="sAdminSave">Save settings</button></div>
+        </div>
+        <div class="set">
+          <h3>Export</h3>
+          <p>Download every issue, open and resolved, as a spreadsheet file. Update threads are not included.</p>
+          <div class="row-btns"><button type="button" class="btn" id="sCsv">Download CSV</button></div>
+        </div>
+        <div class="set">
+          <h3>Preview</h3>
+          <p>See the board filled with example issues. Nothing is saved and live data is unchanged.</p>
+          <div class="row-btns"><button type="button" class="btn" id="sDemo">Preview board with example issues</button></div>
+        </div>
+        <div class="set" id="setClear" hidden>
+          <h3>Resolved issues</h3>
+          <p>Resolved issues stay in the Resolved tab and the export. Admins can delete those resolved more than 30 days ago to keep the list short.</p>
+          <div class="row-btns"><button type="button" class="btn danger" id="sClear">Delete old resolved issues</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ISSUE FORM -->
+    <div class="sheet" id="sheet" hidden>
+      <form class="sheet-card" id="sheetForm" novalidate aria-labelledby="sheetTitle">
+        <div class="sheet-h"><h2 id="sheetTitle">Raise issue</h2><button type="button" class="btn ghost" id="fClose">Close</button></div>
+        <div class="grid2">
+          <div class="fld"><label for="fRef">Shipment / ASN / PO</label><input class="inp" id="fRef" maxlength="60" autocomplete="off" placeholder="ASN 77120 or PO 4500018832"></div>
+          <div class="fld"><label for="fBol">BOL / PRO</label><input class="inp" id="fBol" maxlength="40" autocomplete="off"></div>
+        </div>
+        <div class="grid2">
+          <div class="fld"><label for="fCarrier">Carrier</label><input class="inp" id="fCarrier" maxlength="40" autocomplete="off"></div>
+          <div class="fld"><label for="fTrailer">Trailer / container</label><input class="inp" id="fTrailer" maxlength="24" autocomplete="off"></div>
+        </div>
+        <div class="grid2">
+          <div class="fld"><label for="fType2">Issue type</label><select class="inp" id="fType2"></select></div>
+          <div class="fld"><label for="fRecvDate">Received / found on</label><input class="inp" type="date" id="fRecvDate"></div>
+        </div>
+        <div class="grid3">
+          <div class="fld"><label for="fSku">SKU / item</label><input class="inp" id="fSku" maxlength="40" autocomplete="off"></div>
+          <div class="fld"><label for="fQtyExp">Qty expected</label><input class="inp" id="fQtyExp" inputmode="decimal" maxlength="12" autocomplete="off"></div>
+          <div class="fld"><label for="fQtyRec">Qty received</label><input class="inp" id="fQtyRec" inputmode="decimal" maxlength="12" autocomplete="off"></div>
+        </div>
+        <div class="fld"><label for="fDesc">What happened</label><textarea class="inp" id="fDesc" maxlength="1000" placeholder="2 pallets of 6 arrived crushed; photos emailed to NCI receiving. Need disposition."></textarea></div>
+        <div class="fld"><span class="lab" id="lblPrio">Priority</span>
+          <div class="segm prio" role="radiogroup" aria-labelledby="lblPrio">
+            <label><input type="radio" name="fPrio" id="fPrio1" value="1"><span>P1 Critical</span></label>
+            <label><input type="radio" name="fPrio" id="fPrio2" value="2"><span>P2 High</span></label>
+            <label><input type="radio" name="fPrio" id="fPrio3" value="3"><span>P3 Standard</span></label>
+          </div>
+        </div>
+        <div class="fld"><span class="lab" id="lblBall">Who needs to act first</span>
+          <div class="segm co" role="radiogroup" aria-labelledby="lblBall">
+            <label><input type="radio" name="fBall" id="fBallC" value="ceva"><span id="fBallCTxt">CEVA</span></label>
+            <label><input type="radio" name="fBall" id="fBallP" value="partner"><span id="fBallPTxt">NCI / Greif</span></label>
+          </div>
+        </div>
+        <div class="err" id="fErr" role="alert" hidden></div>
+        <div class="sheet-f">
+          <button type="button" class="btn danger" id="fDelete" hidden>Delete</button>
+          <span class="sp"></span>
+          <button type="button" class="btn ghost" id="fCancel">Cancel</button>
+          <button type="submit" class="btn primary" id="fSave">Raise issue</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- ISSUE DETAIL + UPDATE THREAD -->
+    <div class="sheet" id="detail" hidden>
+      <div class="sheet-card" role="dialog" aria-modal="true" aria-labelledby="dTitle">
+        <div class="sheet-h"><h2 id="dTitle">Issue</h2><button type="button" class="btn ghost" id="dEdit">Edit</button><button type="button" class="btn ghost" id="dClose">Close</button></div>
+        <div class="d-status" id="dStatus"></div>
+        <div class="d-grid" id="dGrid"></div>
+        <div class="d-desc" id="dDesc"></div>
+        <div class="thread"><h3>Updates</h3><div id="dThread"></div></div>
+        <div class="compose" id="dCompose">
+          <div class="fld"><label for="dText" id="dTextLbl">Add an update</label><textarea class="inp" id="dText" maxlength="1000" placeholder="What was checked, decided or still needed…"></textarea></div>
+          <div class="err" id="dErr" role="alert" hidden></div>
+          <div class="row-btns">
+            <button type="button" class="btn primary" id="dPost">Post update</button>
+            <button type="button" class="btn hand" id="dHand">Hand to NCI / Greif</button>
+            <button type="button" class="btn go" id="dResolve">Resolve</button>
+            <button type="button" class="btn" id="dReopen" hidden>Reopen</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="toast" id="toast" role="status" hidden></div>
+</div>
+
+<script src="firebase-config.js"></script>
+<script type="module">
+(function(){
+'use strict';
+const FB = 'https://www.gstatic.com/firebasejs/10.14.1/';
+const BASE_TITLE = document.title;
+const ROLE_LABEL = {viewer:'Viewer', user:'User', supervisor:'User', admin:'Admin'};
+const CO_DEFAULT = {ceva:'CEVA', partner:'NCI / Greif'};
+const TYPES = {short:'Shortage', over:'Overage', damage:'Damaged', wrong:'Wrong item / SKU', noasn:'No ASN / paperwork', label:'Label or barcode', late:'Late / missed appt', other:'Other'};
+const PRI = {1:{n:'P1',l:'Critical'},2:{n:'P2',l:'High'},3:{n:'P3',l:'Standard'}};
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad = n => String(n).padStart(2,'0');
+const ymd = d => d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
+const hm = d => pad(d.getHours()) + ':' + pad(d.getMinutes());
+const todayStr = () => ymd(new Date());
+const str = (v, n) => typeof v === 'string' ? v.trim().slice(0, n || 200) : '';
+const num = v => typeof v === 'number' && isFinite(v) ? v : 0;
+const FIT = window.matchMedia('(min-width:1000px) and (min-aspect-ratio:5/4)');
+const other = co => co === 'ceva' ? 'partner' : 'ceva';
+
+const S = {
+  view:'board', demo:false, demoIssues:[], tab:'mine', search:'', typeF:'',
+  issues:[], settings:{}, people:[],
+  fb:null, authUser:null, role:null, company:'ceva', myName:'', ready:false, gate:'wait', unsubs:[], roleUnsub:null,
+  conn:'connecting', canWrite:null, canAdmin:false,
+  page:{ceva:0, partner:0}, editing:null, open:null, updates:[], updUnsub:null,
+  prev:null, notif:false
+};
+
+/* ---------- helpers ---------- */
+const coName = k => str(S.settings.names && S.settings.names[k], 30) || CO_DEFAULT[k];
+const slaMs = () => (Number(S.settings.sla) >= 1 ? Number(S.settings.sla) : 24) * 3600e3;
+const waitSince = i => i.handedAt || i.openedAt || i.updatedAt;
+const isLate = (i, now) => i.status === 'open' && now - waitSince(i) > slaMs();
+const sameDay = (ms, ref) => ms && ymd(new Date(ms)) === ymd(new Date(ref));
+function fmtAge(ms){
+  const m = Math.max(0, Math.floor(ms/60000));
+  if(m < 60) return m + 'm';
+  const h = Math.floor(m/60);
+  if(h < 24) return h + 'h ' + pad(m%60) + 'm';
+  return Math.floor(h/24) + 'd ' + (h%24) + 'h';
+}
+function fmtShortDate(s){
+  if(!s) return '';
+  const [y,m,d] = s.split('-').map(Number);
+  return new Date(y, m-1, d).toLocaleDateString(undefined, {month:'short', day:'numeric'});
+}
+function fmtWhen(ms){
+  if(!ms) return '';
+  const d = new Date(ms);
+  return sameDay(ms, Date.now()) ? d.toLocaleTimeString(undefined, {hour:'numeric', minute:'2-digit'})
+    : d.toLocaleDateString(undefined, {month:'short', day:'numeric'}) + ' ' + d.toLocaleTimeString(undefined, {hour:'numeric', minute:'2-digit'});
+}
+const typeLabel = t => TYPES[t] || TYPES.other;
+const titleOf = i => i.ref || i.bol || i.trailer || i.carrier || 'Unnamed shipment';
+
+/* ---------- data shaping ---------- */
+function person(p){
+  p = p || {};
+  return {uid:str(p.uid,128), name:str(p.name,40), company:p.company === 'partner' ? 'partner' : 'ceva'};
+}
+function norm(id, d){
+  d = d || {};
+  const p = Number(d.priority);
+  return {
+    id,
+    status:d.status === 'resolved' ? 'resolved' : 'open',
+    ball:d.ball === 'partner' ? 'partner' : 'ceva',
+    priority:[1,2,3].includes(p) ? p : 3,
+    type:TYPES[d.type] ? d.type : 'other',
+    ref:str(d.ref,60), bol:str(d.bol,40), carrier:str(d.carrier,40), trailer:str(d.trailer,24),
+    sku:str(d.sku,40), qtyExp:str(d.qtyExp,12), qtyRec:str(d.qtyRec,12), desc:str(d.desc,1000),
+    recvDate:/^\d{4}-\d{2}-\d{2}$/.test(d.recvDate) ? d.recvDate : '',
+    openedBy:person(d.openedBy), openedAt:num(d.openedAt), updatedAt:num(d.updatedAt), handedAt:num(d.handedAt),
+    lastText:str(d.lastText,1000), lastBy:str(d.lastBy,40), lastCompany:d.lastCompany === 'partner' ? 'partner' : 'ceva', lastAt:num(d.lastAt), lastKind:str(d.lastKind,12),
+    resolvedAt:num(d.resolvedAt), resolvedBy:str(d.resolvedBy,40), resolution:str(d.resolution,1000), nUpdates:num(d.nUpdates)
+  };
+}
+const byWait = (a,b) => a.priority - b.priority || waitSince(a) - waitSince(b);
+function derive(list){
+  const now = Date.now();
+  const open = list.filter(i => i.status === 'open');
+  const ceva = open.filter(i => i.ball === 'ceva').sort(byWait);
+  const partner = open.filter(i => i.ball === 'partner').sort(byWait);
+  const resolved = list.filter(i => i.status === 'resolved').sort((a,b) => (b.resolvedAt||0) - (a.resolvedAt||0));
+  return {
+    now, open, ceva, partner, resolved,
+    mine: S.company === 'partner' ? partner : ceva,
+    theirs: S.company === 'partner' ? ceva : partner,
+    all: open.slice().sort(byWait),
+    late: open.filter(i => isLate(i, now)),
+    p1: open.filter(i => i.priority === 1),
+    resolvedToday: resolved.filter(i => sameDay(i.resolvedAt, now))
+  };
+}
+const boardIssues = () => S.demo ? S.demoIssues : S.issues;
+
+/* ---------- shared bits ---------- */
+function prioCell(i){
+  const p = PRI[i.priority];
+  return '<div class="c-prio"><span class="pn">' + p.n + '</span><span class="pl">' + p.l + '</span></div>';
+}
+function subLine(i, withBol){
+  const q = i.qtyExp || i.qtyRec ? 'Qty ' + (i.qtyExp || '?') + ' → ' + (i.qtyRec || '?') : '';
+  return [withBol && i.bol && i.ref ? i.bol : '', i.carrier, i.trailer, i.sku, q].filter(Boolean).join(' · ');
+}
+function lastLine(i){
+  if(!i.lastAt) return '<b>' + esc(i.openedBy.name || coName(i.openedBy.company)) + '</b> raised it';
+  const who = esc(i.lastBy || coName(i.lastCompany));
+  const t = i.lastText ? esc(i.lastText) : (i.lastKind === 'hand' ? 'handed over' : i.lastKind === 'resolve' ? 'resolved' : 'updated');
+  return '<b>' + who + '</b> ' + t;
+}
+function setConn(dotEl, txtEl, short){
+  let cls = '', txt = '';
+  if(S.demo && S.view === 'demo'){ txt = 'Example issues'; }
+  else if(S.conn === 'live'){
+    cls = 'ok';
+    const last = S.issues.reduce((m,i) => Math.max(m, i.updatedAt||0), 0);
+    txt = last ? 'Live · last change ' + fmtWhen(last) : 'Live';
+  }
+  else if(S.conn === 'offline'){ txt = short ? 'Offline' : 'Offline · showing the last saved list'; }
+  else if(S.conn === 'none'){ cls = 'bad'; txt = short ? 'Not connected' : 'Not connected to the database.'; }
+  else if(S.conn === 'error'){ cls = 'bad'; txt = short ? 'Connection lost' : 'Connection lost. Reload this page.'; }
+  else { txt = 'Connecting…'; }
+  dotEl.className = 'dot ' + cls; txtEl.textContent = txt;
+}
+function applyNames(){
+  const c = coName('ceva'), p = coName('partner'), me = coName(S.company), them = coName(other(S.company));
+  $('#stCevaLbl').textContent = 'On ' + c; $('#stPartLbl').textContent = 'On ' + p;
+  $('#hCevaTxt').textContent = 'Waiting on ' + c; $('#hPartTxt').textContent = 'Waiting on ' + p;
+  $('#tabMineTxt').textContent = 'Needs ' + me; $('#tabTheirsTxt').textContent = 'Waiting on ' + them;
+  $('#pCoCTxt').textContent = c; $('#pCoPTxt').textContent = p;
+  $('#fBallCTxt').textContent = c; $('#fBallPTxt').textContent = p;
+  $('#legSla').textContent = Math.round(slaMs()/3600e3) + 'h';
+  const eb = $('#siteName'); eb.textContent = str(S.settings.siteName, 60) || 'NCI / Greif'; 
+}
+
+/* ---------- BOARD ---------- */
+function boardRow(i, D){
+  const age = D.now - waitSince(i), late = isLate(i, D.now);
+  const sub = subLine(i, true);
+  return '<div class="row p' + i.priority + '" role="listitem">' +
+    prioCell(i) +
+    '<div class="c-unit"><div class="u-main">' + esc(titleOf(i)) + '</div>' +
+      (sub ? '<div class="u-sub">' + esc(sub) + '</div>' : '') + '</div>' +
+    '<div class="c-type"><span class="chip">' + esc(typeLabel(i.type)) + '</span></div>' +
+    '<div class="c-when' + (late ? ' late' : '') + '"><div class="v">' + esc(fmtAge(age)) + '</div><div class="s">' + (late ? '<span class="tag-late">Overdue</span>' : 'waiting') + '</div></div>' +
+    '<div class="c-last">' + lastLine(i) + '</div>' +
+    '<div class="c-who"><b>' + esc(i.openedBy.name || '—') + '</b> · ' + esc(coName(i.openedBy.company)) + '</div>' +
+  '</div>';
+}
+function boardEmpty(key){
+  if(S.conn === 'none' && !S.demo) return '<div class="empty"><strong>Not connected</strong><span>This screen needs to be signed in with access to this tool.</span></div>';
+  return '<div class="empty"><strong>Nothing waiting on ' + esc(coName(key)) + '</strong><span>Issues handed to ' + esc(coName(key)) + ' show here, oldest and most urgent first.</span></div>';
+}
+function renderPanel(key, items, D){
+  const sfx = key === 'ceva' ? 'Ceva' : 'Part';
+  const list = $('#list' + sfx), cnt = $('#cnt' + sfx), pg = $('#pg' + sfx);
+  cnt.textContent = items.length ? String(items.length) : '';
+  if(!items.length){ list.innerHTML = boardEmpty(key); pg.textContent = ''; return; }
+  let slice = items, pages = 1;
+  if(FIT.matches){
+    list.innerHTML = '';
+    const fs = parseFloat(getComputedStyle(list).fontSize) || 16;
+    const rowH = 3.7*fs, gap = .35*fs, avail = list.clientHeight - .5*fs;
+    const cap = Math.max(1, Math.floor((avail + gap) / (rowH + gap)));
+    pages = Math.ceil(items.length / cap);
+    const page = S.page[key] % pages; S.page[key] = page;
+    slice = items.slice(page*cap, page*cap + cap);
+  }
+  list.innerHTML = slice.map(i => boardRow(i, D)).join('');
+  pg.textContent = pages > 1 ? 'Page ' + (S.page[key] + 1) + ' of ' + pages : '';
+}
+function renderBoard(){
+  const D = derive(boardIssues());
+  applyNames();
+  $('#stOpen').textContent = D.open.length;
+  $('#stCeva').textContent = D.ceva.length;
+  $('#stPart').textContent = D.partner.length;
+  $('#stLate').textContent = D.late.length;
+  $('#stP1').textContent = D.p1.length;
+  $('#stRes').textContent = D.resolvedToday.length;
+  $('#tileLate').className = D.late.length ? 'warn' : '';
+  $('#tileP1').className = D.p1.length ? 'hot' : '';
+  setConn($('#liveDot'), $('#liveTxt'));
+  $('#demoBanner').hidden = !S.demo;
+  renderPanel('ceva', D.ceva, D);
+  renderPanel('partner', D.partner, D);
+  tickClock();
+}
+function tickClock(){
+  const d = new Date();
+  $('#clkTime').innerHTML = esc(d.toLocaleTimeString(undefined, {hour:'numeric', minute:'2-digit'}));
+  $('#clkDate').textContent = d.toLocaleDateString(undefined, {weekday:'short', month:'short', day:'numeric'});
+}
+
+/* ---------- WORK SCREEN ---------- */
+const readOnly = () => S.canWrite === false;
+function matches(i){
+  if(S.typeF && i.type !== S.typeF) return false;
+  if(!S.search) return true;
+  const q = S.search.toLowerCase();
+  return [i.ref, i.bol, i.carrier, i.trailer, i.sku, i.desc, i.lastText, i.openedBy.name].some(v => v && v.toLowerCase().includes(q));
+}
+function card(i, D){
+  const sub = subLine(i), mine = i.status === 'open' && i.ball === S.company;
+  const meta = [];
+  meta.push('<span class="chip">' + esc(typeLabel(i.type)) + '</span>');
+  if(i.status === 'open'){
+    meta.push('<span class="chip ' + i.ball + '">' + esc(mine ? 'Needs ' + coName(i.ball) : 'Waiting on ' + coName(i.ball)) + '</span>');
+    const age = D.now - waitSince(i);
+    meta.push('<span class="' + (isLate(i, D.now) ? 'late' : '') + '">' + (isLate(i, D.now) ? 'Overdue · ' : '') + 'waiting <b>' + esc(fmtAge(age)) + '</b></span>');
+  } else {
+    meta.push('<span class="chip resolved">Resolved</span>');
+    meta.push('<span><b>' + esc(fmtWhen(i.resolvedAt)) + '</b>' + (i.resolvedBy ? ' by ' + esc(i.resolvedBy) : '') + '</span>');
+  }
+  if(i.recvDate) meta.push('<span>Found <b>' + esc(fmtShortDate(i.recvDate)) + '</b></span>');
+  meta.push('<span>' + (i.nUpdates || 0) + ' update' + (i.nUpdates === 1 ? '' : 's') + '</span>');
+  return '<article class="card p' + i.priority + (mine ? ' mine' : '') + '" data-open="' + esc(i.id) + '" tabindex="0" role="button" aria-label="Open ' + esc(titleOf(i)) + '">' + prioCell(i) +
+    '<div class="card-b">' +
+      '<div class="card-top"><div class="card-id"><div class="u-main">' + esc(titleOf(i)) + (i.bol && i.ref ? '<span class="b">' + esc(i.bol) + '</span>' : '') + '</div>' +
+        (sub ? '<div class="u-sub">' + esc(sub) + '</div>' : '') + '</div>' +
+        '<button type="button" class="btn ghost" data-open="' + esc(i.id) + '">Open</button></div>' +
+      '<div class="meta">' + meta.join('') + '</div>' +
+      '<div class="card-last">' + lastLine(i) + (i.lastAt ? ' <span style="color:var(--faint)">· ' + esc(fmtWhen(i.lastAt)) + '</span>' : '') + '</div>' +
+    '</div></article>';
+}
+const EMPTY = {
+  mine:['Nothing needs your company right now','Issues the other side hands over, or raises for you, land here.'],
+  theirs:['Nothing waiting on the other company','Raise an issue or hand one over and it shows here until they answer.'],
+  all:['No open issues','Tap Raise issue when an inbound shipment is short, over, damaged or missing paperwork.'],
+  resolved:['Nothing resolved yet','Resolved issues keep their full update history here.']
+};
+function renderEdit(){
+  const D = derive(S.issues);
+  applyNames();
+  setConn($('#eDot'), $('#eLive'), true);
+  $('#eMe').textContent = S.authUser ? '· ' + (S.myName || S.authUser.email || '') + ' · ' + coName(S.company) : '';
+  $('#nMine').textContent = D.mine.length;
+  $('#nTheirs').textContent = D.theirs.length;
+  $('#nAll').textContent = D.all.length;
+  $('#nRes').textContent = D.resolved.length;
+  document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', String(t.dataset.tab === S.tab)));
+  const acc = $('#eAccess');
+  if(S.conn === 'none'){ acc.hidden = false; acc.textContent = 'Not connected to the database. Reload the page.'; }
+  else if(readOnly()){ acc.hidden = false; acc.textContent = 'This account is a Viewer, so it can see issues but not change them. Ask the admin to make it a User.'; }
+  else if(S.conn === 'offline'){ acc.hidden = false; acc.textContent = 'Offline. Changes you make now save on this device and sync when the network is back.'; }
+  else acc.hidden = true;
+  $('#btnAdd').hidden = readOnly() || S.conn === 'none';
+  const nb = $('#btnNotif'); nb.querySelector('.t').textContent = S.notif ? 'Alerts on' : 'Alerts off'; nb.classList.toggle('on', S.notif); nb.setAttribute('aria-pressed', String(S.notif));
+  const isSet = S.tab === 'settings';
+  $('#setPanel').hidden = !isSet; $('#eList').hidden = isSet; $('#filt').hidden = isSet;
+  if(isSet){ fillSettings(false); return; }
+  const items = D[S.tab === 'mine' ? 'mine' : S.tab === 'theirs' ? 'theirs' : S.tab === 'all' ? 'all' : 'resolved'].filter(matches);
+  const el = $('#eList');
+  el.setAttribute('aria-labelledby', 'tab-' + S.tab);
+  if(!items.length){
+    const e = EMPTY[S.tab];
+    el.innerHTML = (S.search || S.typeF) ? '<div class="e-empty"><strong>No matches</strong>Clear the search or the type filter to see everything in this list.</div>'
+      : '<div class="e-empty"><strong>' + e[0] + '</strong>' + e[1] + '</div>';
+    return;
+  }
+  el.innerHTML = items.map(i => card(i, D)).join('');
+}
+
+/* ---------- settings panel ---------- */
+function setVal(el, v, force){ if(force || (document.activeElement !== el && !el.dataset.dirty)) el.value = v; }
+function fillSettings(force){
+  const admin = S.canAdmin && S.conn !== 'none';
+  $('#setAdmin').hidden = !admin; $('#setPeople').hidden = !admin; $('#setClear').hidden = !admin;
+  if(admin){
+    const em = S.settings.emails || {};
+    setVal($('#sNameC'), str(S.settings.names && S.settings.names.ceva, 30), force);
+    setVal($('#sNameP'), str(S.settings.names && S.settings.names.partner, 30), force);
+    setVal($('#sMailC'), (Array.isArray(em.ceva) ? em.ceva : []).join('\n'), force);
+    setVal($('#sMailP'), (Array.isArray(em.partner) ? em.partner : []).join('\n'), force);
+    setVal($('#sSite'), str(S.settings.siteName, 60), force);
+    setVal($('#sSla'), S.settings.sla ? String(S.settings.sla) : '', force);
+    (S.settings.boardTheme === 'screen' ? $('#sThemeScreen') : $('#sThemeDark')).checked = true;
+    renderPeople();
+  }
+  $('#acctLine').textContent = S.authUser ? 'Signed in as ' + (S.authUser.email || 'this device') + ' · ' + (S.myName ? S.myName + ' · ' : '') + coName(S.company) + ' · ' + (ROLE_LABEL[S.role] || 'no role') : '';
+  $('#sNotif').textContent = S.notif ? 'Turn alerts off' : 'Turn alerts on';
+  $('#sNotifState').textContent = !('Notification' in window) ? 'This browser can’t show notifications.'
+    : Notification.permission === 'denied' ? 'Notifications are blocked for this site in the browser settings.'
+    : S.notif ? 'Alerts are on for this device.' : 'Alerts are off for this device.';
+  const clr = $('#sClear');
+  if(!clr.dataset.armed) clr.textContent = 'Delete resolved issues older than 30 days (' + oldResolved().length + ')';
+  document.querySelectorAll('#setAdmin input,#setAdmin textarea,#setAdmin button,#setPeople input,#setPeople button').forEach(x => { x.disabled = readOnly() || S.conn === 'none'; });
+}
+['sNameC','sNameP','sMailC','sMailP','sSite','sSla'].forEach(id => $('#' + id).addEventListener('input', e => { e.target.dataset.dirty = '1'; }));
+const oldResolved = () => S.issues.filter(i => i.status === 'resolved' && i.resolvedAt && Date.now() - i.resolvedAt > 30*864e5);
+const parseEmails = v => [...new Set(v.split(/[\n,;]+/).map(s => s.trim().toLowerCase()).filter(s => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)))].slice(0, 25);
+
+/* ---------- people (admin) ---------- */
+function renderPeople(){
+  const el = $('#peopleList');
+  const me = S.authUser && S.authUser.uid;
+  if(!S.people.length){ el.innerHTML = '<div class="person"><div class="who"><span>Nobody added yet.</span></div></div>'; return; }
+  const order = {admin:0, user:1, supervisor:1, viewer:2};
+  const rank = p => (p.role in order) ? order[p.role] : 3;
+  el.innerHTML = S.people.slice().sort((a,b) => String(a.company||'ceva').localeCompare(String(b.company||'ceva')) || rank(a) - rank(b) || String(a.name||'').localeCompare(String(b.name||''))).map(p =>
+    '<div class="person"><div class="who"><b>' + esc(str(p.name,40) || 'Unnamed') + (p.id === me ? ' (you)' : '') + '</b><span>' + esc(p.id) + '</span></div>' +
+    '<span class="chip ' + (p.company === 'partner' ? 'partner' : 'ceva') + '">' + esc(coName(p.company === 'partner' ? 'partner' : 'ceva')) + '</span>' +
+    '<span class="role-chip' + (p.role === 'admin' ? ' admin' : '') + '">' + esc(ROLE_LABEL[p.role] || 'No role') + '</span>' +
+    '<button type="button" class="btn ghost" data-pedit="' + esc(p.id) + '">Edit</button>' +
+    (p.id === me ? '' : '<button type="button" class="btn danger" data-pdel="' + esc(p.id) + '">Remove</button>') +
+    '</div>').join('');
+}
+function peopleErr(t){ const e = $('#pErr'); e.textContent = t || ''; e.hidden = !t; }
+$('#pSave').addEventListener('click', () => {
+  const uid = $('#pUid').value.trim(), name = str($('#pName').value, 40);
+  const role = document.querySelector('input[name="pRole"]:checked').value;
+  const company = document.querySelector('input[name="pCo"]:checked').value;
+  if(!/^[A-Za-z0-9_-]{6,128}$/.test(uid)) return peopleErr('Paste the User UID from Firebase: Authentication → Users, UID column.');
+  if(S.authUser && uid === S.authUser.uid && role !== 'admin') return peopleErr('You can’t remove your own admin access. Ask another admin to change it.');
+  peopleErr('');
+  const prev = S.people.find(p => p.id === uid) || {};
+  if(commit(S.fb.Fs.setDoc(S.fb.Fs.doc(S.fb.fs, 'roles', uid), Object.assign({}, prev.role ? {role:prev.role} : {}, {role, company, name, updatedAt:Date.now()})))){
+    $('#pUid').value = ''; $('#pName').value = ''; $('#pRoleU').checked = true; $('#pCoC').checked = true;
+    toast((name || 'Person') + ' saved as ' + ROLE_LABEL[role] + ' · ' + coName(company));
+  }
+});
+
+/* ---------- writes ---------- */
+/* Writes apply on this device at once and sync when the network allows. A write the server refuses rolls back and shows a message. */
+function writeErr(e){
+  const code = e && e.code;
+  if(code === 'permission-denied') return 'Your account can’t make that change. Ask the admin to set you up as a User.';
+  if(code === 'resource-exhausted') return 'The tool hit its daily free limit. Changes work again tomorrow.';
+  return 'Couldn’t save. Check the connection and try again.';
+}
+function commit(p){ if(p && typeof p.catch === 'function') p.catch(e => toast(writeErr(e))); return true; }
+const me = () => ({uid:S.authUser ? S.authUser.uid : '', name:S.myName || (S.authUser && S.authUser.email) || '', company:S.company});
+function queueMail(toCompany, subject, text, issueId){
+  const em = S.settings.emails || {};
+  const to = Array.isArray(em[toCompany]) ? em[toCompany].filter(Boolean) : [];
+  if(!to.length || !S.fb) return;
+  const {Fs, fs} = S.fb;
+  Fs.setDoc(Fs.doc(Fs.collection(fs, 'mail')), {to, message:{subject, text}, issueId, at:Date.now()}).catch(() => {});
+}
+function issueLink(id){ return location.origin + location.pathname + '#work/' + id; }
+function mailFor(i, headline, body){
+  const txt = headline + '\n\n' + 'Shipment: ' + titleOf(i) + (i.bol ? ' · BOL ' + i.bol : '') + '\nCarrier: ' + (i.carrier || '—') + (i.trailer ? ' · ' + i.trailer : '') +
+    '\nIssue: ' + typeLabel(i.type) + ' · ' + PRI[i.priority].n + (i.sku ? '\nSKU: ' + i.sku : '') + (i.qtyExp || i.qtyRec ? '\nQty expected ' + (i.qtyExp || '?') + ', received ' + (i.qtyRec || '?') : '') +
+    '\n\n' + body + '\n\nOpen it: ' + issueLink(i.id);
+  return txt;
+}
+/* Post an update and patch the issue in one batch so the list and the thread never disagree. */
+function post(i, kind, text, patch){
+  if(!S.fb || !S.authUser) return false;
+  const {Fs, fs} = S.fb, now = Date.now(), who = me();
+  const b = Fs.writeBatch(fs);
+  const upd = {by:who.uid, byName:who.name, company:who.company, text:str(text,1000), at:now, kind};
+  if(patch && patch.ball) upd.to = patch.ball;
+  b.set(Fs.doc(Fs.collection(fs, 'issues', i.id, 'updates')), upd);
+  b.update(Fs.doc(fs, 'issues', i.id), Object.assign({lastText:upd.text, lastBy:who.name, lastCompany:who.company, lastAt:now, lastKind:kind, updatedAt:now, nUpdates:(i.nUpdates||0) + 1}, patch || {}));
+  return commit(b.commit());
+}
+function postUpdate(i, text){
+  if(post(i, 'note', text)){
+    queueMail(other(S.company), 'Update on ' + titleOf(i) + ' (' + typeLabel(i.type) + ')', mailFor(i, me().name + ' at ' + coName(S.company) + ' posted an update.', text), i.id);
+    toast('Update posted');
+  }
+}
+function handOff(i, text){
+  const to = other(i.ball);
+  if(post(i, 'hand', text, {ball:to, handedAt:Date.now()})){
+    queueMail(to, 'Action needed: ' + titleOf(i) + ' (' + typeLabel(i.type) + ')', mailFor(i, me().name + ' at ' + coName(S.company) + ' handed this to ' + coName(to) + '.', text), i.id);
+    toast('Handed to ' + coName(to));
+  }
+}
+function resolve(i, text){
+  if(post(i, 'resolve', text, {status:'resolved', resolvedAt:Date.now(), resolvedBy:me().name, resolution:str(text,1000)})){
+    queueMail(other(S.company), 'Resolved: ' + titleOf(i) + ' (' + typeLabel(i.type) + ')', mailFor(i, me().name + ' at ' + coName(S.company) + ' marked this resolved.', text), i.id);
+    toast('Resolved');
+  }
+}
+function reopen(i, text){
+  const to = other(S.company);
+  if(post(i, 'reopen', text, {status:'open', ball:to, handedAt:Date.now(), resolvedAt:null, resolution:''})){
+    queueMail(to, 'Reopened: ' + titleOf(i) + ' (' + typeLabel(i.type) + ')', mailFor(i, me().name + ' at ' + coName(S.company) + ' reopened this. It is now waiting on ' + coName(to) + '.', text), i.id);
+    toast('Reopened · waiting on ' + coName(to));
+  }
+}
+
+/* ---------- issue form ---------- */
+function fillTypes(){
+  const opts = Object.keys(TYPES).map(k => '<option value="' + k + '">' + TYPES[k] + '</option>').join('');
+  $('#fType2').innerHTML = opts;
+  $('#fType').innerHTML = '<option value="">All issue types</option>' + opts;
+}
+function openSheet(id){
+  if(readOnly()) return;
+  const i = id ? S.issues.find(x => x.id === id) : null;
+  S.editing = i ? i.id : null;
+  $('#sheetTitle').textContent = i ? 'Edit issue' : 'Raise issue';
+  $('#fSave').textContent = i ? 'Save' : 'Raise issue';
+  $('#fRef').value = i ? i.ref : ''; $('#fBol').value = i ? i.bol : '';
+  $('#fCarrier').value = i ? i.carrier : ''; $('#fTrailer').value = i ? i.trailer : '';
+  $('#fType2').value = i ? i.type : 'short';
+  $('#fRecvDate').value = i ? i.recvDate : todayStr();
+  $('#fSku').value = i ? i.sku : ''; $('#fQtyExp').value = i ? i.qtyExp : ''; $('#fQtyRec').value = i ? i.qtyRec : '';
+  $('#fDesc').value = i ? i.desc : '';
+  $('#fPrio' + (i ? i.priority : 3)).checked = true;
+  (i ? (i.ball === 'partner' ? $('#fBallP') : $('#fBallC')) : (S.company === 'partner' ? $('#fBallC') : $('#fBallP'))).checked = true;
+  $('#lblBall').textContent = i ? 'Waiting on' : 'Who needs to act first';
+  $('#fErr').hidden = true;
+  const del = $('#fDelete'); del.hidden = !(i && S.canAdmin); del.dataset.armed = ''; del.classList.remove('armed'); del.textContent = 'Delete';
+  $('#fSave').disabled = false;
+  $('#sheet').hidden = false;
+  setTimeout(() => (i ? $('#fDesc') : $('#fRef')).focus(), 30);
+}
+function closeSheet(){ $('#sheet').hidden = true; S.editing = null; }
+function formErr(t){ const e = $('#fErr'); e.textContent = t; e.hidden = false; }
+$('#sheetForm').addEventListener('submit', e => {
+  e.preventDefault();
+  if(!S.fb || !S.authUser) return formErr('Not connected. Reload the page and try again.');
+  const {Fs, fs} = S.fb, now = Date.now();
+  const data = {
+    ref:str($('#fRef').value,60), bol:str($('#fBol').value,40), carrier:str($('#fCarrier').value,40), trailer:str($('#fTrailer').value,24),
+    type:TYPES[$('#fType2').value] ? $('#fType2').value : 'other', recvDate:$('#fRecvDate').value || todayStr(),
+    sku:str($('#fSku').value,40), qtyExp:str($('#fQtyExp').value,12), qtyRec:str($('#fQtyRec').value,12), desc:str($('#fDesc').value,1000),
+    priority:Number(document.querySelector('input[name="fPrio"]:checked').value),
+    ball:document.querySelector('input[name="fBall"]:checked').value,
+    updatedAt:now
+  };
+  if(!data.ref && !data.bol && !data.trailer) return formErr('Enter the shipment, ASN, PO, BOL or trailer so both sides can find it.');
+  if(!data.desc) return formErr('Describe what happened so the other company can act on it.');
+  const prev = S.editing ? S.issues.find(x => x.id === S.editing) : null;
+  if(prev){
+    const patch = Object.assign({}, data);
+    if(prev.ball !== data.ball) patch.handedAt = now;
+    const nowOpen = Object.assign({}, prev, patch);
+    post(prev, 'edit', (prev.ball !== data.ball ? 'Now waiting on ' + coName(data.ball) + '. ' : '') + 'Details edited.', patch);
+    if(prev.ball !== data.ball) queueMail(data.ball, 'Action needed: ' + titleOf(nowOpen) + ' (' + typeLabel(nowOpen.type) + ')', mailFor(nowOpen, me().name + ' at ' + coName(S.company) + ' moved this to ' + coName(data.ball) + '.', data.desc), prev.id);
+    closeSheet(); toast('Saved');
+    return;
+  }
+  const who = me();
+  const ref = Fs.doc(Fs.collection(fs, 'issues'));
+  const doc = Object.assign(data, {status:'open', openedBy:who, openedAt:now, handedAt:now, lastText:'', lastBy:who.name, lastCompany:who.company, lastAt:0, lastKind:'open', resolvedAt:null, resolvedBy:'', resolution:'', nUpdates:0});
+  commit(Fs.setDoc(ref, doc));
+  const full = norm(ref.id, doc);
+  if(data.ball !== S.company) queueMail(data.ball, 'New inbound issue: ' + titleOf(full) + ' (' + typeLabel(full.type) + ')', mailFor(full, who.name + ' at ' + coName(S.company) + ' raised an issue that needs ' + coName(data.ball) + '.', data.desc), ref.id);
+  closeSheet(); toast('Issue raised' + (data.ball !== S.company ? ' · ' + coName(data.ball) + ' notified' : ''));
+  S.tab = data.ball === S.company ? 'mine' : 'theirs'; render();
+});
+$('#fDelete').addEventListener('click', e => {
+  const b = e.currentTarget;
+  if(!b.dataset.armed){ b.dataset.armed = '1'; b.classList.add('armed'); b.textContent = 'Tap again to delete'; setTimeout(() => { b.dataset.armed = ''; b.classList.remove('armed'); b.textContent = 'Delete'; }, 4000); return; }
+  if(!S.editing || !S.fb) return;
+  const id = S.editing;
+  commit(S.fb.Fs.deleteDoc(S.fb.Fs.doc(S.fb.fs, 'issues', id)));
+  closeSheet(); if(S.open === id) closeDetail(); toast('Deleted');
+});
+$('#fClose').addEventListener('click', closeSheet);
+$('#fCancel').addEventListener('click', closeSheet);
+$('#sheet').addEventListener('click', e => { if(e.target.id === 'sheet') closeSheet(); });
+
+/* ---------- detail sheet + thread ---------- */
+function openDetail(id, focusText){
+  const i = (S.demo ? S.demoIssues : S.issues).find(x => x.id === id); if(!i) return;
+  S.open = id;
+  if(S.updUnsub){ S.updUnsub(); S.updUnsub = null; }
+  S.updates = [];
+  if(S.fb && !S.demo){
+    const {Fs, fs} = S.fb;
+    S.updUnsub = Fs.onSnapshot(Fs.query(Fs.collection(fs, 'issues', id, 'updates'), Fs.orderBy('at', 'asc'), Fs.limit(500)), snap => {
+      S.updates = snap.docs.map(d => Object.assign({id:d.id}, d.data()));
+      renderDetail();
+    }, () => {});
+  }
+  $('#dText').value = ''; $('#dErr').hidden = true;
+  renderDetail();
+  $('#detail').hidden = false;
+  if(!FIT.matches) try{ location.hash = 'work/' + id; }catch(_){}
+  setTimeout(() => { if(focusText && !readOnly()) $('#dText').focus(); else $('#dClose').focus(); }, 30);
+}
+function closeDetail(){
+  $('#detail').hidden = true; S.open = null;
+  if(S.updUnsub){ S.updUnsub(); S.updUnsub = null; }
+  if(/^#work\//.test(location.hash)) try{ history.replaceState(null, '', '#work'); }catch(_){}
+}
+function renderDetail(){
+  const i = (S.demo ? S.demoIssues : S.issues).find(x => x.id === S.open);
+  if(!i){ if(S.open) { closeDetail(); toast('That issue was deleted'); } return; }
+  const now = Date.now(), open = i.status === 'open';
+  $('#dTitle').textContent = titleOf(i) + (i.bol && i.ref ? ' · ' + i.bol : '');
+  $('#dStatus').innerHTML = '<span class="chip">' + PRI[i.priority].n + ' ' + PRI[i.priority].l + '</span><span class="chip">' + esc(typeLabel(i.type)) + '</span>' +
+    (open ? '<span class="chip ' + i.ball + '">Waiting on ' + esc(coName(i.ball)) + '</span><span class="big' + (isLate(i, now) ? ' err' : '') + '">' + (isLate(i, now) ? 'Overdue · ' : '') + esc(fmtAge(now - waitSince(i))) + ' waiting</span>'
+         : '<span class="chip resolved">Resolved</span><span class="big">' + esc(fmtWhen(i.resolvedAt)) + (i.resolvedBy ? ' by ' + esc(i.resolvedBy) : '') + '</span>');
+  const g = [];
+  const cell = (k, v) => { if(v) g.push('<div><span class="k">' + k + '</span><span class="v">' + esc(v) + '</span></div>'); };
+  cell('Carrier', i.carrier); cell('Trailer / container', i.trailer); cell('BOL / PRO', i.bol); cell('SKU / item', i.sku);
+  cell('Qty expected', i.qtyExp); cell('Qty received', i.qtyRec); cell('Found on', i.recvDate ? fmtShortDate(i.recvDate) : '');
+  cell('Raised by', (i.openedBy.name || '—') + ' · ' + coName(i.openedBy.company) + (i.openedAt ? ' · ' + fmtWhen(i.openedAt) : ''));
+  $('#dGrid').innerHTML = g.join('');
+  $('#dDesc').textContent = i.desc;
+  const th = $('#dThread');
+  if(!S.updates.length) th.innerHTML = '<div class="e-empty">' + (S.demo ? 'Updates show here on the live tool.' : 'No updates yet.') + '</div>';
+  else th.innerHTML = S.updates.map(u => {
+    const sys = u.kind !== 'note';
+    const verb = u.kind === 'hand' ? 'handed to ' + coName(u.to === 'ceva' ? 'ceva' : 'partner') : u.kind === 'resolve' ? 'resolved' : u.kind === 'reopen' ? 'reopened' : u.kind === 'edit' ? 'edited details' : '';
+    return '<div class="upd ' + (u.company === 'partner' ? 'partner' : 'ceva') + (sys ? ' sys' : '') + '"><i aria-hidden="true"></i><div class="upd-b">' +
+      '<div class="upd-h"><b>' + esc(str(u.byName,40) || 'Someone') + '</b><span>' + esc(coName(u.company === 'partner' ? 'partner' : 'ceva')) + '</span>' + (verb ? '<span>' + verb + '</span>' : '') + '<span>' + esc(fmtWhen(num(u.at))) + '</span></div>' +
+      (u.text ? '<div class="upd-t">' + esc(str(u.text,1000)) + '</div>' : '') + '</div></div>';
+  }).join('');
+  const can = !readOnly() && !S.demo && S.conn !== 'none';
+  $('#dCompose').hidden = !can;
+  $('#dEdit').hidden = !can;
+  if(can){
+    $('#dTextLbl').textContent = open ? 'Add an update' : 'Why reopen?';
+    $('#dPost').hidden = !open; $('#dHand').hidden = !open; $('#dResolve').hidden = !open; $('#dReopen').hidden = open;
+    const hb = $('#dHand'); hb.textContent = 'Hand to ' + coName(other(i.ball)); hb.className = 'btn hand' + (other(i.ball) === 'ceva' ? ' to-ceva' : '');
+  }
+}
+function detailErr(t){ const e = $('#dErr'); e.textContent = t; e.hidden = !t; }
+function curIssue(){ return S.issues.find(x => x.id === S.open); }
+$('#dPost').addEventListener('click', () => { const i = curIssue(), t = str($('#dText').value,1000); if(!i) return; if(!t) return detailErr('Type the update first.'); detailErr(''); postUpdate(i, t); $('#dText').value = ''; });
+$('#dHand').addEventListener('click', () => { const i = curIssue(), t = str($('#dText').value,1000); if(!i) return; if(!t) return detailErr('Say what ' + coName(other(i.ball)) + ' needs to do.'); detailErr(''); handOff(i, t); $('#dText').value = ''; });
+$('#dResolve').addEventListener('click', () => { const i = curIssue(), t = str($('#dText').value,1000); if(!i) return; if(!t) return detailErr('Say how it was resolved (disposition, credit, re-ship…).'); detailErr(''); resolve(i, t); $('#dText').value = ''; });
+$('#dReopen').addEventListener('click', () => { const i = curIssue(), t = str($('#dText').value,1000); if(!i) return; if(!t) return detailErr('Say why it is being reopened.'); detailErr(''); reopen(i, t); $('#dText').value = ''; });
+$('#dEdit').addEventListener('click', () => { const id = S.open; closeDetail(); openSheet(id); });
+$('#dClose').addEventListener('click', closeDetail);
+$('#detail').addEventListener('click', e => { if(e.target.id === 'detail') closeDetail(); });
+document.addEventListener('keydown', e => { if(e.key !== 'Escape') return; if(!$('#sheet').hidden) closeSheet(); else if(!$('#detail').hidden) closeDetail(); });
+
+/* ---------- work screen events ---------- */
+$('#edit').addEventListener('click', e => {
+  const t = e.target.closest('[data-tab],[data-open],[data-pedit],[data-pdel]');
+  if(!t) return;
+  if(t.dataset.pedit){
+    const p = S.people.find(x => x.id === t.dataset.pedit); if(!p) return;
+    $('#pUid').value = p.id; $('#pName').value = str(p.name, 40);
+    ({admin:$('#pRoleA'), viewer:$('#pRoleV')}[p.role] || $('#pRoleU')).checked = true;
+    (p.company === 'partner' ? $('#pCoP') : $('#pCoC')).checked = true;
+    peopleErr(''); $('#pName').focus(); return;
+  }
+  if(t.dataset.pdel){
+    if(!t.dataset.armed){ t.dataset.armed = '1'; t.classList.add('armed'); t.textContent = 'Tap again'; setTimeout(() => renderPeople(), 4000); return; }
+    commit(S.fb.Fs.deleteDoc(S.fb.Fs.doc(S.fb.fs, 'roles', t.dataset.pdel))); toast('Removed'); return;
+  }
+  if(t.dataset.tab){ S.tab = t.dataset.tab; try{ localStorage.setItem('inbTab', S.tab); }catch(_){} render(); if(S.tab === 'settings') fillSettings(true); return; }
+  if(t.dataset.open) return openDetail(t.dataset.open, t.tagName !== 'BUTTON');
+});
+$('#edit').addEventListener('keydown', e => { if((e.key === 'Enter' || e.key === ' ') && e.target.matches('.card[data-open]')){ e.preventDefault(); openDetail(e.target.dataset.open, true); } });
+$('#btnAdd').addEventListener('click', () => { if(S.tab === 'resolved' || S.tab === 'settings') S.tab = 'theirs'; render(); openSheet(null); });
+$('#fSearch').addEventListener('input', e => { S.search = e.target.value.trim(); render(); });
+$('#fType').addEventListener('change', e => { S.typeF = e.target.value; render(); });
+$('#acctOut').addEventListener('click', () => { if(S.fb) S.fb.F.signOut(S.fb.auth); });
+$('#sDemo').addEventListener('click', () => setView('demo'));
+$('#sAdminSave').addEventListener('click', () => {
+  if(!S.fb) return;
+  const sla = Math.min(720, Math.max(1, Number($('#sSla').value) || 24));
+  const patch = {
+    names:{ceva:str($('#sNameC').value,30) || CO_DEFAULT.ceva, partner:str($('#sNameP').value,30) || CO_DEFAULT.partner},
+    emails:{ceva:parseEmails($('#sMailC').value), partner:parseEmails($('#sMailP').value)},
+    siteName:str($('#sSite').value,60), sla,
+    boardTheme:document.querySelector('input[name="sTheme"]:checked').value, updatedAt:Date.now()
+  };
+  if(commit(S.fb.Fs.setDoc(S.fb.Fs.doc(S.fb.fs, 'admin', 'settings'), Object.assign({}, S.settings, patch)))){
+    ['sNameC','sNameP','sMailC','sMailP','sSite','sSla'].forEach(id => delete $('#' + id).dataset.dirty);
+    toast('Settings saved');
+  }
+});
+$('#sClear').addEventListener('click', e => {
+  const b = e.currentTarget, old = oldResolved();
+  if(!old.length) return toast('Nothing older than 30 days');
+  if(!b.dataset.armed){ b.dataset.armed = '1'; b.classList.add('armed'); b.textContent = 'Tap again to delete ' + old.length; setTimeout(() => { b.dataset.armed = ''; b.classList.remove('armed'); fillSettings(false); }, 4000); return; }
+  old.forEach(i => commit(S.fb.Fs.deleteDoc(S.fb.Fs.doc(S.fb.fs, 'issues', i.id))));
+  b.dataset.armed = ''; b.classList.remove('armed'); fillSettings(false);
+  toast('Deleted ' + old.length + ' resolved issue' + (old.length === 1 ? '' : 's'));
+});
+$('#sCsv').addEventListener('click', () => {
+  const cols = ['id','status','waitingOn','priority','type','ref','bol','carrier','trailer','sku','qtyExpected','qtyReceived','foundOn','description','raisedBy','raisedByCompany','raisedAt','lastUpdateAt','lastUpdateBy','lastUpdate','resolvedAt','resolvedBy','resolution','updates'];
+  const iso = ms => ms ? new Date(ms).toISOString() : '';
+  const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+  const rows = S.issues.slice().sort((a,b) => (b.openedAt||0) - (a.openedAt||0)).map(i => [i.id, i.status, coName(i.ball), i.priority, typeLabel(i.type), i.ref, i.bol, i.carrier, i.trailer, i.sku, i.qtyExp, i.qtyRec, i.recvDate, i.desc, i.openedBy.name, coName(i.openedBy.company), iso(i.openedAt), iso(i.lastAt), i.lastBy, i.lastText, iso(i.resolvedAt), i.resolvedBy, i.resolution, i.nUpdates]);
+  const csv = [cols].concat(rows).map(r => r.map(q).join(',')).join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['﻿' + csv], {type:'text/csv;charset=utf-8'}));
+  a.download = 'inbound-exceptions-' + todayStr() + '.csv'; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+});
+
+/* ---------- notifications ---------- */
+/* Browser alerts for this device: fired when an issue lands on my company or the other company posts. Email goes through queueMail. */
+function setNotif(on){
+  S.notif = on; try{ localStorage.setItem('inbNotif', on ? '1' : '0'); }catch(_){}
+  render();
+}
+async function toggleNotif(){
+  if(S.notif) return setNotif(false);
+  if(!('Notification' in window)) return toast('This browser can’t show notifications.');
+  let perm = Notification.permission;
+  if(perm === 'default'){ try{ perm = await Notification.requestPermission(); }catch(_){ perm = 'denied'; } }
+  if(perm !== 'granted') return toast('Notifications are blocked. Allow them for this site in the browser settings.');
+  setNotif(true); toast('Alerts on for this device');
+}
+function notify(title, body, tag){
+  if(!S.notif || !('Notification' in window) || Notification.permission !== 'granted') return;
+  try{ const n = new Notification(title, {body, tag, icon:'../assets/ceva-logo.svg'}); n.onclick = () => { window.focus(); if(tag && tag !== 'test' && tag !== 'many'){ S.view === 'edit' || setView('edit'); openDetail(tag, false); } n.close(); }; }catch(_){}
+}
+function diffNotify(list, fromCache){
+  const prev = S.prev;
+  S.prev = new Map(list.map(i => [i.id, {ball:i.ball, status:i.status, lastAt:i.lastAt, lastCompany:i.lastCompany, openedBy:i.openedBy.company}]));
+  if(!prev || fromCache) return;
+  const hits = [];
+  list.forEach(i => {
+    const p = prev.get(i.id);
+    if(!p){ if(i.openedBy.company !== S.company) hits.push([i, 'New issue' + (i.ball === S.company ? ' needs ' + coName(S.company) : ''), i.desc]); return; }
+    if(i.lastAt !== p.lastAt && i.lastCompany !== S.company){
+      const what = i.lastKind === 'hand' ? 'Handed to ' + coName(i.ball) : i.lastKind === 'resolve' ? 'Resolved' : i.lastKind === 'reopen' ? 'Reopened' : 'Update';
+      hits.push([i, what + ' · ' + (i.lastBy || coName(i.lastCompany)), i.lastText]);
+    }
+  });
+  if(!hits.length) return;
+  if(hits.length > 3) return notify(hits.length + ' inbound issues changed', hits.map(h => titleOf(h[0])).join(', '), 'many');
+  hits.forEach(h => notify(h[1] + ' · ' + titleOf(h[0]), h[2] || typeLabel(h[0].type), h[0].id));
+}
+function badge(){
+  const n = S.ready ? derive(S.issues).mine.length : 0;
+  document.title = (n ? '(' + n + ') ' : '') + BASE_TITLE;
+}
+$('#btnNotif').addEventListener('click', toggleNotif);
+$('#sNotif').addEventListener('click', toggleNotif);
+$('#sNotifTest').addEventListener('click', () => { if(!S.notif) return toast('Turn alerts on first.'); notify('Test alert · ' + coName(S.company), 'Alerts from the inbound tool look like this.', 'test'); });
+
+/* ---------- toast ---------- */
+let toastT;
+function toast(t){ const el = $('#toast'); el.textContent = t; el.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { el.hidden = true; }, 2800); }
+
+/* ---------- demo issues (local only) ---------- */
+function makeDemo(){
+  const now = Date.now(), H = 3600e3;
+  let n = 0;
+  const P = (name, company) => ({uid:'demo', name, company});
+  const I = (o, openedH, handedH) => norm('demo' + (n++), Object.assign({openedAt:now - openedH*H, handedAt:now - (handedH == null ? openedH : handedH)*H, updatedAt:now - (handedH == null ? openedH : handedH)*H, lastAt:handedH == null ? 0 : now - handedH*H, recvDate:ymd(new Date(now - openedH*H))}, o));
+  return [
+    I({status:'open', ball:'ceva', priority:1, type:'damage', ref:'ASN 77120', bol:'BOL 33891', carrier:'Schneider', trailer:'TRL 8841', sku:'GR-55-DRUM', qtyExp:'120', qtyRec:'118', desc:'2 drums punctured on pallet 4. Photos taken at door 6. Need disposition before putaway.', openedBy:P('M. Tran','ceva'), lastBy:'D. Patel', lastCompany:'partner', lastKind:'hand', lastText:'Scrap the 2 drums, credit memo to follow. Please confirm the lot numbers.', nUpdates:3}, 30, 2),
+    I({status:'open', ball:'ceva', priority:3, type:'label', ref:'PO 4500018790', carrier:'J.B. Hunt', trailer:'99017', sku:'NC-2210', desc:'Case labels are for PO ...18791. Product matches ...18790 packing list.', openedBy:P('K. Bell','ceva'), lastBy:'K. Bell', lastCompany:'ceva', lastKind:'note', lastText:'Holding at staging lane 3 until NCI confirms which PO to receive against.', nUpdates:1}, 5, 5),
+    I({status:'open', ball:'ceva', priority:2, type:'wrong', ref:'ASN 77135', carrier:'Averitt', trailer:'25510', sku:'GR-30-LID', qtyExp:'400', qtyRec:'400', desc:'Received GR-30-LID-BLK, ASN says GR-30-LID-WHT.', openedBy:P('D. Patel','partner'), lastBy:'D. Patel', lastCompany:'partner', lastKind:'hand', lastText:'Black lids are acceptable for this customer. Receive as substitute, we will fix the ASN.', nUpdates:2}, 50, 27),
+    I({status:'open', ball:'partner', priority:1, type:'short', ref:'PO 4500018832', bol:'BOL 55102', carrier:'Old Dominion', trailer:'53214', sku:'GR-55-DRUM', qtyExp:'96', qtyRec:'80', desc:'16 drums short against the ASN. Seal intact, trailer sealed at origin. Line-down part for the customer.', openedBy:P('A. Ortiz','ceva'), lastBy:'A. Ortiz', lastCompany:'ceva', lastKind:'hand', lastText:'Need to know if the 16 ship on the next load or if the ASN should be corrected.', nUpdates:1}, 9, 9),
+    I({status:'open', ball:'partner', priority:2, type:'noasn', ref:'PRO 7781-2290', carrier:'Estes', trailer:'4471', desc:'Carrier arrived with 6 pallets and no ASN in the system. Paperwork references NCI order 88412.', openedBy:P('K. Bell','ceva'), lastBy:'K. Bell', lastCompany:'ceva', lastKind:'note', lastText:'Unloaded to hold area H2. Waiting on ASN before receipt.', nUpdates:1}, 20, 20),
+    I({status:'open', ball:'partner', priority:3, type:'over', ref:'ASN 77140', carrier:'R+L Carriers', sku:'NC-1100', qtyExp:'50', qtyRec:'55', desc:'5 extra cases. Received 50, 5 on hold.', openedBy:P('M. Tran','ceva'), lastBy:'M. Tran', lastCompany:'ceva', lastKind:'hand', lastText:'Return, receive, or hold? 5 cases in H1.', nUpdates:1}, 70, 70),
+    I({status:'open', ball:'partner', priority:3, type:'late', ref:'PO 4500018866', carrier:'FedEx Freight', desc:'Appointment missed yesterday 14:00; carrier says load not picked up at origin.', openedBy:P('A. Ortiz','ceva'), lastBy:'A. Ortiz', lastCompany:'ceva', lastKind:'open', lastText:'', nUpdates:0}, 3),
+    I({status:'resolved', ball:'partner', priority:2, type:'short', ref:'PO 4500018801', carrier:'Southeastern', sku:'GR-20-PAIL', qtyExp:'200', qtyRec:'190', desc:'10 pails short.', openedBy:P('J. Ruiz','ceva'), lastBy:'S. Kim', lastCompany:'partner', lastKind:'resolve', lastText:'Shipped the 10 on ASN 77151, received today.', resolvedAt:now - 2*H, resolvedBy:'S. Kim', resolution:'Shipped the 10 on ASN 77151, received today.', nUpdates:4}, 60, 2),
+    I({status:'resolved', ball:'ceva', priority:3, type:'damage', ref:'ASN 77102', carrier:'Werner', trailer:'6620', sku:'NC-2210', qtyExp:'300', qtyRec:'300', desc:'Stretch wrap torn, 3 cases dented, product intact.', openedBy:P('M. Tran','ceva'), lastBy:'M. Tran', lastCompany:'ceva', lastKind:'resolve', lastText:'Received all 300 per NCI instruction, carrier claim not needed.', resolvedAt:now - 6*H, resolvedBy:'M. Tran', resolution:'Received all 300 per NCI instruction, carrier claim not needed.', nUpdates:2}, 40, 6)
+  ];
+}
+
+/* ---------- views ---------- */
+let wakeLock = null;
+async function keepAwake(){
+  if(S.view === 'edit' || wakeLock || !navigator.wakeLock) return;
+  try{ wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { wakeLock = null; }); }catch(_){}
+}
+function applyTheme(){
+  const onBoard = S.view !== 'edit';
+  document.documentElement.classList.toggle('force-dark', onBoard && S.settings.boardTheme !== 'screen');
+}
+function setView(v, fromHash){
+  S.view = v; S.demo = v === 'demo';
+  if(S.demo) S.demoIssues = makeDemo();
+  S.page = {ceva:0, partner:0};
+  if(v !== 'demo'){ try{ localStorage.setItem('inbView', v); }catch(_){} }
+  const want = v === 'edit' ? 'work' : v;
+  if(!fromHash && !(location.hash || '').startsWith('#' + want)){ try{ location.hash = want; }catch(_){} }
+  if(v !== 'edit' && S.open) closeDetail();
+  applyVisibility(); render(); keepAwake(); poke();
+  window.scrollTo(0,0);
+}
+function applyVisibility(){
+  const gated = !S.ready && S.view !== 'demo';
+  $('#gate').hidden = !gated;
+  $('#board').hidden = gated || S.view === 'edit';
+  $('#edit').hidden = gated || S.view !== 'edit';
+  applyTheme();
+}
+function showGate(state, msg){
+  S.gate = state;
+  $('#gateWait').hidden = state !== 'wait';
+  if(state === 'wait') $('#gateWait').textContent = msg || 'Connecting…';
+  $('#gateSetup').hidden = state !== 'setup';
+  $('#gateLogin').hidden = state !== 'login';
+  $('#gateDenied').hidden = state !== 'denied';
+  if(state === 'denied'){ $('#dEmail').textContent = (S.authUser && S.authUser.email) || 'this account'; $('#dUid').textContent = (S.authUser && S.authUser.uid) || ''; }
+  applyVisibility();
+}
+function viewFromHash(){
+  const h = (location.hash || '').slice(1);
+  if(h === 'board' || h === 'demo') return h;
+  if(h === 'work' || h.startsWith('work/') || h === 'edit') return 'edit';
+  return null;
+}
+const issueFromHash = () => { const m = /^#work\/([A-Za-z0-9_-]+)$/.exec(location.hash || ''); return m ? m[1] : null; };
+window.addEventListener('hashchange', () => {
+  const v = viewFromHash(); if(v && v !== S.view) setView(v, true);
+  const id = issueFromHash(); if(id && id !== S.open && S.ready) openDetail(id, false);
+  if(!id && S.open && !$('#detail').hidden) closeDetail();
+});
+$('#btnToEdit').addEventListener('click', () => setView('edit'));
+$('#btnToBoard').addEventListener('click', () => setView('board'));
+$('#btnExitDemo').addEventListener('click', () => { S.tab = 'settings'; setView('edit'); });
+$('#btnFull').addEventListener('click', () => {
+  const el = document.documentElement;
+  try{
+    if(document.fullscreenElement) document.exitFullscreen();
+    else if(el.requestFullscreen) el.requestFullscreen().catch(() => toast('Full screen isn’t available here. Use the browser’s full-screen key.'));
+    else toast('Full screen isn’t available here. Use the browser’s full-screen key.');
+  }catch(_){ toast('Full screen isn’t available here.'); }
+});
+
+/* idle: hide controls + cursor on the board */
+let idleT;
+function poke(){ const b = $('#board'); b.classList.remove('idle'); clearTimeout(idleT); idleT = setTimeout(() => { if(FIT.matches) b.classList.add('idle'); }, 5000); }
+['pointermove','pointerdown','keydown'].forEach(ev => document.addEventListener(ev, poke, {passive:true}));
+
+function render(){
+  if(!S.ready && S.view !== 'demo') return;
+  if(S.view === 'edit') renderEdit(); else renderBoard();
+  if(S.open && !$('#detail').hidden) renderDetail();
+  badge();
+}
+document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible'){ keepAwake(); render(); } });
+let rT; window.addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(render, 150); });
+setInterval(() => { if(S.view !== 'edit') tickClock(); }, 1000);
+setInterval(render, 30000);
+setInterval(() => { if(S.view !== 'edit' && FIT.matches){ S.page.ceva++; S.page.partner++; renderBoard(); } }, 12000);
+
+/* ---------- boot ---------- */
+(function boot(){
+  fillTypes();
+  try{ const t = localStorage.getItem('inbTab'); if(['mine','theirs','all','resolved','settings'].includes(t)) S.tab = t; }catch(_){}
+  try{ S.notif = localStorage.getItem('inbNotif') === '1' && 'Notification' in window && Notification.permission === 'granted'; }catch(_){}
+  let v = viewFromHash();
+  if(!v){ try{ v = localStorage.getItem('inbView'); }catch(_){} }
+  if(v !== 'board' && v !== 'edit' && v !== 'demo') v = window.innerWidth >= 1000 ? 'board' : 'edit';
+  setView(v, true);
+})();
+
+/* ---------- sign-in gate ---------- */
+$('#gateLogin').addEventListener('submit', async e => {
+  e.preventDefault();
+  const email = $('#lEmail').value.trim(), pass = $('#lPass').value, err = $('#lErr');
+  err.hidden = true;
+  if(!email || !pass){ err.textContent = 'Enter your email and password.'; err.hidden = false; return; }
+  if(!S.fb) return;
+  $('#lGo').disabled = true;
+  try{ await S.fb.F.signInWithEmailAndPassword(S.fb.auth, email, pass); $('#lPass').value = ''; }
+  catch(x){
+    const c = x && x.code;
+    err.textContent = c === 'auth/too-many-requests' ? 'Too many tries. Wait a few minutes, then try again.'
+      : c === 'auth/network-request-failed' ? 'No connection. Check the network and try again.'
+      : 'That email and password don’t match an account on this tool.';
+    err.hidden = false;
+  }finally{ $('#lGo').disabled = false; }
+});
+$('#dOut').addEventListener('click', () => { if(S.fb) S.fb.F.signOut(S.fb.auth); });
+$('#dCopy').addEventListener('click', () => {
+  const uid = $('#dUid').textContent;
+  const sel = () => { const r = document.createRange(); r.selectNodeContents($('#dUid')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); };
+  try{ navigator.clipboard.writeText(uid).then(() => toast('User ID copied'), sel); }catch(_){ sel(); }
+});
+$('#gDemo').addEventListener('click', () => setView('demo'));
+
+/* ---------- Firebase ---------- */
+function stopData(){ S.unsubs.forEach(u => { try{ u(); }catch(_){} }); S.unsubs = []; if(S.updUnsub){ S.updUnsub(); S.updUnsub = null; } }
+function startData(){
+  const {Fs, fs} = S.fb;
+  stopData();
+  S.prev = null;
+  S.unsubs.push(Fs.onSnapshot(Fs.query(Fs.collection(fs, 'issues'), Fs.limit(2000)), {includeMetadataChanges:true}, snap => {
+    S.issues = snap.docs.map(d => norm(d.id, d.data()));
+    S.conn = snap.metadata.fromCache ? 'offline' : 'live';
+    diffNotify(S.issues, snap.metadata.fromCache || snap.metadata.hasPendingWrites);
+    render();
+    const id = issueFromHash(); if(id && !S.open && S.view === 'edit') openDetail(id, false);
+  }, () => { S.conn = 'error'; render(); }));
+  S.unsubs.push(Fs.onSnapshot(Fs.doc(fs, 'admin', 'settings'), s => { S.settings = s.exists() ? (s.data() || {}) : {}; applyTheme(); render(); }, () => {}));
+  if(S.role === 'admin'){
+    S.unsubs.push(Fs.onSnapshot(Fs.collection(fs, 'roles'), snap => {
+      S.people = snap.docs.map(d => Object.assign({}, d.data(), {id:d.id}));
+      if(S.view === 'edit' && S.tab === 'settings') renderPeople();
+    }, () => {}));
+  } else S.people = [];
+}
+(async function connect(){
+  const cfg = window.FIREBASE_CONFIG;
+  if(!cfg || !cfg.apiKey || /PASTE/i.test(cfg.apiKey + cfg.projectId)){ showGate('setup'); return; }
+  let A, F, Fs;
+  try{ [A, F, Fs] = await Promise.all([import(FB + 'firebase-app.js'), import(FB + 'firebase-auth.js'), import(FB + 'firebase-firestore.js')]); }
+  catch(_){ showGate('wait', 'Can’t reach Firebase from this network. Ask IT to allow gstatic.com, googleapis.com and firebaseapp.com, then reload.'); return; }
+  const app = A.initializeApp(cfg);
+  const auth = F.getAuth(app);
+  let fs;
+  try{ fs = Fs.initializeFirestore(app, {localCache: Fs.persistentLocalCache({tabManager: Fs.persistentMultipleTabManager()})}); }
+  catch(_){ fs = Fs.getFirestore(app); }
+  S.fb = {auth, F, Fs, fs};
+  F.onAuthStateChanged(auth, user => {
+    if(S.roleUnsub){ S.roleUnsub(); S.roleUnsub = null; }
+    stopData();
+    S.authUser = user; S.role = null; S.ready = false; S.issues = []; S.people = []; S.open = null; $('#detail').hidden = true;
+    badge();
+    if(!user){ showGate('login'); return; }
+    showGate('wait', 'Checking access…');
+    S.roleUnsub = Fs.onSnapshot(Fs.doc(fs, 'roles', user.uid), {includeMetadataChanges:true}, snap => {
+      const d = snap.exists() ? (snap.data() || {}) : {};
+      const role = d.role;
+      if(!ROLE_LABEL[role]){
+        if(snap.metadata.fromCache){ showGate('wait', 'Waiting for the network…'); return; }
+        S.role = null; S.ready = false; stopData(); showGate('denied'); return;
+      }
+      const company = d.company === 'partner' ? 'partner' : 'ceva';
+      const changed = !S.ready || role !== S.role || company !== S.company;
+      S.role = role; S.company = company; S.myName = str(d.name, 40);
+      S.canWrite = role !== 'viewer'; S.canAdmin = role === 'admin';
+      if(changed){ S.ready = true; startData(); showGate('ready'); }
+      render();
+    }, () => { S.ready = false; stopData(); showGate('denied'); });
+  });
+})();
+})();
+</script>
+</body>
+</html>
