@@ -27,6 +27,8 @@ All tools use one Firebase project, **`ceva-tools`** (console: [console.firebase
 | `company` | `ceva` or `partner` (NCI/Greif). Used by the inbound tool. |
 | `name` | Shown on boards and in update threads |
 
+**Passwords.** The sign-in screen has **Forgot password?**, which emails a reset link, and signed-in people can change their password under **Settings → Account**. For the reset link to open the tool's own "set new password" screen (instead of Firebase's generic page, which some mail clients break), set the email action URL once in the console: **Authentication → Templates → Password reset → pencil icon → Customize action URL** → `https://nickwendel.github.io/ceva-tools/nci-inbound/` → **Save**.
+
 Admins manage people from either tool's **Settings → People** screen. To add a login: Firebase console → **Authentication → Users → Add user**, copy the User UID, then paste it into **Settings → People** with a name, company and role.
 
 **Network:** screens and phones need to reach `gstatic.com`, `googleapis.com` and `firebaseapp.com`, plus `fonts.googleapis.com` for the typeface.
