@@ -303,6 +303,7 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
           <div class="fld"><label for="lPass">Password</label><input class="inp" id="lPass" type="password" autocomplete="current-password"></div>
           <div class="err" id="lErr" role="alert" hidden></div>
           <button class="btn primary" type="submit" id="lGo">Sign in</button>
+          <button class="btn ghost" type="button" id="lForgot">Forgot password? Email me a reset link</button>
         </form>
         <div id="gateDenied" hidden>
           <p class="gate-p">Signed in as <b id="dEmail"></b>, but this account hasn’t been added to the board. Send your board admin this user ID:</p>
@@ -1102,6 +1103,20 @@ $('#gateLogin').addEventListener('submit', async e => {
   }finally{ $('#lGo').disabled = false; }
 });
 $('#dOut').addEventListener('click', () => { if(S.fb) S.fb.F.signOut(S.fb.auth); });
+$('#lForgot').addEventListener('click', async () => {
+  const email = $('#lEmail').value.trim(), err = $('#lErr');
+  err.hidden = true;
+  if(!email){ err.textContent = 'Type your email above first, then tap this again.'; err.hidden = false; $('#lEmail').focus(); return; }
+  if(!S.fb) return;
+  try{ await S.fb.F.sendPasswordResetEmail(S.fb.auth, email); toast('Reset link sent to ' + email + '. Check spam too; the link expires, so use it soon.'); }
+  catch(x){
+    const c = x && x.code;
+    err.textContent = c === 'auth/user-not-found' || c === 'auth/invalid-email' ? 'No login exists for that email. Ask your admin to create one.'
+      : c === 'auth/too-many-requests' ? 'Too many requests. Wait a few minutes, then try again.'
+      : 'Couldn’t send the reset link. Check the connection and try again.';
+    err.hidden = false;
+  }
+});
 $('#dCopy').addEventListener('click', () => {
   const uid = $('#dUid').textContent;
   const sel = () => { const r = document.createRange(); r.selectNodeContents($('#dUid')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); };
