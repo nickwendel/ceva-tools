@@ -1,4 +1,4 @@
-// Firebase web app config for the NCI/Greif inbound exceptions tool.
+// Firebase web app config for the NCI/Grief inbound exceptions tool.
 // All CEVA tools share the Firebase project "ceva-tools": one sign-in, one Firestore database and one people list
 // (roles/{uid} with role, company and name). Security rules live in /firestore.rules at the repository root.
 // These values identify the project; they are not secrets. Access is controlled by the rules and sign-in.

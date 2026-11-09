@@ -1,7 +1,7 @@
 rules_version = '2';
 
 // CEVA tools — Firestore security rules for the shared Firebase project (ceva-tools).
-// Covers both tools: the receiving dock board and the NCI/Greif inbound exceptions tool.
+// Covers both tools: the receiving dock board and the NCI/Grief inbound exceptions tool.
 // Deployed with `firebase deploy --only firestore:rules`, or paste into
 // Firebase console → Firestore Database → Rules → Publish.
 //
@@ -10,7 +10,7 @@ rules_version = '2';
 //           supervisor → also update trucks on the dock board; also work inbound issues
 //           user       → work inbound issues (no dock board changes)
 //           admin      → everything, plus settings and people
-//   company ceva | partner (NCI/Greif) → which side of the inbound tool the person is on
+//   company ceva | partner (NCI/Grief) → which side of the inbound tool the person is on
 // Anyone who signs in without a roles document sees nothing.
 
 service cloud.firestore {
@@ -47,7 +47,7 @@ service cloud.firestore {
       allow write: if isSupervisor() && request.resource.data.size() <= 20;
     }
 
-    // ───────── NCI/Greif inbound exceptions ─────────
+    // ───────── NCI/Grief inbound exceptions ─────────
 
     function validIssue(d) {
       return d.status in ['open', 'resolved']
