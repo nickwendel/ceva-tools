@@ -1,0 +1,88 @@
+rules_version = '2';
+
+// NCI/Greif inbound exceptions — Firestore security rules.
+// Paste into Firebase console → Firestore Database → Rules, then Publish.
+//
+// Access is by role, stored at roles/{uid} with a company:
+//   role    viewer → can see the board and the issues
+//           user   → can also raise issues, post updates, hand off and resolve
+//           admin  → can also change settings, manage people and delete issues
+//   company ceva   → CEVA side
+//           partner→ NCI / Greif side
+// Anyone who signs in without a roles document sees nothing.
+//
+// If this project also hosts the receiving dock board, keep ONE roles/ collection:
+// give each person the fields both tools need (role, company, name). Dock-board roles
+// 'supervisor' are treated as 'user' here.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function roleDoc() {
+      return /databases/$(database)/documents/roles/$(request.auth.uid);
+    }
+    function me() { return get(roleDoc()).data; }
+    function hasRole(roles) {
+      return request.auth != null && exists(roleDoc()) && me().role in roles;
+    }
+    function isViewer() { return hasRole(['viewer', 'user', 'supervisor', 'admin']); }
+    function isUser()   { return hasRole(['user', 'supervisor', 'admin']); }
+    function isAdmin()  { return hasRole(['admin']); }
+
+    function validIssue(d) {
+      return d.status in ['open', 'resolved']
+        && d.ball in ['ceva', 'partner']
+        && d.priority in [1, 2, 3]
+        && d.type in ['short', 'over', 'damage', 'wrong', 'noasn', 'label', 'late', 'other']
+        && d.openedBy is map
+        && d.openedBy.company in ['ceva', 'partner']
+        && d.size() <= 32;
+    }
+
+    // One document per error shipment
+    match /issues/{issueId} {
+      allow read: if isViewer();
+      allow create: if isUser()
+        && validIssue(request.resource.data)
+        && request.resource.data.openedBy.uid == request.auth.uid;
+      allow update: if isUser()
+        && validIssue(request.resource.data)
+        && request.resource.data.openedBy == resource.data.openedBy
+        && request.resource.data.openedAt == resource.data.openedAt;
+      allow delete: if isAdmin();
+
+      // Update thread. Entries are written once and never edited, so the history is trustworthy.
+      match /updates/{updateId} {
+        allow read: if isViewer();
+        allow create: if isUser()
+          && request.resource.data.by == request.auth.uid
+          && request.resource.data.company in ['ceva', 'partner']
+          && request.resource.data.size() <= 12;
+        allow update: if false;
+        allow delete: if isAdmin();
+      }
+    }
+
+    // Company names, notification emails, SLA hours
+    match /admin/{docId} {
+      allow read: if isViewer();
+      allow write: if isAdmin() && request.resource.data.size() <= 20;
+    }
+
+    // Outgoing notification emails, picked up by the optional "Trigger Email" Firebase extension.
+    // Nobody can read them back from the page.
+    match /mail/{mailId} {
+      allow create: if isUser() && request.resource.data.size() <= 6;
+      allow read, update, delete: if false;
+    }
+
+    // Who can use the tool. Each person can read their own role.
+    match /roles/{uid} {
+      allow read: if request.auth != null && (request.auth.uid == uid || isAdmin());
+      allow create, update: if isAdmin()
+        && request.resource.data.role in ['viewer', 'user', 'supervisor', 'admin']
+        && request.resource.data.company in ['ceva', 'partner'];
+      allow delete: if isAdmin() && request.auth.uid != uid;
+    }
+  }
+}
