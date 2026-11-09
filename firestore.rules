@@ -102,8 +102,19 @@ service cloud.firestore {
       allow read: if request.auth != null && (request.auth.uid == uid || isAdmin());
       allow create, update: if isAdmin()
         && request.resource.data.role in ['viewer', 'supervisor', 'user', 'admin']
-        && (!('company' in request.resource.data) || request.resource.data.company in ['ceva', 'partner']);
+        && (!('company' in request.resource.data) || request.resource.data.company in ['ceva', 'partner'])
+        && request.resource.data.size() <= 10;
       allow delete: if isAdmin() && request.auth.uid != uid;
+    }
+
+    // Access requests. Anyone who signs up can file one request for themselves; admins approve
+    // (which creates the roles document and removes the request) or decline.
+    match /requests/{uid} {
+      allow read: if request.auth != null && (request.auth.uid == uid || isAdmin());
+      allow create, update: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.company in ['ceva', 'partner']
+        && request.resource.data.size() <= 8;
+      allow delete: if request.auth != null && (request.auth.uid == uid || isAdmin());
     }
   }
 }

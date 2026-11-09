@@ -29,7 +29,9 @@ All tools use one Firebase project, **`ceva-tools`** (console: [console.firebase
 
 **Passwords.** The sign-in screen has **Forgot password?**, which emails a reset link, and signed-in people can change their password under **Settings → Account**. For the reset link to open the tool's own "set new password" screen (instead of Firebase's generic page, which some mail clients break), set the email action URL once in the console: **Authentication → Templates → Password reset → pencil icon → Customize action URL** → `https://nickwendel.github.io/ceva-tools/nci-inbound/` → **Save**.
 
-Admins manage people from either tool's **Settings → People** screen. To add a login: Firebase console → **Authentication → Users → Add user**, copy the User UID, then paste it into **Settings → People** with a name, company and role.
+**Getting access.** New people tap **New here? Request access** on either tool's sign-in screen, enter their name, work email, a password and (on the inbound tool) which company they work for. That creates their login and files a request. Admins see a count on the **Settings** tab and an **Access requests** list at the top of Settings → People, pick a role and tap **Approve**; the requester is let in automatically, even if they left the page open. **Decline** removes the request. Someone who already has a login but no role sees the same request form after signing in.
+
+Admins can still add people by hand from **Settings → People**: Firebase console → **Authentication → Users → Add user**, copy the User UID, then paste it in with a name, company and role. That is the way to set up TV screens, which don't request access themselves.
 
 **Network:** screens and phones need to reach `gstatic.com`, `googleapis.com` and `firebaseapp.com`, plus `fonts.googleapis.com` for the typeface.
 
@@ -47,7 +49,7 @@ Data lives in a Firebase project (Firestore + Authentication). The page only tal
 
 ### Setup
 
-Done once for the shared `ceva-tools` project (see **Firebase** above). Each new TV or supervisor needs a login in **Authentication → Users** and an entry under **Settings → People** on the board: Viewer for TVs, Supervisor for floor leads.
+Done once for the shared `ceva-tools` project (see **Firebase** above). Supervisors use **Request access** on the sign-in screen and an admin approves them. TVs are added by hand: create the TV's login in **Authentication → Users**, then add its UID under **Settings → People** as Viewer.
 
 ### Changing the logo
 
@@ -81,16 +83,13 @@ Done once for the shared `ceva-tools` project (see **Firebase** above). Sign in,
 
 ### Adding people from both companies
 
-1. Firebase console → **Authentication → Users → Add user** (email + password). Copy the new **User UID**. NCI/Greif people get a login the same way; share the password with them directly, or have them use **Forgot password** on the sign-in screen once their login exists.
-2. On the tool: **Settings → People** → paste the UID, add a name, pick the **company** and a **role** → **Add or update person**.
+Send people the link to the tool. They tap **New here? Request access**, pick their company (CEVA or NCI/Greif) and create a password. You approve them from **Settings → Access requests** with a role; they're in immediately. The company decides which items show under **Needs us**, which alerts they get, and which side their updates are posted as.
 
 | Role | Can do |
 |---|---|
 | Viewer | See the board and read issues |
 | User | Also raise issues, post updates, hand off, resolve and reopen |
 | Admin | Also change settings, manage people and delete issues |
-
-The company decides which items show under **Needs us**, which alerts the person gets, and which side their updates are posted as.
 
 ### Email notifications (optional)
 
