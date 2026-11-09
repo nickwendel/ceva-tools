@@ -35,7 +35,7 @@ Admins manage people from either tool's **Settings → People** screen. To add a
 
 ## Receiving dock board
 
-**Live page:** `https://bigmuffuletta.github.io/ceva-tools/dock-board/`
+**Live page:** `https://nickwendel.github.io/ceva-tools/dock-board/`
 
 - **TV:** open the page, sign in once with the TV's account, tap **Full screen**. It stays signed in, keeps the screen awake where the browser allows, and pages through long lists every 12 seconds.
 - **Supervisors:** open the same page on a phone. It opens on the update screen: add trucks, move them along (Arrived → At door → Unloading → Received), set priority and pathway owner, post a notice.
@@ -60,7 +60,7 @@ Firebase's free Spark plan allows 50,000 reads and 20,000 writes per day. A boar
 
 ## NCI/Greif inbound exceptions
 
-**Live page:** `https://bigmuffuletta.github.io/ceva-tools/nci-inbound/`
+**Live page:** `https://nickwendel.github.io/ceva-tools/nci-inbound/`
 
 One page for both companies. Each login belongs to a company (CEVA or NCI/Greif), and every issue is always *waiting on* exactly one of them.
 
