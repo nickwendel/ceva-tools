@@ -349,6 +349,13 @@ textarea.inp{min-height:5.5rem;resize:vertical;line-height:1.4}
           <button class="btn primary" type="submit" id="lGo">Sign in</button>
           <button class="btn ghost" type="button" id="lForgot">Forgot password? Email me a reset link</button>
         </form>
+        <form id="gateReset" novalidate hidden>
+          <p class="gate-p">Choose a new password for <b id="rEmail"></b>. At least 8 characters.</p>
+          <div class="fld"><label for="rPass">New password</label><input class="inp" id="rPass" type="password" autocomplete="new-password" minlength="8"></div>
+          <div class="fld"><label for="rPass2">Type it again</label><input class="inp" id="rPass2" type="password" autocomplete="new-password"></div>
+          <div class="err" id="rErr" role="alert" hidden></div>
+          <button class="btn primary" type="submit" id="rGo">Set password and sign in</button>
+        </form>
         <div id="gateDenied" hidden>
           <p class="gate-p">Signed in as <b id="dEmail"></b>, but this account hasn’t been added to the tool. Send your admin this user ID:</p>
           <div class="uid" style="margin-top:.7rem"><code id="dUid"></code><button type="button" class="btn" id="dCopy">Copy</button></div>
@@ -429,7 +436,12 @@ textarea.inp{min-height:5.5rem;resize:vertical;line-height:1.4}
         <div class="set" id="setAccount">
           <h3>Account</h3>
           <p id="acctLine"></p>
-          <div class="row-btns"><button type="button" class="btn ghost" id="acctOut">Sign out</button></div>
+          <div class="grid2">
+            <div class="fld"><label for="cPass">New password</label><input class="inp" id="cPass" type="password" autocomplete="new-password" minlength="8"></div>
+            <div class="fld"><label for="cPass2">Type it again</label><input class="inp" id="cPass2" type="password" autocomplete="new-password"></div>
+          </div>
+          <div class="err" id="cErr" role="alert" hidden></div>
+          <div class="row-btns"><button type="button" class="btn primary" id="cSave">Change password</button><button type="button" class="btn ghost" id="acctOut">Sign out</button></div>
         </div>
         <div class="set">
           <h3>Notifications</h3>
@@ -601,7 +613,7 @@ const S = {
   fb:null, authUser:null, role:null, company:'ceva', myName:'', ready:false, gate:'wait', unsubs:[], roleUnsub:null,
   conn:'connecting', canWrite:null, canAdmin:false,
   page:{ceva:0, partner:0}, editing:null, open:null, updates:[], updUnsub:null,
-  prev:null, notif:false
+  prev:null, notif:false, resetCode:null, resetEmail:''
 };
 
 /* ---------- helpers ---------- */
@@ -1261,6 +1273,8 @@ function showGate(state, msg){
   if(state === 'wait') $('#gateWait').textContent = msg || 'Connecting…';
   $('#gateSetup').hidden = state !== 'setup';
   $('#gateLogin').hidden = state !== 'login';
+  $('#gateReset').hidden = state !== 'reset';
+  if(state === 'reset') $('#rEmail').textContent = S.resetEmail || 'your account';
   $('#gateDenied').hidden = state !== 'denied';
   if(state === 'denied'){ $('#dEmail').textContent = (S.authUser && S.authUser.email) || 'this account'; $('#dUid').textContent = (S.authUser && S.authUser.uid) || ''; }
   applyVisibility();
@@ -1355,6 +1369,42 @@ $('#dCopy').addEventListener('click', () => {
   try{ navigator.clipboard.writeText(uid).then(() => toast('User ID copied'), sel); }catch(_){ sel(); }
 });
 $('#gDemo').addEventListener('click', () => setView('demo'));
+/* Password reset handled on this page. Firebase's reset email points here when the project's
+   email action URL is set to this page (Authentication → Templates → Customize action URL). */
+function passErr(el, p1, p2){
+  if(p1.length < 8) return 'Use at least 8 characters.';
+  if(p1 !== p2) return 'The two passwords don’t match.';
+  return '';
+}
+$('#gateReset').addEventListener('submit', async e => {
+  e.preventDefault();
+  const p1 = $('#rPass').value, p2 = $('#rPass2').value, err = $('#rErr');
+  const bad = passErr(err, p1, p2); err.textContent = bad; err.hidden = !bad; if(bad) return;
+  if(!S.fb || !S.resetCode) return;
+  $('#rGo').disabled = true;
+  try{
+    await S.fb.F.confirmPasswordReset(S.fb.auth, S.resetCode, p1);
+    const email = S.resetEmail; S.resetCode = null;
+    try{ history.replaceState(null, '', location.pathname + '#work'); }catch(_){}
+    if(email){ await S.fb.F.signInWithEmailAndPassword(S.fb.auth, email, p1); toast('Password set. You’re signed in.'); }
+    else { showGate('login'); toast('Password set. Sign in with it now.'); }
+  }catch(x){
+    const c = x && x.code;
+    err.textContent = c === 'auth/expired-action-code' || c === 'auth/invalid-action-code' ? 'This reset link has expired or was already used. Request a new one from the sign-in screen.'
+      : c === 'auth/weak-password' ? 'Pick a stronger password.' : 'Couldn’t set the password. Check the connection and try again.';
+    err.hidden = false;
+  }finally{ $('#rGo').disabled = false; }
+});
+$('#cSave').addEventListener('click', async () => {
+  const p1 = $('#cPass').value, p2 = $('#cPass2').value, err = $('#cErr');
+  const bad = passErr(err, p1, p2); err.textContent = bad; err.hidden = !bad; if(bad) return;
+  if(!S.fb || !S.fb.auth.currentUser) return;
+  try{ await S.fb.F.updatePassword(S.fb.auth.currentUser, p1); $('#cPass').value = ''; $('#cPass2').value = ''; toast('Password changed'); }
+  catch(x){
+    err.textContent = (x && x.code) === 'auth/requires-recent-login' ? 'For safety, sign out and sign in again, then change the password within a few minutes.' : 'Couldn’t change the password. Check the connection and try again.';
+    err.hidden = false;
+  }
+});
 
 /* ---------- Firebase ---------- */
 function stopData(){ S.unsubs.forEach(u => { try{ u(); }catch(_){} }); S.unsubs = []; if(S.updUnsub){ S.updUnsub(); S.updUnsub = null; } }
@@ -1389,12 +1439,18 @@ function startData(){
   try{ fs = Fs.initializeFirestore(app, {localCache: Fs.persistentLocalCache({tabManager: Fs.persistentMultipleTabManager()})}); }
   catch(_){ fs = Fs.getFirestore(app); }
   S.fb = {auth, F, Fs, fs};
+  const qs = new URLSearchParams(location.search);
+  if(qs.get('mode') === 'resetPassword' && qs.get('oobCode')){
+    S.resetCode = qs.get('oobCode');
+    try{ S.resetEmail = await F.verifyPasswordResetCode(auth, S.resetCode); }
+    catch(_){ S.resetCode = null; try{ history.replaceState(null, '', location.pathname + location.hash); }catch(__){} toast('That reset link has expired or was already used. Request a new one below.'); }
+  }
   F.onAuthStateChanged(auth, user => {
     if(S.roleUnsub){ S.roleUnsub(); S.roleUnsub = null; }
     stopData();
     S.authUser = user; S.role = null; S.ready = false; S.issues = []; S.people = []; S.open = null; $('#detail').hidden = true;
     badge();
-    if(!user){ showGate('login'); return; }
+    if(!user){ showGate(S.resetCode ? 'reset' : 'login'); if(S.resetCode) setTimeout(() => $('#rPass').focus(), 30); return; }
     showGate('wait', 'Checking access…');
     S.roleUnsub = Fs.onSnapshot(Fs.doc(fs, 'roles', user.uid), {includeMetadataChanges:true}, snap => {
       const d = snap.exists() ? (snap.data() || {}) : {};

@@ -380,7 +380,12 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
         <div class="set" id="setAccount">
           <h3>Account</h3>
           <p id="acctLine"></p>
-          <div class="row-btns"><button type="button" class="btn ghost" id="acctOut">Sign out</button></div>
+          <div class="grid2">
+            <div class="fld"><label for="cPass">New password</label><input class="inp" id="cPass" type="password" autocomplete="new-password" minlength="8"></div>
+            <div class="fld"><label for="cPass2">Type it again</label><input class="inp" id="cPass2" type="password" autocomplete="new-password"></div>
+          </div>
+          <div class="err" id="cErr" role="alert" hidden></div>
+          <div class="row-btns"><button type="button" class="btn primary" id="cSave">Change password</button><button type="button" class="btn ghost" id="acctOut">Sign out</button></div>
         </div>
         <div class="set" id="setPeople" hidden>
           <h3>People</h3>
@@ -800,7 +805,7 @@ function fillSettings(force){
   $('#acctLine').textContent = S.authUser ? 'Signed in as ' + (S.authUser.email || 'this device') + ' · ' + (ROLE_LABEL[S.role] || 'no role') : '';
   const clr = $('#sClear');
   if(!clr.dataset.armed) clr.textContent = 'Clear received trucks (' + S.loads.filter(l => l.status === 'received').length + ')';
-  document.querySelectorAll('#setPanel input,#setPanel textarea,#setPanel button').forEach(x => { if(x.id !== 'sDemo' && x.id !== 'acctOut') x.disabled = readOnly() || S.conn === 'none'; });
+  document.querySelectorAll('#setPanel input,#setPanel textarea,#setPanel button').forEach(x => { if(!['sDemo','acctOut','cPass','cPass2','cSave'].includes(x.id)) x.disabled = readOnly() || S.conn === 'none'; });
 }
 ['sMsg','sRoster','sSite'].forEach(id => $('#' + id).addEventListener('input', e => { e.target.dataset.dirty = '1'; }));
 
@@ -1123,6 +1128,17 @@ $('#dCopy').addEventListener('click', () => {
   try{ navigator.clipboard.writeText(uid).then(() => toast('User ID copied'), sel); }catch(_){ sel(); }
 });
 $('#gDemo').addEventListener('click', () => setView('demo'));
+$('#cSave').addEventListener('click', async () => {
+  const p1 = $('#cPass').value, p2 = $('#cPass2').value, err = $('#cErr');
+  const bad = p1.length < 8 ? 'Use at least 8 characters.' : p1 !== p2 ? 'The two passwords don’t match.' : '';
+  err.textContent = bad; err.hidden = !bad; if(bad) return;
+  if(!S.fb || !S.fb.auth.currentUser) return;
+  try{ await S.fb.F.updatePassword(S.fb.auth.currentUser, p1); $('#cPass').value = ''; $('#cPass2').value = ''; toast('Password changed'); }
+  catch(x){
+    err.textContent = (x && x.code) === 'auth/requires-recent-login' ? 'For safety, sign out and sign in again, then change the password within a few minutes.' : 'Couldn’t change the password. Check the connection and try again.';
+    err.hidden = false;
+  }
+});
 
 /* ---------- Firebase ---------- */
 function makeDb(Fs, fs){
