@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
-<title>NCI/Greif Inbound Exceptions</title>
+<title>NCI/Grief Inbound Exceptions</title>
 <link rel="icon" href="../assets/ceva-logo.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700;800&display=swap">
 <style>
-/* Layout: board = navy brand band + two equal panels (waiting on CEVA | waiting on NCI/Greif) filling one screen, paginating rows;
+/* Layout: board = navy brand band + two equal panels (waiting on CEVA | waiting on NCI/Grief) filling one screen, paginating rows;
    work screen = one column of issue cards with bottom-sheet editors (issue form, update thread). Dark-first. */
 :root{
   --navy:#1D2546; --red:#E30613;
@@ -338,11 +338,11 @@ textarea.inp{min-height:5.5rem;resize:vertical;line-height:1.4}
     <div class="gate-card">
       <div class="gate-head"><img src="../assets/ceva-logo-white.svg" alt="CEVA Logistics"></div>
       <div class="gate-body">
-        <h1 class="gate-title">NCI/Greif Inbound</h1>
+        <h1 class="gate-title">NCI/Grief Inbound</h1>
         <p class="gate-p" id="gateWait">Connecting…</p>
         <p class="gate-p" id="gateSetup" hidden>This tool isn’t connected to its database yet. Add the Firebase web config to <code>nci-inbound/firebase-config.js</code> in the repository.</p>
         <form id="gateLogin" novalidate hidden>
-          <p class="gate-p">Sign in with the account your admin set up. CEVA and NCI/Greif people use the same page; what you see depends on your company.</p>
+          <p class="gate-p">Sign in with the account your admin set up. CEVA and NCI/Grief people use the same page; what you see depends on your company.</p>
           <div class="fld"><label for="lEmail">Email</label><input class="inp" id="lEmail" type="email" autocomplete="username" inputmode="email"></div>
           <div class="fld"><label for="lPass">Password</label><input class="inp" id="lPass" type="password" autocomplete="current-password"></div>
           <div class="err" id="lErr" role="alert" hidden></div>
@@ -358,7 +358,7 @@ textarea.inp{min-height:5.5rem;resize:vertical;line-height:1.4}
           <div class="fld"><span class="lab" id="lblQCo">I work for</span>
             <div class="segm co" role="radiogroup" aria-labelledby="lblQCo">
               <label><input type="radio" name="qCo" id="qCoC" value="ceva" checked><span id="qCoCTxt">CEVA</span></label>
-              <label><input type="radio" name="qCo" id="qCoP" value="partner"><span id="qCoPTxt">NCI / Greif</span></label>
+              <label><input type="radio" name="qCo" id="qCoP" value="partner"><span id="qCoPTxt">NCI / Grief</span></label>
             </div>
           </div>
           <div class="fld"><label for="qNote">Role or site (optional)</label><input class="inp" id="qNote" maxlength="120" autocomplete="off" placeholder="Receiving lead, Atlanta"></div>
@@ -384,7 +384,7 @@ textarea.inp{min-height:5.5rem;resize:vertical;line-height:1.4}
               <div class="fld"><span class="lab" id="lblDCo">I work for</span>
                 <div class="segm co" role="radiogroup" aria-labelledby="lblDCo">
                   <label><input type="radio" name="dCo" id="dCoC" value="ceva" checked><span id="dCoCTxt">CEVA</span></label>
-                  <label><input type="radio" name="dCo" id="dCoP" value="partner"><span id="dCoPTxt">NCI / Greif</span></label>
+                  <label><input type="radio" name="dCo" id="dCoP" value="partner"><span id="dCoPTxt">NCI / Grief</span></label>
                 </div>
               </div>
               <div class="fld"><label for="dNote">Role or site (optional)</label><input class="inp" id="dNote" maxlength="120" autocomplete="off"></div>
@@ -407,14 +407,14 @@ textarea.inp{min-height:5.5rem;resize:vertical;line-height:1.4}
       <div class="b-brand">
         <div class="logo-plate"><img src="../assets/ceva-logo-white.svg" alt="CEVA Logistics"></div>
         <div>
-          <div class="b-eyebrow" id="siteName">NCI / Greif</div>
+          <div class="b-eyebrow" id="siteName">NCI / Grief</div>
           <h1 class="b-title">Inbound Exceptions</h1>
         </div>
       </div>
       <dl class="b-stats">
         <div><dt>Open</dt><dd id="stOpen">0</dd></div>
         <div><dt id="stCevaLbl">On CEVA</dt><dd id="stCeva">0</dd></div>
-        <div><dt id="stPartLbl">On NCI/Greif</dt><dd id="stPart">0</dd></div>
+        <div><dt id="stPartLbl">On NCI/Grief</dt><dd id="stPart">0</dd></div>
         <div id="tileLate"><dt>Overdue</dt><dd id="stLate">0</dd></div>
         <div id="tileP1"><dt>P1 open</dt><dd id="stP1">0</dd></div>
         <div><dt>Resolved today</dt><dd id="stRes">0</dd></div>
@@ -429,7 +429,7 @@ textarea.inp{min-height:5.5rem;resize:vertical;line-height:1.4}
         <div class="p-list" id="listCeva" role="list"></div>
       </section>
       <section class="b-panel partner" aria-labelledby="hPart">
-        <header class="p-head"><h2 id="hPart"><i aria-hidden="true"></i><span id="hPartTxt">Waiting on NCI / Greif</span></h2><span class="p-count" id="cntPart"></span><span class="p-page" id="pgPart"></span></header>
+        <header class="p-head"><h2 id="hPart"><i aria-hidden="true"></i><span id="hPartTxt">Waiting on NCI / Grief</span></h2><span class="p-count" id="cntPart"></span><span class="p-page" id="pgPart"></span></header>
         <div class="p-cols" aria-hidden="true"><span>Pri</span><span>Shipment · Carrier</span><span>Issue</span><span>Waiting</span><span>Last update</span><span>Raised by</span></div>
         <div class="p-list" id="listPart" role="list"></div>
       </section>
@@ -501,7 +501,7 @@ textarea.inp{min-height:5.5rem;resize:vertical;line-height:1.4}
             <div class="fld"><span class="lab" id="lblCo">Company</span>
               <div class="segm co" role="radiogroup" aria-labelledby="lblCo">
                 <label><input type="radio" name="pCo" id="pCoC" value="ceva" checked><span id="pCoCTxt">CEVA</span></label>
-                <label><input type="radio" name="pCo" id="pCoP" value="partner"><span id="pCoPTxt">NCI / Greif</span></label>
+                <label><input type="radio" name="pCo" id="pCoP" value="partner"><span id="pCoPTxt">NCI / Grief</span></label>
               </div>
             </div>
             <div class="fld"><span class="lab" id="lblRole">Role</span>
@@ -520,14 +520,14 @@ textarea.inp{min-height:5.5rem;resize:vertical;line-height:1.4}
           <p>Only admins see this section. Emails go out through the optional Firebase “Trigger Email” extension (see the README). Leave a box empty to send none for that company.</p>
           <div class="grid2">
             <div class="fld"><label for="sNameC">CEVA side shows as</label><input class="inp" id="sNameC" maxlength="30" placeholder="CEVA"></div>
-            <div class="fld"><label for="sNameP">Partner side shows as</label><input class="inp" id="sNameP" maxlength="30" placeholder="NCI / Greif"></div>
+            <div class="fld"><label for="sNameP">Partner side shows as</label><input class="inp" id="sNameP" maxlength="30" placeholder="NCI / Grief"></div>
           </div>
           <div class="grid2">
             <div class="fld"><label for="sMailC">CEVA notification emails</label><textarea class="inp" id="sMailC" placeholder="one per line or comma-separated"></textarea></div>
             <div class="fld"><label for="sMailP">Partner notification emails</label><textarea class="inp" id="sMailP" placeholder="one per line or comma-separated"></textarea></div>
           </div>
           <div class="grid2">
-            <div class="fld"><label for="sSite">Site or lane name (above the board title)</label><input class="inp" id="sSite" maxlength="60" placeholder="NCI / Greif · Atlanta"></div>
+            <div class="fld"><label for="sSite">Site or lane name (above the board title)</label><input class="inp" id="sSite" maxlength="60" placeholder="NCI / Grief · Atlanta"></div>
             <div class="fld"><label for="sSla">Overdue after (hours waiting)</label><input class="inp" id="sSla" type="number" min="1" max="720" inputmode="numeric" placeholder="24"></div>
           </div>
           <div class="fld"><span class="lab">Board colors</span>
@@ -588,7 +588,7 @@ textarea.inp{min-height:5.5rem;resize:vertical;line-height:1.4}
         <div class="fld"><span class="lab" id="lblBall">Who needs to act first</span>
           <div class="segm co" role="radiogroup" aria-labelledby="lblBall">
             <label><input type="radio" name="fBall" id="fBallC" value="ceva"><span id="fBallCTxt">CEVA</span></label>
-            <label><input type="radio" name="fBall" id="fBallP" value="partner"><span id="fBallPTxt">NCI / Greif</span></label>
+            <label><input type="radio" name="fBall" id="fBallP" value="partner"><span id="fBallPTxt">NCI / Grief</span></label>
           </div>
         </div>
         <div class="err" id="fErr" role="alert" hidden></div>
@@ -614,7 +614,7 @@ textarea.inp{min-height:5.5rem;resize:vertical;line-height:1.4}
           <div class="err" id="dErr" role="alert" hidden></div>
           <div class="row-btns">
             <button type="button" class="btn primary" id="dPost">Post update</button>
-            <button type="button" class="btn hand" id="dHand">Hand to NCI / Greif</button>
+            <button type="button" class="btn hand" id="dHand">Hand to NCI / Grief</button>
             <button type="button" class="btn go" id="dResolve">Resolve</button>
             <button type="button" class="btn" id="dReopen" hidden>Reopen</button>
           </div>
@@ -633,7 +633,7 @@ textarea.inp{min-height:5.5rem;resize:vertical;line-height:1.4}
 const FB = 'https://www.gstatic.com/firebasejs/10.14.1/';
 const BASE_TITLE = document.title;
 const ROLE_LABEL = {viewer:'Viewer', user:'User', supervisor:'User', admin:'Admin'};
-const CO_DEFAULT = {ceva:'CEVA', partner:'NCI / Greif'};
+const CO_DEFAULT = {ceva:'CEVA', partner:'NCI / Grief'};
 const TYPES = {short:'Shortage', over:'Overage', damage:'Damaged', wrong:'Wrong item / SKU', noasn:'No ASN / paperwork', label:'Label or barcode', late:'Late / missed appt', other:'Other'};
 const PRI = {1:{n:'P1',l:'Critical'},2:{n:'P2',l:'High'},3:{n:'P3',l:'Standard'}};
 const $ = s => document.querySelector(s);
@@ -762,7 +762,7 @@ function applyNames(){
   $('#fBallCTxt').textContent = c; $('#fBallPTxt').textContent = p;
   $('#qCoCTxt').textContent = c; $('#qCoPTxt').textContent = p; $('#dCoCTxt').textContent = c; $('#dCoPTxt').textContent = p;
   $('#legSla').textContent = Math.round(slaMs()/3600e3) + 'h';
-  const eb = $('#siteName'); eb.textContent = str(S.settings.siteName, 60) || 'NCI / Greif'; 
+  const eb = $('#siteName'); eb.textContent = str(S.settings.siteName, 60) || 'NCI / Grief'; 
 }
 
 /* ---------- BOARD ---------- */

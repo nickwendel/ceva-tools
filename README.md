@@ -5,7 +5,7 @@ Operational tools for CEVA sites, served with GitHub Pages.
 | Tool | Path | What it does |
 |---|---|---|
 | Receiving dock board | [`dock-board/`](dock-board/) | Floor TV display of trailers in the drop and today's appointments, with priority, door, pathway owner and status. Supervisors update it from a phone. |
-| NCI/Greif inbound exceptions | [`nci-inbound/`](nci-inbound/) | Shared log of error shipments (shortages, overages, damage, missing ASN…) worked by CEVA and NCI/Greif together. Either company raises an issue, posts updates, hands it to the other side and resolves it. A board shows what is open and who it is waiting on. |
+| NCI/Grief inbound exceptions | [`nci-inbound/`](nci-inbound/) | Shared log of error shipments (shortages, overages, damage, missing ASN…) worked by CEVA and NCI/Grief together. Either company raises an issue, posts updates, hands it to the other side and resolves it. A board shows what is open and who it is waiting on. |
 
 Shared files live in [`assets/`](assets/): `ceva-logo-white.svg` is the logo used on the navy headers; `ceva-logo.svg` (navy and red) is only the browser-tab icon.
 
@@ -24,7 +24,7 @@ All tools use one Firebase project, **`ceva-tools`** (console: [console.firebase
 | Field | Values |
 |---|---|
 | `role` | `viewer` (see only), `supervisor` (dock board updates + inbound issues), `user` (inbound issues only), `admin` (everything, settings, people) |
-| `company` | `ceva` or `partner` (NCI/Greif). Used by the inbound tool. |
+| `company` | `ceva` or `partner` (NCI/Grief). Used by the inbound tool. |
 | `name` | Shown on boards and in update threads |
 
 **Passwords.** The sign-in screen has **Forgot password?**, which emails a reset link, and signed-in people can change their password under **Settings → Account**. For the reset link to open the tool's own "set new password" screen (instead of Firebase's generic page, which some mail clients break), set the email action URL once in the console: **Authentication → Templates → Password reset → pencil icon → Customize action URL** → `https://nickwendel.github.io/ceva-tools/nci-inbound/` → **Save**.
@@ -62,15 +62,15 @@ Firebase's free Spark plan allows 50,000 reads and 20,000 writes per day. A boar
 
 ---
 
-## NCI/Greif inbound exceptions
+## NCI/Grief inbound exceptions
 
 **Live page:** `https://nickwendel.github.io/ceva-tools/nci-inbound/`
 
-One page for both companies. Each login belongs to a company (CEVA or NCI/Greif), and every issue is always *waiting on* exactly one of them.
+One page for both companies. Each login belongs to a company (CEVA or NCI/Grief), and every issue is always *waiting on* exactly one of them.
 
 - **Raise an issue:** tap **Raise issue**, enter the shipment (ASN, PO, BOL or trailer), the issue type, quantities and what happened, then pick who needs to act first. The other company is notified.
 - **Work it:** the **Needs us** tab lists everything waiting on your company. Open an issue to read the full update thread, then **Post update**, **Hand to &lt;other company&gt;** (with a note saying what you need) or **Resolve** (with the disposition). Resolved issues can be reopened; reopening hands the issue back to the other company.
-- **Board:** the **Board** view is for a big screen or a TV: two columns, *Waiting on CEVA* and *Waiting on NCI/Greif*, oldest and most urgent first, with overdue items flagged after a configurable number of hours. It paginates long lists and keeps the screen awake.
+- **Board:** the **Board** view is for a big screen or a TV: two columns, *Waiting on CEVA* and *Waiting on NCI/Grief*, oldest and most urgent first, with overdue items flagged after a configurable number of hours. It paginates long lists and keeps the screen awake.
 - **Notifications:** two kinds.
   - **Browser alerts** (per device): turn on with the bell button. The device shows a notification when an issue lands on your company or the other company posts an update, and the tab title shows how many items need your company.
   - **Email** (optional, both companies): admins enter notification addresses per company under **Settings → Companies and emails**. Emails are sent through the Firebase *Trigger Email* extension (setup below). Without the extension, email settings are ignored and browser alerts still work.
@@ -83,7 +83,7 @@ Done once for the shared `ceva-tools` project (see **Firebase** above). Sign in,
 
 ### Adding people from both companies
 
-Send people the link to the tool. They tap **New here? Request access**, pick their company (CEVA or NCI/Greif) and create a password. You approve them from **Settings → Access requests** with a role; they're in immediately. The company decides which items show under **Needs us**, which alerts they get, and which side their updates are posted as.
+Send people the link to the tool. They tap **New here? Request access**, pick their company (CEVA or NCI/Grief) and create a password. You approve them from **Settings → Access requests** with a role; they're in immediately. The company decides which items show under **Needs us**, which alerts they get, and which side their updates are posted as.
 
 | Role | Can do |
 |---|---|
