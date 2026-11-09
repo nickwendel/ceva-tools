@@ -348,6 +348,23 @@ textarea.inp{min-height:5.5rem;resize:vertical;line-height:1.4}
           <div class="err" id="lErr" role="alert" hidden></div>
           <button class="btn primary" type="submit" id="lGo">Sign in</button>
           <button class="btn ghost" type="button" id="lForgot">Forgot password? Email me a reset link</button>
+          <div class="gate-alt"><button class="btn" type="button" id="lRequest">New here? Request access</button></div>
+        </form>
+        <form id="gateRequest" novalidate hidden>
+          <p class="gate-p">Tell us who you are and create a password. An admin approves requests, and you’re let in automatically once approved.</p>
+          <div class="fld"><label for="qName">Your name</label><input class="inp" id="qName" maxlength="40" autocomplete="name" placeholder="J. Ruiz"></div>
+          <div class="fld"><label for="qEmail">Work email</label><input class="inp" id="qEmail" type="email" autocomplete="username" inputmode="email"></div>
+          <div class="fld"><label for="qPass">Create a password (8+ characters)</label><input class="inp" id="qPass" type="password" autocomplete="new-password" minlength="8"></div>
+          <div class="fld"><span class="lab" id="lblQCo">I work for</span>
+            <div class="segm co" role="radiogroup" aria-labelledby="lblQCo">
+              <label><input type="radio" name="qCo" id="qCoC" value="ceva" checked><span id="qCoCTxt">CEVA</span></label>
+              <label><input type="radio" name="qCo" id="qCoP" value="partner"><span id="qCoPTxt">NCI / Greif</span></label>
+            </div>
+          </div>
+          <div class="fld"><label for="qNote">Role or site (optional)</label><input class="inp" id="qNote" maxlength="120" autocomplete="off" placeholder="Receiving lead, Atlanta"></div>
+          <div class="err" id="qErr" role="alert" hidden></div>
+          <button class="btn primary" type="submit" id="qGo">Send request</button>
+          <button class="btn ghost" type="button" id="qBack">Back to sign in</button>
         </form>
         <form id="gateReset" novalidate hidden>
           <p class="gate-p">Choose a new password for <b id="rEmail"></b>. At least 8 characters.</p>
@@ -357,8 +374,26 @@ textarea.inp{min-height:5.5rem;resize:vertical;line-height:1.4}
           <button class="btn primary" type="submit" id="rGo">Set password and sign in</button>
         </form>
         <div id="gateDenied" hidden>
-          <p class="gate-p">Signed in as <b id="dEmail"></b>, but this account hasn’t been added to the tool. Send your admin this user ID:</p>
-          <div class="uid" style="margin-top:.7rem"><code id="dUid"></code><button type="button" class="btn" id="dCopy">Copy</button></div>
+          <div id="dPending" hidden>
+            <p class="gate-p"><b>Request sent.</b> Signed in as <b id="dEmailP"></b>, waiting for an admin to approve. Keep this page open or come back later; it opens on its own once approved.</p>
+          </div>
+          <div id="dNone" hidden>
+            <p class="gate-p">Signed in as <b id="dEmail"></b>, but this account hasn’t been added to the tool yet. Ask for access and an admin will approve it.</p>
+            <form id="dRequest" novalidate style="margin-top:.7rem">
+              <div class="fld"><label for="dName">Your name</label><input class="inp" id="dName" maxlength="40" autocomplete="name"></div>
+              <div class="fld"><span class="lab" id="lblDCo">I work for</span>
+                <div class="segm co" role="radiogroup" aria-labelledby="lblDCo">
+                  <label><input type="radio" name="dCo" id="dCoC" value="ceva" checked><span id="dCoCTxt">CEVA</span></label>
+                  <label><input type="radio" name="dCo" id="dCoP" value="partner"><span id="dCoPTxt">NCI / Greif</span></label>
+                </div>
+              </div>
+              <div class="fld"><label for="dNote">Role or site (optional)</label><input class="inp" id="dNote" maxlength="120" autocomplete="off"></div>
+              <div class="err" id="dReqErr" role="alert" hidden></div>
+              <button class="btn primary" type="submit" id="dReqGo">Request access</button>
+            </form>
+          </div>
+          <details style="margin-top:.7rem"><summary class="gate-p" style="cursor:pointer">Your user ID (for admins)</summary>
+            <div class="uid" style="margin-top:.5rem"><code id="dUid"></code><button type="button" class="btn" id="dCopy">Copy</button></div></details>
           <div class="row-btns" style="margin-top:.7rem"><button type="button" class="btn ghost" id="dOut">Sign out</button></div>
         </div>
         <div class="gate-alt"><button type="button" class="btn ghost" id="gDemo">Preview with example issues</button></div>
@@ -422,7 +457,7 @@ textarea.inp{min-height:5.5rem;resize:vertical;line-height:1.4}
           <button type="button" class="tab" role="tab" data-tab="theirs" id="tab-theirs"><span id="tabTheirsTxt">Waiting on them</span> <span class="n" id="nTheirs">0</span></button>
           <button type="button" class="tab" role="tab" data-tab="all" id="tab-all">All open <span class="n" id="nAll">0</span></button>
           <button type="button" class="tab" role="tab" data-tab="resolved" id="tab-resolved">Resolved <span class="n" id="nRes">0</span></button>
-          <button type="button" class="tab" role="tab" data-tab="settings" id="tab-settings">Settings</button>
+          <button type="button" class="tab" role="tab" data-tab="settings" id="tab-settings">Settings <span class="n" id="nSet" hidden>0</span></button>
         </div>
         <button type="button" class="btn primary" id="btnAdd">Raise issue</button>
       </div>
@@ -449,9 +484,14 @@ textarea.inp{min-height:5.5rem;resize:vertical;line-height:1.4}
           <div class="row-btns"><button type="button" class="btn" id="sNotif">Turn alerts on</button><button type="button" class="btn ghost" id="sNotifTest">Send a test</button></div>
           <p id="sNotifState"></p>
         </div>
+        <div class="set" id="setRequests" hidden>
+          <h3>Access requests</h3>
+          <p>People who tapped “Request access” on the sign-in screen. Approving creates their login’s role right away; they’re let in on their next refresh. Declining removes the request and leaves them without access.</p>
+          <div class="people" id="reqList"></div>
+        </div>
         <div class="set" id="setPeople" hidden>
           <h3>People</h3>
-          <p>Create each login in the Firebase console under Authentication → Users → Add user, then paste its User UID here. Pick the company the person works for: that decides which items count as “Needs us” and which alerts they get.</p>
+          <p>Most people should use “Request access” on the sign-in screen and get approved above. To add someone by hand, create their login in the Firebase console under Authentication → Users → Add user, then paste the User UID here. The company decides which items count as “Needs us” and which alerts they get.</p>
           <div class="people" id="peopleList"></div>
           <div class="grid2">
             <div class="fld"><label for="pUid">User UID</label><input class="inp" id="pUid" maxlength="128" autocomplete="off" spellcheck="false"></div>
@@ -613,7 +653,7 @@ const S = {
   fb:null, authUser:null, role:null, company:'ceva', myName:'', ready:false, gate:'wait', unsubs:[], roleUnsub:null,
   conn:'connecting', canWrite:null, canAdmin:false,
   page:{ceva:0, partner:0}, editing:null, open:null, updates:[], updUnsub:null,
-  prev:null, notif:false, resetCode:null, resetEmail:''
+  prev:null, notif:false, resetCode:null, resetEmail:'', requests:[], reqSeen:null, myReq:undefined, reqUnsub:null
 };
 
 /* ---------- helpers ---------- */
@@ -720,6 +760,7 @@ function applyNames(){
   $('#tabMineTxt').textContent = 'Needs ' + me; $('#tabTheirsTxt').textContent = 'Waiting on ' + them;
   $('#pCoCTxt').textContent = c; $('#pCoPTxt').textContent = p;
   $('#fBallCTxt').textContent = c; $('#fBallPTxt').textContent = p;
+  $('#qCoCTxt').textContent = c; $('#qCoPTxt').textContent = p; $('#dCoCTxt').textContent = c; $('#dCoPTxt').textContent = p;
   $('#legSla').textContent = Math.round(slaMs()/3600e3) + 'h';
   const eb = $('#siteName'); eb.textContent = str(S.settings.siteName, 60) || 'NCI / Greif'; 
 }
@@ -829,6 +870,7 @@ function renderEdit(){
   $('#nTheirs').textContent = D.theirs.length;
   $('#nAll').textContent = D.all.length;
   $('#nRes').textContent = D.resolved.length;
+  const ns = $('#nSet'); ns.textContent = S.requests.length; ns.hidden = !(S.canAdmin && S.requests.length);
   document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', String(t.dataset.tab === S.tab)));
   const acc = $('#eAccess');
   if(S.conn === 'none'){ acc.hidden = false; acc.textContent = 'Not connected to the database. Reload the page.'; }
@@ -857,7 +899,9 @@ function setVal(el, v, force){ if(force || (document.activeElement !== el && !el
 function fillSettings(force){
   const admin = S.canAdmin && S.conn !== 'none';
   $('#setAdmin').hidden = !admin; $('#setPeople').hidden = !admin; $('#setClear').hidden = !admin;
+  $('#setRequests').hidden = !(admin && S.requests.length);
   if(admin){
+    renderRequests();
     const em = S.settings.emails || {};
     setVal($('#sNameC'), str(S.settings.names && S.settings.names.ceva, 30), force);
     setVal($('#sNameP'), str(S.settings.names && S.settings.names.partner, 30), force);
@@ -889,12 +933,33 @@ function renderPeople(){
   const order = {admin:0, user:1, supervisor:1, viewer:2};
   const rank = p => (p.role in order) ? order[p.role] : 3;
   el.innerHTML = S.people.slice().sort((a,b) => String(a.company||'ceva').localeCompare(String(b.company||'ceva')) || rank(a) - rank(b) || String(a.name||'').localeCompare(String(b.name||''))).map(p =>
-    '<div class="person"><div class="who"><b>' + esc(str(p.name,40) || 'Unnamed') + (p.id === me ? ' (you)' : '') + '</b><span>' + esc(p.id) + '</span></div>' +
+    '<div class="person"><div class="who"><b>' + esc(str(p.name,40) || 'Unnamed') + (p.id === me ? ' (you)' : '') + '</b><span>' + esc(str(p.email,80) || p.id) + '</span></div>' +
     '<span class="chip ' + (p.company === 'partner' ? 'partner' : 'ceva') + '">' + esc(coName(p.company === 'partner' ? 'partner' : 'ceva')) + '</span>' +
     '<span class="role-chip' + (p.role === 'admin' ? ' admin' : '') + '">' + esc(ROLE_LABEL[p.role] || 'No role') + '</span>' +
     '<button type="button" class="btn ghost" data-pedit="' + esc(p.id) + '">Edit</button>' +
     (p.id === me ? '' : '<button type="button" class="btn danger" data-pdel="' + esc(p.id) + '">Remove</button>') +
     '</div>').join('');
+}
+function renderRequests(){
+  const el = $('#reqList');
+  if(!S.requests.length){ el.innerHTML = ''; return; }
+  el.innerHTML = S.requests.slice().sort((a,b) => (a.at||0) - (b.at||0)).map(r =>
+    '<div class="person"><div class="who"><b>' + esc(str(r.name,40) || 'No name') + '</b><span>' + esc(str(r.email,80)) + (r.note ? ' · ' + esc(str(r.note,120)) : '') + (r.at ? ' · ' + esc(fmtWhen(num(r.at))) : '') + '</span></div>' +
+    '<span class="chip ' + (r.company === 'partner' ? 'partner' : 'ceva') + '">' + esc(coName(r.company === 'partner' ? 'partner' : 'ceva')) + '</span>' +
+    '<select class="inp" style="width:auto;min-height:2.4rem" data-reqrole="' + esc(r.id) + '" aria-label="Role"><option value="viewer">Viewer</option><option value="user" selected>User</option><option value="admin">Admin</option></select>' +
+    '<button type="button" class="btn go" data-approve="' + esc(r.id) + '">Approve</button>' +
+    '<button type="button" class="btn danger" data-decline="' + esc(r.id) + '">Decline</button>' +
+    '</div>').join('');
+}
+function approve(id){
+  const r = S.requests.find(x => x.id === id); if(!r || !S.fb) return;
+  const sel = document.querySelector('[data-reqrole="' + id + '"]');
+  const role = sel && ROLE_LABEL[sel.value] ? sel.value : 'user';
+  const company = r.company === 'partner' ? 'partner' : 'ceva';
+  const {Fs, fs} = S.fb, b = Fs.writeBatch(fs);
+  b.set(Fs.doc(fs, 'roles', id), {role, company, name:str(r.name,40), email:str(r.email,80), updatedAt:Date.now()});
+  b.delete(Fs.doc(fs, 'requests', id));
+  if(commit(b.commit())) toast((str(r.name,40) || r.email || 'Person') + ' approved as ' + ROLE_LABEL[role] + ' · ' + coName(company));
 }
 function peopleErr(t){ const e = $('#pErr'); e.textContent = t || ''; e.hidden = !t; }
 $('#pSave').addEventListener('click', () => {
@@ -1117,8 +1182,13 @@ document.addEventListener('keydown', e => { if(e.key !== 'Escape') return; if(!$
 
 /* ---------- work screen events ---------- */
 $('#edit').addEventListener('click', e => {
-  const t = e.target.closest('[data-tab],[data-open],[data-pedit],[data-pdel]');
+  const t = e.target.closest('[data-tab],[data-open],[data-pedit],[data-pdel],[data-approve],[data-decline]');
   if(!t) return;
+  if(t.dataset.approve) return approve(t.dataset.approve);
+  if(t.dataset.decline){
+    if(!t.dataset.armed){ t.dataset.armed = '1'; t.classList.add('armed'); t.textContent = 'Tap again'; setTimeout(() => renderRequests(), 4000); return; }
+    commit(S.fb.Fs.deleteDoc(S.fb.Fs.doc(S.fb.fs, 'requests', t.dataset.decline))); toast('Request declined'); return;
+  }
   if(t.dataset.pedit){
     const p = S.people.find(x => x.id === t.dataset.pedit); if(!p) return;
     $('#pUid').value = p.id; $('#pName').value = str(p.name, 40);
@@ -1189,7 +1259,7 @@ async function toggleNotif(){
 }
 function notify(title, body, tag){
   if(!S.notif || !('Notification' in window) || Notification.permission !== 'granted') return;
-  try{ const n = new Notification(title, {body, tag, icon:'../assets/ceva-logo.svg'}); n.onclick = () => { window.focus(); if(tag && tag !== 'test' && tag !== 'many'){ S.view === 'edit' || setView('edit'); openDetail(tag, false); } n.close(); }; }catch(_){}
+  try{ const n = new Notification(title, {body, tag, icon:'../assets/ceva-logo.svg'}); n.onclick = () => { window.focus(); if(tag === 'req'){ S.tab = 'settings'; setView('edit'); } else if(tag && tag !== 'test' && tag !== 'many'){ S.view === 'edit' || setView('edit'); openDetail(tag, false); } n.close(); }; }catch(_){}
 }
 function diffNotify(list, fromCache){
   const prev = S.prev;
@@ -1275,8 +1345,15 @@ function showGate(state, msg){
   $('#gateLogin').hidden = state !== 'login';
   $('#gateReset').hidden = state !== 'reset';
   if(state === 'reset') $('#rEmail').textContent = S.resetEmail || 'your account';
+  $('#gateRequest').hidden = state !== 'request';
   $('#gateDenied').hidden = state !== 'denied';
-  if(state === 'denied'){ $('#dEmail').textContent = (S.authUser && S.authUser.email) || 'this account'; $('#dUid').textContent = (S.authUser && S.authUser.uid) || ''; }
+  if(state === 'denied'){
+    const em = (S.authUser && S.authUser.email) || 'this account';
+    $('#dEmail').textContent = em; $('#dEmailP').textContent = em; $('#dUid').textContent = (S.authUser && S.authUser.uid) || '';
+    const pending = !!S.myReq;
+    $('#dPending').hidden = !pending; $('#dNone').hidden = pending || S.myReq === undefined;
+    if(S.myReq === undefined) $('#dNone').hidden = true;
+  }
   applyVisibility();
 }
 function viewFromHash(){
@@ -1369,6 +1446,56 @@ $('#dCopy').addEventListener('click', () => {
   try{ navigator.clipboard.writeText(uid).then(() => toast('User ID copied'), sel); }catch(_){ sel(); }
 });
 $('#gDemo').addEventListener('click', () => setView('demo'));
+/* Request access: create the login and file a request for the admins. */
+function reqErrMsg(c){
+  return c === 'auth/email-already-in-use' ? 'That email already has a login. Go back and sign in, or use Forgot password.'
+    : c === 'auth/invalid-email' ? 'That doesn’t look like an email address.'
+    : c === 'auth/weak-password' ? 'Use a password of at least 8 characters.'
+    : c === 'auth/network-request-failed' ? 'No connection. Check the network and try again.'
+    : 'Couldn’t send the request. Try again in a moment.';
+}
+function fileRequest(user, name, company, note){
+  const {Fs, fs} = S.fb;
+  return Fs.setDoc(Fs.doc(fs, 'requests', user.uid), {name:str(name,40), email:str(user.email || '',80), company, note:str(note,120), at:Date.now()});
+}
+$('#lRequest').addEventListener('click', () => { $('#qEmail').value = $('#lEmail').value; showGate('request'); setTimeout(() => $('#qName').focus(), 30); });
+$('#qBack').addEventListener('click', () => showGate('login'));
+$('#gateRequest').addEventListener('submit', async e => {
+  e.preventDefault();
+  const name = str($('#qName').value,40), email = $('#qEmail').value.trim(), pass = $('#qPass').value, err = $('#qErr');
+  const company = document.querySelector('input[name="qCo"]:checked').value, note = str($('#qNote').value,120);
+  err.hidden = true;
+  const bad = !name ? 'Enter your name so the admin knows who is asking.' : !email ? 'Enter your work email.' : pass.length < 8 ? 'Use a password of at least 8 characters.' : '';
+  if(bad){ err.textContent = bad; err.hidden = false; return; }
+  if(!S.fb) return;
+  $('#qGo').disabled = true;
+  S.pendingReq = {name, company, note};
+  try{ await S.fb.F.createUserWithEmailAndPassword(S.fb.auth, email, pass); $('#qPass').value = ''; }
+  catch(x){ S.pendingReq = null; err.textContent = reqErrMsg(x && x.code); err.hidden = false; }
+  finally{ $('#qGo').disabled = false; }
+});
+$('#dRequest').addEventListener('submit', async e => {
+  e.preventDefault();
+  const name = str($('#dName').value,40), company = document.querySelector('input[name="dCo"]:checked').value, note = str($('#dNote').value,120), err = $('#dReqErr');
+  err.hidden = true;
+  if(!name){ err.textContent = 'Enter your name so the admin knows who is asking.'; err.hidden = false; return; }
+  if(!S.fb || !S.authUser) return;
+  $('#dReqGo').disabled = true;
+  try{ await fileRequest(S.authUser, name, company, note); toast('Request sent'); }
+  catch(x){ err.textContent = reqErrMsg(x && x.code); err.hidden = false; }
+  finally{ $('#dReqGo').disabled = false; }
+});
+function watchMyRequest(user){
+  if(S.reqUnsub){ S.reqUnsub(); S.reqUnsub = null; }
+  S.myReq = undefined;
+  if(!user){ return; }
+  const {Fs, fs} = S.fb;
+  S.reqUnsub = Fs.onSnapshot(Fs.doc(fs, 'requests', user.uid), snap => {
+    S.myReq = snap.exists() ? (snap.data() || {}) : null;
+    if(S.gate === 'denied') showGate('denied');
+  }, () => { S.myReq = null; if(S.gate === 'denied') showGate('denied'); });
+}
+
 /* Password reset handled on this page. Firebase's reset email points here when the project's
    email action URL is set to this page (Authentication → Templates → Customize action URL). */
 function passErr(el, p1, p2){
@@ -1425,7 +1552,16 @@ function startData(){
       S.people = snap.docs.map(d => Object.assign({}, d.data(), {id:d.id}));
       if(S.view === 'edit' && S.tab === 'settings') renderPeople();
     }, () => {}));
-  } else S.people = [];
+    S.reqSeen = null;
+    S.unsubs.push(Fs.onSnapshot(Fs.collection(fs, 'requests'), snap => {
+      S.requests = snap.docs.map(d => Object.assign({}, d.data(), {id:d.id}));
+      if(S.reqSeen && !snap.metadata.fromCache){
+        S.requests.filter(r => !S.reqSeen.has(r.id)).forEach(r => notify('Access request · ' + (str(r.name,40) || r.email), coName(r.company === 'partner' ? 'partner' : 'ceva') + (r.note ? ' · ' + str(r.note,120) : ''), 'req'));
+      }
+      if(!snap.metadata.fromCache) S.reqSeen = new Set(S.requests.map(r => r.id));
+      render();
+    }, () => {}));
+  } else { S.people = []; S.requests = []; }
 }
 (async function connect(){
   const cfg = window.FIREBASE_CONFIG;
@@ -1448,9 +1584,11 @@ function startData(){
   F.onAuthStateChanged(auth, user => {
     if(S.roleUnsub){ S.roleUnsub(); S.roleUnsub = null; }
     stopData();
-    S.authUser = user; S.role = null; S.ready = false; S.issues = []; S.people = []; S.open = null; $('#detail').hidden = true;
+    S.authUser = user; S.role = null; S.ready = false; S.issues = []; S.people = []; S.requests = []; S.open = null; $('#detail').hidden = true;
     badge();
+    watchMyRequest(user);
     if(!user){ showGate(S.resetCode ? 'reset' : 'login'); if(S.resetCode) setTimeout(() => $('#rPass').focus(), 30); return; }
+    if(S.pendingReq){ const q = S.pendingReq; S.pendingReq = null; fileRequest(user, q.name, q.company, q.note).then(() => toast('Request sent. An admin will approve it.'), () => toast('Signed up, but the request didn’t send. Fill in the form below.')); }
     showGate('wait', 'Checking access…');
     S.roleUnsub = Fs.onSnapshot(Fs.doc(fs, 'roles', user.uid), {includeMetadataChanges:true}, snap => {
       const d = snap.exists() ? (snap.data() || {}) : {};

@@ -304,10 +304,33 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
           <div class="err" id="lErr" role="alert" hidden></div>
           <button class="btn primary" type="submit" id="lGo">Sign in</button>
           <button class="btn ghost" type="button" id="lForgot">Forgot password? Email me a reset link</button>
+          <div class="gate-alt"><button class="btn" type="button" id="lRequest">New here? Request access</button></div>
+        </form>
+        <form id="gateRequest" novalidate hidden>
+          <p class="gate-p">Tell us who you are and create a password. A board admin approves requests, and you’re let in automatically once approved.</p>
+          <div class="fld"><label for="qName">Your name</label><input class="inp" id="qName" maxlength="40" autocomplete="name" placeholder="A. Ortiz"></div>
+          <div class="fld"><label for="qEmail">Work email</label><input class="inp" id="qEmail" type="email" autocomplete="username" inputmode="email"></div>
+          <div class="fld"><label for="qPass">Create a password (8+ characters)</label><input class="inp" id="qPass" type="password" autocomplete="new-password" minlength="8"></div>
+          <div class="fld"><label for="qNote">Role or site (optional)</label><input class="inp" id="qNote" maxlength="120" autocomplete="off" placeholder="Receiving supervisor, nights"></div>
+          <div class="err" id="qErr" role="alert" hidden></div>
+          <button class="btn primary" type="submit" id="qGo">Send request</button>
+          <button class="btn ghost" type="button" id="qBack">Back to sign in</button>
         </form>
         <div id="gateDenied" hidden>
-          <p class="gate-p">Signed in as <b id="dEmail"></b>, but this account hasn’t been added to the board. Send your board admin this user ID:</p>
-          <div class="uid" style="margin-top:.7rem"><code id="dUid"></code><button type="button" class="btn" id="dCopy">Copy</button></div>
+          <div id="dPending" hidden>
+            <p class="gate-p"><b>Request sent.</b> Signed in as <b id="dEmailP"></b>, waiting for a board admin to approve. Keep this page open or come back later; it opens on its own once approved.</p>
+          </div>
+          <div id="dNone" hidden>
+            <p class="gate-p">Signed in as <b id="dEmail"></b>, but this account hasn’t been added to the board yet. Ask for access and an admin will approve it.</p>
+            <form id="dRequest" novalidate style="margin-top:.7rem">
+              <div class="fld"><label for="dName">Your name</label><input class="inp" id="dName" maxlength="40" autocomplete="name"></div>
+              <div class="fld"><label for="dNote">Role or site (optional)</label><input class="inp" id="dNote" maxlength="120" autocomplete="off"></div>
+              <div class="err" id="dReqErr" role="alert" hidden></div>
+              <button class="btn primary" type="submit" id="dReqGo">Request access</button>
+            </form>
+          </div>
+          <details style="margin-top:.7rem"><summary class="gate-p" style="cursor:pointer">Your user ID (for admins)</summary>
+            <div class="uid" style="margin-top:.5rem"><code id="dUid"></code><button type="button" class="btn" id="dCopy">Copy</button></div></details>
           <div class="row-btns" style="margin-top:.7rem"><button type="button" class="btn ghost" id="dOut">Sign out</button></div>
         </div>
         <div class="gate-alt"><button type="button" class="btn ghost" id="gDemo">Preview with example rows</button></div>
@@ -370,7 +393,7 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
           <button type="button" class="tab" role="tab" data-tab="today" id="tab-today">Today <span class="n" id="nToday">0</span></button>
           <button type="button" class="tab" role="tab" data-tab="upcoming" id="tab-upcoming">Upcoming <span class="n" id="nUp">0</span></button>
           <button type="button" class="tab" role="tab" data-tab="received" id="tab-received">Received <span class="n" id="nRecv">0</span></button>
-          <button type="button" class="tab" role="tab" data-tab="settings" id="tab-settings">Settings</button>
+          <button type="button" class="tab" role="tab" data-tab="settings" id="tab-settings">Settings <span class="n" id="nSet" hidden>0</span></button>
         </div>
         <button type="button" class="btn primary" id="btnAdd">Add truck</button>
       </div>
@@ -387,9 +410,14 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
           <div class="err" id="cErr" role="alert" hidden></div>
           <div class="row-btns"><button type="button" class="btn primary" id="cSave">Change password</button><button type="button" class="btn ghost" id="acctOut">Sign out</button></div>
         </div>
+        <div class="set" id="setRequests" hidden>
+          <h3>Access requests</h3>
+          <p>People who tapped “Request access” on the sign-in screen. Approving creates their role right away; they’re let in on their next refresh. Declining removes the request.</p>
+          <div class="people" id="reqList"></div>
+        </div>
         <div class="set" id="setPeople" hidden>
           <h3>People</h3>
-          <p>Create each login in the Firebase console under Authentication → Users → Add user, then paste its User UID here. Viewer is for TVs, Supervisor updates trucks, Admin also manages people and branding.</p>
+          <p>Most people should use “Request access” on the sign-in screen and get approved above. To add someone by hand (for example a TV), create the login in the Firebase console under Authentication → Users → Add user, then paste its User UID here. Viewer is for TVs, Supervisor updates trucks, Admin also manages people and branding.</p>
           <div class="people" id="peopleList"></div>
           <div class="grid2">
             <div class="fld"><label for="pUid">User UID</label><input class="inp" id="pUid" maxlength="128" autocomplete="off" spellcheck="false"></div>
@@ -503,7 +531,7 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
 'use strict';
 const FB = 'https://www.gstatic.com/firebasejs/10.14.1/';
 const LOGO = '../assets/ceva-logo-white.svg';
-const ROLE_LABEL = {viewer:'Viewer', supervisor:'Supervisor', admin:'Admin'};
+const ROLE_LABEL = {viewer:'Viewer', user:'Viewer', supervisor:'Supervisor', admin:'Admin'}; // 'user' is an inbound-tool role; on the board it can only view
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const pad = n => String(n).padStart(2,'0');
@@ -525,6 +553,7 @@ const S = {
   loads:[], settings:{}, brand:{},
   db:null, fb:null, authUser:null, role:null, ready:false, gate:'wait', people:[], unsubs:[], roleUnsub:null,
   conn:'connecting', canWrite:null, canAdmin:false, writeDenied:false,
+  requests:[], reqSeen:null, myReq:undefined, reqUnsub:null, pendingReq:null,
   page:{drop:0, appt:0}, editing:null, busy:new Set()
 };
 
@@ -770,6 +799,7 @@ function renderEdit(){
   $('#nToday').textContent = D.appt.length;
   $('#nUp').textContent = D.upcoming.length;
   $('#nRecv').textContent = D.received.length;
+  const ns = $('#nSet'); ns.textContent = S.requests.length; ns.hidden = !(S.canAdmin && S.requests.length);
   document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', String(t.dataset.tab === S.tab)));
   const acc = $('#eAccess');
   if(S.conn === 'none'){ acc.hidden = false; acc.textContent = 'Not connected to the board database. Reload the page.'; }
@@ -797,7 +827,9 @@ function fillSettings(force){
   $('#setAdmin').hidden = !admin;
   $('#setClear').hidden = readOnly() || S.conn === 'none';
   $('#setPeople').hidden = !admin;
+  $('#setRequests').hidden = !(admin && S.requests.length);
   if(admin){
+    renderRequests();
     setVal($('#sSite'), str(S.brand.siteName, 60), force);
     (S.brand.boardTheme === 'screen' ? $('#sThemeScreen') : $('#sThemeDark')).checked = true;
     renderPeople();
@@ -814,14 +846,34 @@ function renderPeople(){
   const el = $('#peopleList');
   const me = S.authUser && S.authUser.uid;
   if(!S.people.length){ el.innerHTML = '<div class="person"><div class="who"><span>Nobody added yet.</span></div></div>'; return; }
-  const order = {admin:0, supervisor:1, viewer:2};
+  const order = {admin:0, supervisor:1, user:2, viewer:2};
   const rank = p => (p.role in order) ? order[p.role] : 3;
   el.innerHTML = S.people.slice().sort((a,b) => rank(a) - rank(b) || String(a.name||'').localeCompare(String(b.name||''))).map(p =>
-    '<div class="person"><div class="who"><b>' + esc(str(p.name,40) || 'Unnamed') + (p.id === me ? ' (you)' : '') + '</b><span>' + esc(p.id) + '</span></div>' +
+    '<div class="person"><div class="who"><b>' + esc(str(p.name,40) || 'Unnamed') + (p.id === me ? ' (you)' : '') + '</b><span>' + esc(str(p.email,80) || p.id) + '</span></div>' +
     '<span class="role-chip' + (p.role === 'admin' ? ' admin' : '') + '">' + esc(ROLE_LABEL[p.role] || 'No role') + '</span>' +
     '<button type="button" class="btn ghost" data-pedit="' + esc(p.id) + '">Edit</button>' +
     (p.id === me ? '' : '<button type="button" class="btn danger" data-pdel="' + esc(p.id) + '">Remove</button>') +
     '</div>').join('');
+}
+function renderRequests(){
+  const el = $('#reqList');
+  if(!S.requests.length){ el.innerHTML = ''; return; }
+  const when = ms => ms ? new Date(ms).toLocaleString(undefined, {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}) : '';
+  el.innerHTML = S.requests.slice().sort((a,b) => (a.at||0) - (b.at||0)).map(r =>
+    '<div class="person"><div class="who"><b>' + esc(str(r.name,40) || 'No name') + '</b><span>' + esc(str(r.email,80)) + (r.note ? ' · ' + esc(str(r.note,120)) : '') + (r.at ? ' · ' + esc(when(r.at)) : '') + '</span></div>' +
+    '<select class="inp" style="width:auto;min-height:2.4rem" data-reqrole="' + esc(r.id) + '" aria-label="Role"><option value="viewer">Viewer (TV)</option><option value="supervisor" selected>Supervisor</option><option value="admin">Admin</option></select>' +
+    '<button type="button" class="btn go" data-approve="' + esc(r.id) + '">Approve</button>' +
+    '<button type="button" class="btn danger" data-decline="' + esc(r.id) + '">Decline</button>' +
+    '</div>').join('');
+}
+function approve(id){
+  const r = S.requests.find(x => x.id === id); if(!r || !S.fb) return;
+  const sel = document.querySelector('[data-reqrole="' + id + '"]');
+  const role = sel && ROLE_LABEL[sel.value] ? sel.value : 'supervisor';
+  const {Fs, fs} = S.fb, b = Fs.writeBatch(fs);
+  b.set(Fs.doc(fs, 'roles', id), {role, company:r.company === 'partner' ? 'partner' : 'ceva', name:str(r.name,40), email:str(r.email,80), updatedAt:Date.now()});
+  b.delete(Fs.doc(fs, 'requests', id));
+  if(commit(b.commit())) toast((str(r.name,40) || r.email || 'Person') + ' approved as ' + ROLE_LABEL[role]);
 }
 function peopleErr(t){ const e = $('#pErr'); e.textContent = t || ''; e.hidden = !t; }
 $('#pSave').addEventListener('click', () => {
@@ -953,8 +1005,13 @@ document.addEventListener('keydown', e => { if(e.key === 'Escape' && !$('#sheet'
 
 /* ---------- supervisor events ---------- */
 $('#edit').addEventListener('click', e => {
-  const t = e.target.closest('[data-tab],[data-act],[data-edit],[data-pedit],[data-pdel]');
+  const t = e.target.closest('[data-tab],[data-act],[data-edit],[data-pedit],[data-pdel],[data-approve],[data-decline]');
   if(!t) return;
+  if(t.dataset.approve) return approve(t.dataset.approve);
+  if(t.dataset.decline){
+    if(!t.dataset.armed){ t.dataset.armed = '1'; t.classList.add('armed'); t.textContent = 'Tap again'; setTimeout(() => renderRequests(), 4000); return; }
+    commit(S.fb.Fs.deleteDoc(S.fb.Fs.doc(S.fb.fs, 'requests', t.dataset.decline))); toast('Request declined'); return;
+  }
   if(t.dataset.pedit){
     const p = S.people.find(x => x.id === t.dataset.pedit); if(!p) return;
     $('#pUid').value = p.id; $('#pName').value = str(p.name, 40);
@@ -1050,8 +1107,14 @@ function showGate(state, msg){
   if(state === 'wait') $('#gateWait').textContent = msg || 'Connecting…';
   $('#gateSetup').hidden = state !== 'setup';
   $('#gateLogin').hidden = state !== 'login';
+  $('#gateRequest').hidden = state !== 'request';
   $('#gateDenied').hidden = state !== 'denied';
-  if(state === 'denied'){ $('#dEmail').textContent = (S.authUser && S.authUser.email) || 'this account'; $('#dUid').textContent = (S.authUser && S.authUser.uid) || ''; }
+  if(state === 'denied'){
+    const em = (S.authUser && S.authUser.email) || 'this account';
+    $('#dEmail').textContent = em; $('#dEmailP').textContent = em; $('#dUid').textContent = (S.authUser && S.authUser.uid) || '';
+    const pending = !!S.myReq;
+    $('#dPending').hidden = !pending; $('#dNone').hidden = pending || S.myReq === undefined;
+  }
   applyVisibility();
 }
 function viewFromHash(){ const h = (location.hash || '').slice(1); return ['board','edit','demo'].includes(h) ? h : null; }
@@ -1128,6 +1191,54 @@ $('#dCopy').addEventListener('click', () => {
   try{ navigator.clipboard.writeText(uid).then(() => toast('User ID copied'), sel); }catch(_){ sel(); }
 });
 $('#gDemo').addEventListener('click', () => setView('demo'));
+/* Request access: create the login and file a request for the admins. */
+function reqErrMsg(c){
+  return c === 'auth/email-already-in-use' ? 'That email already has a login. Go back and sign in, or use Forgot password.'
+    : c === 'auth/invalid-email' ? 'That doesn’t look like an email address.'
+    : c === 'auth/weak-password' ? 'Use a password of at least 8 characters.'
+    : c === 'auth/network-request-failed' ? 'No connection. Check the network and try again.'
+    : 'Couldn’t send the request. Try again in a moment.';
+}
+function fileRequest(user, name, note){
+  const {Fs, fs} = S.fb;
+  return Fs.setDoc(Fs.doc(fs, 'requests', user.uid), {name:str(name,40), email:str(user.email || '',80), company:'ceva', note:str(note,120), at:Date.now()});
+}
+$('#lRequest').addEventListener('click', () => { $('#qEmail').value = $('#lEmail').value; showGate('request'); setTimeout(() => $('#qName').focus(), 30); });
+$('#qBack').addEventListener('click', () => showGate('login'));
+$('#gateRequest').addEventListener('submit', async e => {
+  e.preventDefault();
+  const name = str($('#qName').value,40), email = $('#qEmail').value.trim(), pass = $('#qPass').value, note = str($('#qNote').value,120), err = $('#qErr');
+  err.hidden = true;
+  const bad = !name ? 'Enter your name so the admin knows who is asking.' : !email ? 'Enter your work email.' : pass.length < 8 ? 'Use a password of at least 8 characters.' : '';
+  if(bad){ err.textContent = bad; err.hidden = false; return; }
+  if(!S.fb) return;
+  $('#qGo').disabled = true;
+  S.pendingReq = {name, note};
+  try{ await S.fb.F.createUserWithEmailAndPassword(S.fb.auth, email, pass); $('#qPass').value = ''; }
+  catch(x){ S.pendingReq = null; err.textContent = reqErrMsg(x && x.code); err.hidden = false; }
+  finally{ $('#qGo').disabled = false; }
+});
+$('#dRequest').addEventListener('submit', async e => {
+  e.preventDefault();
+  const name = str($('#dName').value,40), note = str($('#dNote').value,120), err = $('#dReqErr');
+  err.hidden = true;
+  if(!name){ err.textContent = 'Enter your name so the admin knows who is asking.'; err.hidden = false; return; }
+  if(!S.fb || !S.authUser) return;
+  $('#dReqGo').disabled = true;
+  try{ await fileRequest(S.authUser, name, note); toast('Request sent'); }
+  catch(x){ err.textContent = reqErrMsg(x && x.code); err.hidden = false; }
+  finally{ $('#dReqGo').disabled = false; }
+});
+function watchMyRequest(user){
+  if(S.reqUnsub){ S.reqUnsub(); S.reqUnsub = null; }
+  S.myReq = undefined;
+  if(!user) return;
+  const {Fs, fs} = S.fb;
+  S.reqUnsub = Fs.onSnapshot(Fs.doc(fs, 'requests', user.uid), snap => {
+    S.myReq = snap.exists() ? (snap.data() || {}) : null;
+    if(S.gate === 'denied') showGate('denied');
+  }, () => { S.myReq = null; if(S.gate === 'denied') showGate('denied'); });
+}
 $('#cSave').addEventListener('click', async () => {
   const p1 = $('#cPass').value, p2 = $('#cPass2').value, err = $('#cErr');
   const bad = p1.length < 8 ? 'Use at least 8 characters.' : p1 !== p2 ? 'The two passwords don’t match.' : '';
@@ -1164,7 +1275,11 @@ function startData(){
       S.people = snap.docs.map(d => Object.assign({}, d.data(), {id:d.id}));
       if(S.view === 'edit' && S.tab === 'settings') renderPeople();
     }, () => {}));
-  } else S.people = [];
+    S.unsubs.push(Fs.onSnapshot(Fs.collection(fs, 'requests'), snap => {
+      S.requests = snap.docs.map(d => Object.assign({}, d.data(), {id:d.id}));
+      render();
+    }, () => {}));
+  } else { S.people = []; S.requests = []; }
 }
 (async function connect(){
   const cfg = window.FIREBASE_CONFIG;
@@ -1182,8 +1297,10 @@ function startData(){
   F.onAuthStateChanged(auth, user => {
     if(S.roleUnsub){ S.roleUnsub(); S.roleUnsub = null; }
     stopData();
-    S.authUser = user; S.role = null; S.ready = false; S.loads = []; S.people = [];
+    S.authUser = user; S.role = null; S.ready = false; S.loads = []; S.people = []; S.requests = [];
+    watchMyRequest(user);
     if(!user){ showGate('login'); return; }
+    if(S.pendingReq){ const q = S.pendingReq; S.pendingReq = null; fileRequest(user, q.name, q.note).then(() => toast('Request sent. An admin will approve it.'), () => toast('Signed up, but the request didn’t send. Fill in the form below.')); }
     showGate('wait', 'Checking access…');
     S.roleUnsub = Fs.onSnapshot(Fs.doc(fs, 'roles', user.uid), {includeMetadataChanges:true}, snap => {
       const role = snap.exists() ? (snap.data() || {}).role : null;
@@ -1192,7 +1309,7 @@ function startData(){
         S.role = null; S.ready = false; stopData(); showGate('denied'); return;
       }
       const changed = !S.ready || role !== S.role;
-      S.role = role; S.canWrite = role !== 'viewer'; S.canAdmin = role === 'admin'; S.writeDenied = false;
+      S.role = role; S.canWrite = role === 'supervisor' || role === 'admin'; S.canAdmin = role === 'admin'; S.writeDenied = false;
       if(changed){ S.ready = true; startData(); showGate('ready'); }
       render();
     }, () => { S.ready = false; stopData(); showGate('denied'); });
