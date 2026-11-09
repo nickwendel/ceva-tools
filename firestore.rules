@@ -1,0 +1,109 @@
+rules_version = '2';
+
+// CEVA tools — Firestore security rules for the shared Firebase project (ceva-tools).
+// Covers both tools: the receiving dock board and the NCI/Greif inbound exceptions tool.
+// Deployed with `firebase deploy --only firestore:rules`, or paste into
+// Firebase console → Firestore Database → Rules → Publish.
+//
+// One people list for both tools, stored at roles/{uid}:
+//   role    viewer     → see the dock board; see inbound issues
+//           supervisor → also update trucks on the dock board; also work inbound issues
+//           user       → work inbound issues (no dock board changes)
+//           admin      → everything, plus settings and people
+//   company ceva | partner (NCI/Greif) → which side of the inbound tool the person is on
+// Anyone who signs in without a roles document sees nothing.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function roleDoc() {
+      return /databases/$(database)/documents/roles/$(request.auth.uid);
+    }
+    function me() { return get(roleDoc()).data; }
+    function hasRole(roles) {
+      return request.auth != null && exists(roleDoc()) && me().role in roles;
+    }
+    function isViewer()     { return hasRole(['viewer', 'supervisor', 'user', 'admin']); }
+    function isSupervisor() { return hasRole(['supervisor', 'admin']); }
+    function isUser()       { return hasRole(['user', 'supervisor', 'admin']); }
+    function isAdmin()      { return hasRole(['admin']); }
+
+    // ───────── Receiving dock board ─────────
+
+    // Trucks on the board
+    match /loads/{loadId} {
+      allow read: if isViewer();
+      allow create, update: if isSupervisor()
+        && request.resource.data.kind in ['drop', 'appt']
+        && request.resource.data.status in ['scheduled', 'arrived', 'door', 'unloading', 'received']
+        && request.resource.data.priority in [1, 2, 3]
+        && request.resource.data.size() <= 20;
+      allow delete: if isSupervisor();
+    }
+
+    // Notice, owner names, clock format
+    match /board/{docId} {
+      allow read: if isViewer();
+      allow write: if isSupervisor() && request.resource.data.size() <= 20;
+    }
+
+    // ───────── NCI/Greif inbound exceptions ─────────
+
+    function validIssue(d) {
+      return d.status in ['open', 'resolved']
+        && d.ball in ['ceva', 'partner']
+        && d.priority in [1, 2, 3]
+        && d.type in ['short', 'over', 'damage', 'wrong', 'noasn', 'label', 'late', 'other']
+        && d.openedBy is map
+        && d.openedBy.company in ['ceva', 'partner']
+        && d.size() <= 32;
+    }
+
+    // One document per error shipment
+    match /issues/{issueId} {
+      allow read: if isViewer();
+      allow create: if isUser()
+        && validIssue(request.resource.data)
+        && request.resource.data.openedBy.uid == request.auth.uid;
+      allow update: if isUser()
+        && validIssue(request.resource.data)
+        && request.resource.data.openedBy == resource.data.openedBy
+        && request.resource.data.openedAt == resource.data.openedAt;
+      allow delete: if isAdmin();
+
+      // Update thread. Entries are written once and never edited.
+      match /updates/{updateId} {
+        allow read: if isViewer();
+        allow create: if isUser()
+          && request.resource.data.by == request.auth.uid
+          && request.resource.data.company in ['ceva', 'partner']
+          && request.resource.data.size() <= 12;
+        allow update: if false;
+        allow delete: if isAdmin();
+      }
+    }
+
+    // Outgoing notification emails, picked up by the optional "Trigger Email" extension.
+    match /mail/{mailId} {
+      allow create: if isUser() && request.resource.data.size() <= 6;
+      allow read, update, delete: if false;
+    }
+
+    // ───────── Shared ─────────
+
+    // admin/brand (dock board site name and TV colors), admin/settings (inbound company names, emails, SLA)
+    match /admin/{docId} {
+      allow read: if isViewer();
+      allow write: if isAdmin() && request.resource.data.size() <= 20;
+    }
+
+    // Who can use the tools. Each person can read their own role.
+    match /roles/{uid} {
+      allow read: if request.auth != null && (request.auth.uid == uid || isAdmin());
+      allow create, update: if isAdmin()
+        && request.resource.data.role in ['viewer', 'supervisor', 'user', 'admin']
+        && (!('company' in request.resource.data) || request.resource.data.company in ['ceva', 'partner']);
+      allow delete: if isAdmin() && request.auth.uid != uid;
+    }
+  }
+}

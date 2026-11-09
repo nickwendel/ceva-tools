@@ -9,6 +9,28 @@ Operational tools for CEVA sites, served with GitHub Pages.
 
 Shared files live in [`assets/`](assets/): `ceva-logo-white.svg` is the logo used on the navy headers; `ceva-logo.svg` (navy and red) is only the browser-tab icon.
 
+## Firebase (shared by all tools)
+
+All tools use one Firebase project, **`ceva-tools`** (console: [console.firebase.google.com/project/ceva-tools](https://console.firebase.google.com/project/ceva-tools)). It holds Email/Password sign-in, one Firestore database and one people list, so a person added once can use every tool their role allows. GitHub Pages only serves the files; the pages talk to Firebase directly.
+
+| File | What it is |
+|---|---|
+| [`firestore.rules`](firestore.rules) | Security rules for every tool. Deploy with `firebase deploy --only firestore:rules` or paste into **Firestore Database → Rules → Publish**. |
+| [`firebase.json`](firebase.json), [`.firebaserc`](.firebaserc) | Firebase CLI config pointing at the `ceva-tools` project. |
+| `*/firebase-config.js` | The web app config each tool loads. Same values in every tool; they identify the project and are not secrets. |
+
+**People and roles** live in the Firestore collection `roles`, one document per login (document ID = the person's User UID from **Authentication → Users**):
+
+| Field | Values |
+|---|---|
+| `role` | `viewer` (see only), `supervisor` (dock board updates + inbound issues), `user` (inbound issues only), `admin` (everything, settings, people) |
+| `company` | `ceva` or `partner` (NCI/Greif). Used by the inbound tool. |
+| `name` | Shown on boards and in update threads |
+
+Admins manage people from either tool's **Settings → People** screen. To add a login: Firebase console → **Authentication → Users → Add user**, copy the User UID, then paste it into **Settings → People** with a name, company and role.
+
+**Network:** screens and phones need to reach `gstatic.com`, `googleapis.com` and `firebaseapp.com`, plus `fonts.googleapis.com` for the typeface.
+
 ---
 
 ## Receiving dock board
@@ -21,30 +43,9 @@ Shared files live in [`assets/`](assets/): `ceva-logo-white.svg` is the logo use
 
 Data lives in a Firebase project (Firestore + Authentication). The page only talks to Firebase; GitHub just serves the files.
 
-### One-time Firebase setup
+### Setup
 
-1. Go to [console.firebase.google.com](https://console.firebase.google.com) → **Add project** → name it (e.g. `ceva-dock-board`) → Google Analytics off → **Create**.
-2. **Build → Authentication → Get started → Email/Password → Enable → Save.**
-3. **Authentication → Settings → Authorized domains → Add domain:** `bigmuffuletta.github.io`.
-4. **Build → Firestore Database → Create database →** pick a US location → **Start in production mode**.
-5. **Firestore → Rules:** replace everything with the contents of [`dock-board/firestore.rules`](dock-board/firestore.rules) → **Publish**.
-6. **Project settings (gear) → General → Your apps → Web (`</>`)** → nickname `dock-board` → **Register app** (skip Hosting). Copy the `firebaseConfig` values into [`dock-board/firebase-config.js`](dock-board/firebase-config.js) and commit.
-7. **Authentication → Users → Add user:** your email and a password. Copy your **User UID** from the list.
-8. **Firestore → Data → Start collection** `roles` → Document ID = your User UID → fields: `role` (string) = `admin`, `name` (string) = your name → **Save**.
-9. Open the live page, sign in, go to **Update board → Settings → People**.
-
-### Adding people and TVs
-
-1. Firebase console → **Authentication → Users → Add user** (email + password). Copy the new **User UID**.
-2. On the board: **Settings → People** → paste the UID, add a name, pick a role → **Add or update person**.
-
-| Role | Use for | Can do |
-|---|---|---|
-| Viewer | TV screens | See the board |
-| Supervisor | Floor leads | Add and update trucks, notice, owner names, clock format |
-| Admin | You | Everything, plus site name, TV colors and people |
-
-Anyone who signs in without a role sees only their User UID and a request to send it to the admin.
+Done once for the shared `ceva-tools` project (see **Firebase** above). Each new TV or supervisor needs a login in **Authentication → Users** and an entry under **Settings → People** on the board: Viewer for TVs, Supervisor for floor leads.
 
 ### Changing the logo
 
@@ -54,9 +55,6 @@ Replace [`assets/ceva-logo-white.svg`](assets/ceva-logo-white.svg) with the same
 
 Firebase's free Spark plan allows 50,000 reads and 20,000 writes per day. A board with a few screens and a few hundred truck updates a day uses a small fraction of that. Clear received trucks weekly from **Settings → Received trucks**.
 
-### Network
-
-The TV and phones need to reach `gstatic.com`, `googleapis.com` and `firebaseapp.com`, plus `fonts.googleapis.com` for the typeface. If the floor network blocks any of these, ask IT to allow them.
 
 ---
 
@@ -75,21 +73,13 @@ One page for both companies. Each login belongs to a company (CEVA or NCI/Greif)
 - **History and export:** every update is kept with who posted it, which company and when. **Settings → Export** downloads all issues as CSV.
 - **No connection:** the page shows the last saved list, and changes made offline sync when the network is back.
 
-### One-time Firebase setup
+### Setup
 
-You can reuse the dock board's Firebase project or make a new one. The steps are the same as for the dock board, with this tool's files:
-
-1. If you are not reusing a project: [console.firebase.google.com](https://console.firebase.google.com) → **Add project** → Google Analytics off → **Create**, then **Build → Authentication → Get started → Email/Password → Enable**, and **Build → Firestore Database → Create database** (US location, production mode).
-2. **Authentication → Settings → Authorized domains:** make sure `bigmuffuletta.github.io` is listed.
-3. **Firestore → Rules:** if this project is only for this tool, replace everything with [`nci-inbound/firestore.rules`](nci-inbound/firestore.rules). If the project also hosts the dock board, paste the `match /issues/…`, `match /mail/…` and `match /admin/…` blocks from this file into the existing rules, and extend the `roles` rule so `role` may also be `user` and `company` may be `ceva` or `partner`. **Publish.**
-4. **Project settings → General → Your apps → Web (`</>`)** → nickname `nci-inbound` → **Register app**. Copy the `firebaseConfig` values into [`nci-inbound/firebase-config.js`](nci-inbound/firebase-config.js) and commit. (Reusing the dock board's app config also works.)
-5. **Authentication → Users → Add user:** your email and a password. Copy your **User UID**.
-6. **Firestore → Data → Start collection** `roles` → Document ID = your User UID → fields: `role` (string) = `admin`, `company` (string) = `ceva`, `name` (string) = your name → **Save**.
-7. Open the live page, sign in, go to **Work items → Settings**: set the company names, overdue hours and notification emails, then add people.
+Done once for the shared `ceva-tools` project (see **Firebase** above). Sign in, open **Work items → Settings** and set the company names, overdue hours and notification emails.
 
 ### Adding people from both companies
 
-1. Firebase console → **Authentication → Users → Add user** (email + password). Copy the new **User UID**. NCI/Greif people get a login the same way; share the password with them directly.
+1. Firebase console → **Authentication → Users → Add user** (email + password). Copy the new **User UID**. NCI/Greif people get a login the same way; share the password with them directly, or have them use **Forgot password** on the sign-in screen once their login exists.
 2. On the tool: **Settings → People** → paste the UID, add a name, pick the **company** and a **role** → **Add or update person**.
 
 | Role | Can do |
@@ -111,6 +101,6 @@ Emails are queued in a Firestore collection called `mail`, which the Firebase **
 
 Each email names the shipment, issue type, who posted and what they wrote, with a link straight to the issue.
 
-### Limits and network
+### Limits
 
-Same as the dock board: Firebase's free Spark plan allows 50,000 reads and 20,000 writes a day, far more than a few people working exceptions will use. Admins can delete resolved issues older than 30 days from **Settings**. Browsers need to reach `gstatic.com`, `googleapis.com` and `firebaseapp.com`, plus `fonts.googleapis.com`.
+Firebase's free Spark plan allows 50,000 reads and 20,000 writes a day across both tools, far more than a few people working exceptions will use. Admins can delete resolved issues older than 30 days from **Settings**.

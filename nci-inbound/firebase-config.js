@@ -1,13 +1,12 @@
 // Firebase web app config for the NCI/Greif inbound exceptions tool.
-// Get it from the Firebase console: Project settings (gear icon) → General → Your apps → Web app → "SDK setup and configuration" → Config.
-// These values identify the project; they are not secrets. Access is controlled by firestore.rules and sign-in.
-// You can reuse the dock board's Firebase project: the two tools use different collections and this tool keeps
-// its own people list under roles/, so a dock-board login does not see inbound issues unless it is added here too.
+// All CEVA tools share the Firebase project "ceva-tools": one sign-in, one Firestore database and one people list
+// (roles/{uid} with role, company and name). Security rules live in /firestore.rules at the repository root.
+// These values identify the project; they are not secrets. Access is controlled by the rules and sign-in.
 window.FIREBASE_CONFIG = {
-  apiKey: "PASTE_API_KEY",
-  authDomain: "PASTE_PROJECT_ID.firebaseapp.com",
-  projectId: "PASTE_PROJECT_ID",
-  storageBucket: "PASTE_PROJECT_ID.appspot.com",
-  messagingSenderId: "PASTE_SENDER_ID",
-  appId: "PASTE_APP_ID"
+  apiKey: "AIzaSyDAEk97tIQATIVyOjKT2NtnOJ6ixuw5AbA",
+  authDomain: "ceva-tools.firebaseapp.com",
+  projectId: "ceva-tools",
+  storageBucket: "ceva-tools.firebasestorage.app",
+  messagingSenderId: "645599802031",
+  appId: "1:645599802031:web:1b7dcee50f3ae87941da5a"
 };
