@@ -126,7 +126,7 @@ textarea.inp{min-height:5.2rem;resize:vertical;line-height:1.45}
 .b-stats>div.ok{--kpi:var(--good)}
 .b-stats dt{font:700 .75em/1.2 var(--f);letter-spacing:.6px;text-transform:uppercase;color:var(--faint);white-space:nowrap}
 .b-stats dd{margin:.45em 0 0;font:800 2.2em/1 var(--f);font-variant-numeric:tabular-nums}
-.b-stats .s{margin-top:.55em;font-size:.82em;color:var(--muted);line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.b-stats .s{margin-top:.55em;font-size:.82em;color:var(--muted);line-height:1.35}
 .b-stats .hot dd{color:#ff6b61}
 .b-stats .warn dd{color:var(--warn)}
 .b-cols{display:grid;grid-template-columns:1fr;gap:1em;padding-block:1em .8em;flex:1}
@@ -139,7 +139,7 @@ textarea.inp{min-height:5.2rem;resize:vertical;line-height:1.45}
 .p-page{margin-left:auto;font:600 .72em/1 var(--f);letter-spacing:.5px;text-transform:uppercase;color:var(--faint)}
 .p-cols{display:none;column-gap:.8em;padding:.6em 0 .4em}
 .p-cols span{font:600 .72em/1 var(--f);letter-spacing:.5px;text-transform:uppercase;color:var(--faint);white-space:nowrap}
-.p-list{display:flex;flex-direction:column;gap:.4em;padding-top:.5em}
+.p-list{display:flex;flex-direction:column;gap:.35em;padding-top:.5em}
 .row{display:grid;grid-template-columns:3.2em minmax(0,1fr) auto;grid-template-areas:"prio unit when" "prio type when" "prio last last" "prio who who";column-gap:.8em;row-gap:.25em;align-items:center;background:var(--bg-alt);border:1px solid var(--line);border-radius:8px;overflow:hidden;min-height:3.7em;padding-right:.8em}
 .row.p1{border-color:rgba(226,35,26,.45)}
 .c-unit{grid-area:unit;min-width:0;padding-top:.55em}
@@ -166,6 +166,7 @@ textarea.inp{min-height:5.2rem;resize:vertical;line-height:1.45}
 .legend .l2 b{background:rgba(232,163,61,.18);color:var(--warn)}
 .b-live{display:flex;align-items:center;gap:.45em;font:600 .82em/1 var(--f);color:var(--faint);white-space:nowrap;margin-left:auto}
 .b-live .dot{width:.5em;height:.5em}
+.status-line .b-live{margin-left:0}
 .demo-banner{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 5.5rem);z-index:15;display:flex;align-items:center;gap:.8em;background:var(--warn);color:#1b1300;font:700 12px/1 var(--f);letter-spacing:.3px;text-transform:uppercase;padding:.6em .6em .6em 1em;border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.35);white-space:nowrap}
 .demo-banner button{background:#1b1300;color:var(--warn);border:0;border-radius:6px;font:700 11px/1 var(--f);letter-spacing:.3px;text-transform:uppercase;padding:.6em .8em;cursor:pointer}
 
@@ -174,6 +175,7 @@ textarea.inp{min-height:5.2rem;resize:vertical;line-height:1.45}
   .board .gut{padding-left:max(16px,1.6em,env(safe-area-inset-left,0px));padding-right:max(16px,1.6em,env(safe-area-inset-right,0px))}
   .top{flex-wrap:nowrap}
   .b-stats{grid-template-columns:repeat(6,1fr)}
+  .b-stats .s{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .b-cols{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:1em;min-height:0}
   .p-list{flex:1;min-height:0;overflow:hidden}
   .p-cols,.row{grid-template-columns:3.2em minmax(0,1.35fr) 7.4em 5.4em minmax(0,1.3fr) 6.8em}
@@ -308,7 +310,7 @@ textarea.inp{min-height:5.2rem;resize:vertical;line-height:1.45}
   <!-- SIGN-IN GATE -->
   <section id="gate" class="gate gut" aria-label="Sign in" hidden>
     <div class="gate-card">
-      <div class="gate-head"><img src="../assets/ceva-logo-white.svg" alt="CEVA Logistics"><div class="gate-site" id="gateSite">NCI / Grief inbound exceptions</div></div>
+      <div class="gate-head"><img src="../assets/ceva-logo-whitered.png" alt="CEVA Logistics"><div class="gate-site" id="gateSite">NCI / Grief inbound exceptions</div></div>
       <div class="gate-body">
         <h1 class="gate-title">Sign in</h1>
         <p class="gate-p" id="gateWait">Connecting…</p>
@@ -378,7 +380,7 @@ textarea.inp{min-height:5.2rem;resize:vertical;line-height:1.45}
     <header class="top gut">
       <div>
         <div class="brand">
-          <div class="logo-plate"><img src="../assets/ceva-logo-white.svg" alt="CEVA Logistics"></div>
+          <div class="logo-plate"><img src="../assets/ceva-logo-whitered.png" alt="CEVA Logistics"></div>
           <div>
             <h1 class="b-title">Inbound Exceptions</h1>
             <div class="sub" id="siteName">NCI / Grief</div>
@@ -421,7 +423,7 @@ textarea.inp{min-height:5.2rem;resize:vertical;line-height:1.45}
   <!-- WORK SCREEN -->
   <section id="edit" class="edit" aria-label="Work inbound exceptions" hidden>
     <header class="e-top gut">
-      <div class="logo-plate" style="height:2rem"><img src="../assets/ceva-logo-white.svg" alt="CEVA Logistics"></div>
+      <div class="logo-plate" style="height:2rem"><img src="../assets/ceva-logo-whitered.png" alt="CEVA Logistics"></div>
       <div class="e-title"><div class="a">Inbound Exceptions</div><div class="b"><span class="dot" id="eDot"></span><span id="eLive">Connecting…</span><span id="eMe"></span></div></div>
       <button type="button" class="hbtn" id="btnNotif" title="Browser notifications" aria-pressed="false">🔔 <span class="t">Alerts off</span></button>
       <button type="button" class="hbtn" id="btnToBoard">Board</button>

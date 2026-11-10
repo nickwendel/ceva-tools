@@ -7,7 +7,7 @@ Operational tools for CEVA sites, served with GitHub Pages.
 | Receiving dock board | [`dock-board/`](dock-board/) | Floor TV display of trailers in the drop and today's appointments, with priority, door, pathway owner and status. Supervisors update it from a phone. |
 | NCI/Grief inbound exceptions | [`nci-inbound/`](nci-inbound/) | Shared log of error shipments (shortages, overages, damage, missing ASN…) worked by CEVA and NCI/Grief together. Either company raises an issue, posts updates, hands it to the other side and resolves it. A board shows what is open and who it is waiting on. |
 
-Shared files live in [`assets/`](assets/): `ceva-logo-white.svg` is the logo used on the navy headers; `ceva-logo.svg` (navy and red) is only the browser-tab icon.
+Shared files live in [`assets/`](assets/): `ceva-logo-whitered.png` is the white-and-red logo used on the dark headers and sign-in cards; `ceva-logo.svg` (navy and red) is only the browser-tab icon. Every page shares one look, matched to the Whitsett KPI dashboard: dark navy, card panels, CEVA red accent.
 
 ## Firebase (shared by all tools)
 
@@ -33,7 +33,7 @@ All tools use one Firebase project, **`ceva-tools`** (console: [console.firebase
 
 Admins can still add people by hand from **Settings → People**: Firebase console → **Authentication → Users → Add user**, copy the User UID, then paste it in with a name, company and role. That is the way to set up TV screens, which don't request access themselves.
 
-**Network:** screens and phones need to reach `gstatic.com`, `googleapis.com` and `firebaseapp.com`, plus `fonts.googleapis.com` for the typeface.
+**Network:** screens and phones need to reach `gstatic.com`, `googleapis.com` and `firebaseapp.com`.
 
 ---
 
@@ -53,7 +53,7 @@ Done once for the shared `ceva-tools` project (see **Firebase** above). Supervis
 
 ### Changing the logo
 
-Replace [`assets/ceva-logo-white.svg`](assets/ceva-logo-white.svg) with the same file name. It sits directly on the navy header, so use the white (reversed) version of the logo.
+Replace [`assets/ceva-logo-whitered.png`](assets/ceva-logo-whitered.png) with the same file name. It sits directly on the dark header, so use a transparent PNG with white lettering, about 240 pixels tall.
 
 ### Limits
 
