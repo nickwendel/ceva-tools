@@ -115,7 +115,7 @@ textarea.inp{min-height:5.2rem;resize:vertical;line-height:1.45}
 .board{min-height:100%;display:flex;flex-direction:column;font-size:14px}
 .b-rule{display:none}
 .kpi-grid,.b-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(9.5em,1fr));gap:.7em;margin:1.2em 0 0;padding:0}
-.b-stats>div{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:.8em .95em;position:relative;overflow:hidden;margin:0}
+.b-stats>div{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:1.1em 1.2em 1em;position:relative;overflow:hidden;margin:0}
 .b-stats>div::before{content:"";position:absolute;top:0;left:0;width:3px;height:100%;background:var(--kpi,var(--line-light))}
 .b-stats>div:nth-child(1){--kpi:var(--accent)}
 .b-stats>div:nth-child(2){--kpi:var(--ceva)}
@@ -123,8 +123,10 @@ textarea.inp{min-height:5.2rem;resize:vertical;line-height:1.45}
 .b-stats>div:nth-child(4){--kpi:var(--bad)}
 .b-stats>div:nth-child(5){--kpi:var(--warn)}
 .b-stats>div:nth-child(6){--kpi:var(--good)}
-.b-stats dt{font:600 .7em/1.2 var(--f);letter-spacing:.5px;text-transform:uppercase;color:var(--faint);white-space:nowrap}
-.b-stats dd{margin:.3em 0 0;font:800 1.6em/1 var(--f);font-variant-numeric:tabular-nums}
+.b-stats>div.ok{--kpi:var(--good)}
+.b-stats dt{font:700 .75em/1.2 var(--f);letter-spacing:.6px;text-transform:uppercase;color:var(--faint);white-space:nowrap}
+.b-stats dd{margin:.45em 0 0;font:800 2.2em/1 var(--f);font-variant-numeric:tabular-nums}
+.b-stats .s{margin-top:.55em;font-size:.82em;color:var(--muted);line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .b-stats .hot dd{color:#ff6b61}
 .b-stats .warn dd{color:var(--warn)}
 .b-cols{display:grid;grid-template-columns:1fr;gap:1em;padding-block:1em .8em;flex:1}
@@ -390,12 +392,12 @@ textarea.inp{min-height:5.2rem;resize:vertical;line-height:1.45}
       </div>
     </header>
     <div class="gut"><dl class="b-stats">
-        <div><dt>Open</dt><dd id="stOpen">0</dd></div>
-        <div><dt id="stCevaLbl">On CEVA</dt><dd id="stCeva">0</dd></div>
-        <div><dt id="stPartLbl">On NCI/Grief</dt><dd id="stPart">0</dd></div>
-        <div id="tileLate"><dt>Overdue</dt><dd id="stLate">0</dd></div>
-        <div id="tileP1"><dt>P1 open</dt><dd id="stP1">0</dd></div>
-        <div><dt>Resolved today</dt><dd id="stRes">0</dd></div>
+        <div><dt>Open</dt><dd id="stOpen">0</dd><div class="s" id="ssOpen"></div></div>
+        <div><dt id="stCevaLbl">On CEVA</dt><dd id="stCeva">0</dd><div class="s" id="ssCeva"></div></div>
+        <div><dt id="stPartLbl">On NCI/Grief</dt><dd id="stPart">0</dd><div class="s" id="ssPart"></div></div>
+        <div id="tileLate"><dt>Overdue</dt><dd id="stLate">0</dd><div class="s" id="ssLate"></div></div>
+        <div id="tileP1"><dt>P1 open</dt><dd id="stP1">0</dd><div class="s" id="ssP1"></div></div>
+        <div><dt>Resolved today</dt><dd id="stRes">0</dd><div class="s" id="ssRes"></div></div>
       </dl></div>
     <main class="b-cols gut">
       <section class="b-panel ceva" aria-labelledby="hCeva">
@@ -780,8 +782,16 @@ function renderBoard(){
   $('#stLate').textContent = D.late.length;
   $('#stP1').textContent = D.p1.length;
   $('#stRes').textContent = D.resolvedToday.length;
-  $('#tileLate').className = D.late.length ? 'warn' : '';
-  $('#tileP1').className = D.p1.length ? 'hot' : '';
+  $('#tileLate').className = D.late.length ? 'warn' : 'ok';
+  $('#tileP1').className = D.p1.length ? 'hot' : 'ok';
+  const oldest = list => list.length ? 'oldest waiting ' + fmtAge(D.now - waitSince(list[list.length - 1] && list.slice().sort((a,b) => waitSince(a) - waitSince(b))[0])) : 'nothing waiting';
+  const weekAgo = D.now - 7*864e5;
+  $('#ssOpen').textContent = D.p1.length + ' P1 · ' + D.late.length + ' overdue';
+  $('#ssCeva').textContent = oldest(D.ceva);
+  $('#ssPart').textContent = oldest(D.partner);
+  $('#ssLate').textContent = 'after ' + Math.round(slaMs()/3600e3) + 'h waiting · target 0';
+  $('#ssP1').textContent = D.p1.filter(i => i.ball === 'ceva').length + ' on ' + coName('ceva') + ' · ' + D.p1.filter(i => i.ball === 'partner').length + ' on ' + coName('partner');
+  $('#ssRes').textContent = D.resolved.filter(i => i.resolvedAt > weekAgo).length + ' this week';
   setConn($('#liveDot'), $('#liveTxt'));
   $('#demoBanner').hidden = !S.demo;
   renderPanel('ceva', D.ceva, D);
