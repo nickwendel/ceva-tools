@@ -7,26 +7,34 @@
 <title>CEVA Tools</title>
 <link rel="icon" href="assets/ceva-logo.svg" type="image/svg+xml">
 <style>
-  :root{--bg:#eef2f8;--panel:#fff;--line:#d2dbe8;--fg:#0b1a33;--muted:#4f6383;--navy:#1D2546;--red:#E30613;color-scheme:light}
-  @media (prefers-color-scheme:dark){:root{--bg:#0b1630;--panel:#111f3d;--line:#22365c;--fg:#f1f5fb;--muted:#9fb1cc;color-scheme:dark}}
+  :root{--bg:#0a1626;--card:#122A47;--line:#1f3d61;--line-light:#2a4a73;--fg:#e7eef7;--muted:#93a8c4;--faint:#5f7796;--accent:#e2231a;--info:#3d9fe8;--radius:10px;color-scheme:dark}
   *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-  header{background:var(--navy);border-bottom:4px solid var(--red);padding:1rem max(16px,env(safe-area-inset-left,0px))}
-  header img{height:2.4rem;display:block}
-  main{max-width:720px;margin:0 auto;padding:1.5rem max(16px,env(safe-area-inset-right,0px)) 3rem max(16px,env(safe-area-inset-left,0px))}
-  h1{font-size:1.4rem;margin:0 0 1rem}
-  a.tool{display:block;margin-bottom:.75rem;background:var(--panel);border:1px solid var(--line);border-radius:.5rem;padding:1rem 1.1rem;color:inherit;text-decoration:none}
-  a.tool:hover,a.tool:focus-visible{border-color:var(--muted)}
-  a.tool b{display:block;font-size:1.1rem}
-  a.tool span{color:var(--muted);font-size:.95rem}
+  body{margin:0;min-height:100vh;color:var(--fg);font:13.5px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:radial-gradient(1200px 600px at 10% -10%,#123156 0%,var(--bg) 55%) fixed,var(--bg)}
+  .wrap{max-width:860px;margin:0 auto;padding:24px max(16px,env(safe-area-inset-right,0px)) 64px max(16px,env(safe-area-inset-left,0px))}
+  header{display:flex;align-items:center;gap:14px;padding-bottom:20px;margin-bottom:24px;border-bottom:1px solid var(--line)}
+  header img{height:40px;width:auto;display:block}
+  header h1{margin:0;font-size:19px;font-weight:700;letter-spacing:.2px}
+  header .sub{color:var(--muted);font-size:12.5px;margin-top:3px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+  a.tool{display:block;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px 16px;color:inherit;text-decoration:none;position:relative;overflow:hidden;transition:border-color .15s,box-shadow .15s}
+  a.tool::before{content:"";position:absolute;top:0;left:0;width:3px;height:100%;background:var(--accent)}
+  a.tool.alt::before{background:var(--info)}
+  a.tool:hover,a.tool:focus-visible{border-color:var(--info);box-shadow:0 0 0 1px var(--info),0 6px 18px rgba(0,0,0,.35)}
+  a.tool .k{font-size:9.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--faint);font-weight:600}
+  a.tool b{display:block;font-size:15px;font-weight:700;margin-top:6px}
+  a.tool span{display:block;color:var(--muted);font-size:12.5px;margin-top:6px;line-height:1.5}
+  a.tool .go{display:inline-block;margin-top:12px;font-size:12px;font-weight:600;color:var(--fg)}
+  footer{margin-top:22px;font-size:11.5px;color:var(--faint);border-top:1px solid var(--line);padding-top:16px}
 </style>
 </head>
 <body>
-<header><img src="assets/ceva-logo-white.svg" alt="CEVA Logistics"></header>
-<main>
-  <h1>Site tools</h1>
-  <a class="tool" href="dock-board/"><b>Receiving dock board</b><span>Floor TV display of the drop and today's appointments, updated by supervisors from a phone.</span></a>
-  <a class="tool" href="nci-inbound/"><b>NCI/Grief inbound exceptions</b><span>Shared log of error shipments worked by CEVA and NCI/Grief: raise, update, hand off and resolve, with an open-items board and alerts.</span></a>
-</main>
+<div class="wrap">
+  <header><img src="assets/ceva-logo-white.svg" alt="CEVA Logistics"><div><h1>Site tools</h1><div class="sub">Operational tools, one sign-in for all of them</div></div></header>
+  <div class="grid">
+    <a class="tool alt" href="dock-board/"><div class="k">Receiving</div><b>Receiving dock board</b><span>Floor TV display of the drop and today's appointments, updated by supervisors from a phone.</span><span class="go">Open →</span></a>
+    <a class="tool" href="nci-inbound/"><div class="k">Inbound · NCI / Grief</div><b>Inbound exceptions</b><span>Shared log of error shipments worked by CEVA and NCI/Grief: raise, update, hand off and resolve, with an open-items board and alerts.</span><span class="go">Open →</span></a>
+  </div>
+  <footer>Sign in with the same account on every tool. New here? Use “Request access” on the sign-in screen.</footer>
+</div>
 </body>
 </html>
