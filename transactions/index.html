@@ -8,7 +8,7 @@
 <link rel="icon" href="../assets/ceva-logo.svg" type="image/svg+xml">
 <style>
 /* Visual system shared with the other CEVA tools (matched to the Whitsett KPI dashboard): dark navy, card panels, CEVA red accent, system type.
-   Layout: header + KPI tiles + filter tabs + card panels (hourly chart, open task aging, breakdowns, associates, exceptions). Dark only. */
+   Layout: header, section tabs (Completed, Open tasks, Trends) with a date range, KPI tiles, activity filter tabs, then card panels. Dark only. */
 :root{
   --bg:#0a1626; --card:#122A47; --row:#0e2038; --line:#1f3d61; --line-light:#2a4a73;
   --fg:#e7eef7; --muted:#93a8c4; --faint:#5f7796;
@@ -122,6 +122,22 @@ svg text{font-family:var(--f);font-size:11px;fill:var(--muted)}svg .tl{fill:var(
 .ag .b{height:.35em;background:var(--line);border-radius:2px;margin-top:.55em;overflow:hidden}.ag .b i{display:block;height:100%;background:var(--muted)}
 .note{color:var(--faint);font-size:.88em;line-height:1.5;max-width:120ch;margin-top:1.2em;border-top:1px solid var(--line);padding-top:1em}
 .drop{outline:2px dashed var(--info);outline-offset:-6px}
+.views{display:flex;gap:.4em;flex-wrap:wrap}
+.view{background:var(--card);border:1px solid var(--line-light);color:var(--muted);border-radius:8px;min-height:2.6rem;padding:0 1rem;font:700 13.5px/1 var(--f);cursor:pointer;display:inline-flex;align-items:center;gap:.5em}
+.view:hover{color:var(--fg)}
+.view[aria-selected="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.view .n{font:700 .85em/1 var(--f);background:var(--row);color:var(--fg);border-radius:1rem;padding:.25em .55em;font-variant-numeric:tabular-nums}
+.view[aria-selected="true"] .n{background:var(--bg)}
+.navrow{display:flex;flex-wrap:wrap;gap:.7em 1em;align-items:center;justify-content:space-between;margin-top:1.2em}
+.range{display:flex;flex-wrap:wrap;gap:.5em;align-items:center}
+.segm{display:flex;background:var(--card);border:1px solid var(--line-light);border-radius:8px;padding:3px;gap:2px}
+.segm button{background:transparent;border:0;border-radius:6px;min-height:2.1rem;padding:0 .8rem;font:600 13px/1 var(--f);color:var(--muted);cursor:pointer}
+.segm button:hover{color:var(--fg)}
+.segm button[aria-pressed="true"]{background:var(--accent);color:#fff}
+.dayinp{background:var(--card);border:1px solid var(--line-light);border-radius:8px;min-height:2.5rem;padding:0 .6rem;font:600 13px/1 var(--f);color:var(--fg)}
+.dayinp.on{border-color:var(--accent)}
+.grid4{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:1em}
+.linkbtn{background:none;border:0;padding:0;color:var(--info);font:inherit;font-weight:600;cursor:pointer;text-decoration:underline}
 .toast{position:fixed;left:50%;bottom:calc(1.2rem + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:30;background:var(--card);color:var(--fg);border:1px solid var(--line-light);padding:.75rem 1.1rem;border-radius:8px;font:600 13px/1.35 var(--f);box-shadow:0 8px 24px rgba(0,0,0,.45);max-width:calc(100% - 32px)}
 </style>
 </head>
@@ -180,28 +196,58 @@ svg text{font-family:var(--f);font-size:11px;fill:var(--muted)}svg .tl{fill:var(
       <div><h1 class="b-title">Warehouse transactions</h1><div class="status-line" id="status"></div></div>
     </div>
     <div class="controls">
-      <label class="btn primary" id="loadBtn" hidden>Load today’s export<input type="file" id="file" accept=".xlsx,.xls,.csv"></label>
+      <label class="btn primary" id="loadBtn" hidden>Load export<input type="file" id="file" accept=".xlsx,.xls,.csv"></label>
       <button type="button" class="btn ghost" id="signOut">Sign out</button>
     </div>
   </header>
+  <div class="navrow">
+    <div class="views" role="tablist" aria-label="Sections" id="views"></div>
+    <div class="range" id="range">
+      <div class="segm" id="rangeBtns" role="group" aria-label="Date range"></div>
+      <input type="date" class="dayinp" id="dayPick" aria-label="Pick one day">
+    </div>
+  </div>
   <dl class="b-stats" id="stats"></dl>
   <div class="bar" id="chips"></div>
   <div class="msg" id="msg" hidden></div>
   <div id="noData" class="empty" hidden></div>
-  <div class="panels" id="panels" hidden>
+
+  <!-- Completed -->
+  <div class="panels" id="vDone" hidden>
     <section class="b-panel"><header class="p-head"><h2>Confirmed by hour</h2><span class="p-count" id="cHour"></span><span class="p-page">Hour of confirmation</span></header>
       <div class="p-body"><div class="scroll"><div id="chart" style="min-width:640px"></div></div><div class="legend" id="legend"></div></div></section>
-    <section class="b-panel"><header class="p-head"><h2>Open task aging</h2><span class="p-count" id="cOpen"></span><span class="p-page" id="asOf"></span></header>
-      <div class="p-body" id="aging"></div></section>
     <div class="two">
       <section class="b-panel"><header class="p-head"><h2>By activity</h2></header><div class="p-body scroll"><table id="tAct"></table></div></section>
       <section class="b-panel"><header class="p-head"><h2>By process type</h2></header><div class="p-body scroll"><table id="tPt"></table></div></section>
     </div>
     <section class="b-panel"><header class="p-head"><h2>By associate</h2><span class="p-count" id="cAs"></span><span class="p-page">Select a row to filter, a heading to sort</span></header>
       <div class="p-body scroll"><table id="tAs"></table></div></section>
-    <section class="b-panel"><header class="p-head"><h2 id="hEx">Exceptions</h2><span class="p-count" id="cEx"></span></header><div class="p-body scroll"><table id="tEx"></table></div></section>
+    <section class="b-panel"><header class="p-head"><h2 id="hEx">Exceptions</h2><span class="p-count" id="cEx"></span></header><div class="p-body scroll"><table id="tEx"></table></div><div class="gate-p" id="exNote" hidden></div></section>
   </div>
-  <div class="note">A transaction is one confirmed warehouse task line (status C). Type comes from the warehouse process category when the export has it, otherwise from the activity code. Units use the actual destination quantity. Associate is the Confirmed By user. Lines per hour uses the time from an associate’s first to last confirmation and is blank under 30 minutes. When the export has no exception codes, lines where the actual quantity differs from the planned quantity are listed instead. An open task is any line with a blank or B status. Its age runs from Created On and Created At to the latest activity time in the file, shown amber from 4 hours and red from 8 hours. Supervisors and admins update the dashboard for everyone with “Load today’s export” or by dropping the SAP warehouse task export (.xlsx) on this page.</div>
+
+  <!-- Open tasks -->
+  <div class="panels" id="vOpen" hidden>
+    <section class="b-panel"><header class="p-head"><h2>Open task aging</h2><span class="p-count" id="cOpen"></span><span class="p-page" id="asOf"></span></header>
+      <div class="p-body" id="aging"></div></section>
+    <div class="two">
+      <section class="b-panel"><header class="p-head"><h2>Open by activity</h2></header><div class="p-body scroll"><table id="tOpAct"></table></div></section>
+      <section class="b-panel"><header class="p-head"><h2>Open by creator</h2></header><div class="p-body scroll"><table id="tOpBy"></table></div></section>
+    </div>
+    <section class="b-panel"><header class="p-head"><h2>Open tasks, oldest first</h2><span class="p-count" id="cOpen2"></span></header><div class="p-body" id="openList"></div></section>
+  </div>
+
+  <!-- Trends -->
+  <div class="panels" id="vTrends" hidden>
+    <div class="grid4">
+      <section class="b-panel"><header class="p-head"><h2>Confirmed lines per day</h2></header><div class="p-body"><div id="tr1"></div><div class="legend" id="trLegend"></div></div></section>
+      <section class="b-panel"><header class="p-head"><h2>Units per day</h2></header><div class="p-body" id="tr2"></div></section>
+      <section class="b-panel"><header class="p-head"><h2>Lines per associate hour</h2><span class="p-page">Lines ÷ hours from first to last confirmation</span></header><div class="p-body" id="tr3"></div></section>
+      <section class="b-panel"><header class="p-head"><h2 id="hTr4">Exceptions per day</h2></header><div class="p-body" id="tr4"></div></section>
+    </div>
+    <section class="b-panel"><header class="p-head"><h2>Day by day</h2><span class="p-count" id="cDays"></span><span class="p-page">Select a day to open it</span></header><div class="p-body scroll"><table id="tDays"></table></div></section>
+  </div>
+
+  <div class="note">A transaction is one confirmed warehouse task line (status C), counted on its confirmation date. Type comes from the warehouse process category when the export has it, otherwise from the activity code. Units use the actual destination quantity. Associate is the Confirmed By user. Hours run from an associate’s first to last confirmation each day, and lines per hour is blank under 30 minutes. When the export has no exception codes, lines where the actual quantity differs from the planned quantity are listed instead. Week is the last 7 days and Month the last 30 days, both including today. Loading an export replaces every day that appears in it, so load whole days. Open tasks are the lines with a blank or B status in the most recent export. Their age runs from Created On and Created At to the latest activity time in that file, shown amber from 4 hours and red from 8 hours.</div>
 </div>
 <div class="toast" id="toast" role="status" hidden></div>
 
@@ -211,21 +257,27 @@ svg text{font-family:var(--f);font-size:11px;fill:var(--muted)}svg .tl{fill:var(
 const FB='https://www.gstatic.com/firebasejs/10.14.1/';
 const ROLE_LABEL={viewer:'Viewer',supervisor:'Supervisor',user:'User',admin:'Admin'};
 const TLIST=["Pick","Putaway","Internal move","Posting change","Goods issue","Goods receipt","Other"],TC={Pick:"--s1",Putaway:"--s2","Internal move":"--s3","Posting change":"--s4","Goods issue":"--s5","Goods receipt":"--s6",Other:"--s7"};
-let TYPES=TLIST;
 const CAT={"stock removal":"Pick","putaway":"Putaway","internal warehouse movement":"Internal move","posting change":"Posting change","goods issue posting":"Goods issue","goods receipt posting":"Goods receipt"};
 const TMAP={PICK:"Pick",PTWY:"Putaway",INTL:"Internal move"};
-const AMBER=4*3600,REDAGE=8*3600,CHUNK=600000;
+const AMBER=4*3600,REDAGE=8*3600,CHUNK=600000,MAXEXC=300;
 const BUCKETS=[["Under 1 hour",0,3600,"ok"],["1 to 4 hours",3600,AMBER,""],["4 to 8 hours",AMBER,REDAGE,"p2"],["8 to 24 hours",REDAGE,86400,"p1"],["Over 24 hours",86400,Infinity,"p1"]];
-const S={data:null,meta:null,ver:null,type:"All",user:null,sort:"tot",dir:-1,fb:null,authUser:null,role:null,myName:"",canLoad:false,conn:"connecting",busy:false,pendingReq:null,unsubs:[]};
+const RANGES=[["today","Today"],["week","Week"],["month","Month"],["all","All"]];
+const S={days:new Map(),daysReady:false,open:null,openMeta:null,openVer:null,view:"done",range:"today",day:null,type:"All",user:null,sort:"tot",dir:-1,
+  fb:null,authUser:null,role:null,myName:"",canLoad:false,conn:"connecting",busy:false,pendingReq:null,unsubs:[],daysUnsub:null,subStart:null};
 const $=id=>document.getElementById(id),nf=n=>Math.round(n).toLocaleString("en-US"),pc=x=>(x*100).toFixed(1)+"%",p2=n=>String(n).padStart(2,"0");
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const str=(v,n)=>typeof v==="string"?v.trim().slice(0,n||200):"";
 const hm=s=>s<0?"":p2(Math.floor(s/3600))+":"+p2(Math.floor(s%3600/60));
 const typ=r=>r.t||(r.t=CAT[String(r[18]||"").toLowerCase().replace(/\s+/g," ").trim()]||TMAP[r[2]]||"Other");
 const wallNow=()=>Math.floor(Date.now()/1000)-new Date().getTimezoneOffset()*60;
+const ymd=d=>d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate());
+const today=()=>ymd(new Date());
+const addDays=(s,n)=>{const d=new Date(s+"T12:00:00");d.setDate(d.getDate()+n);return ymd(d)};
+const mdy=s=>s.replace(/(\d+)-(\d+)-(\d+)/,"$2/$3/$1"),md=s=>s.slice(5).replace("-","/");
 function age(s){const m=Math.max(0,Math.floor(s/60));if(m<60)return m+"m";const h=Math.floor(m/60);return h<24?h+"h "+p2(m%60)+"m":Math.floor(h/24)+"d "+(h%24)+"h"}
 function tsFmt(t){if(t<0)return "";const d=new Date(t*1000);return p2(d.getUTCMonth()+1)+"/"+p2(d.getUTCDate())+" "+p2(d.getUTCHours())+":"+p2(d.getUTCMinutes())}
-let toastT;function toast(t){const e=$("toast");e.textContent=t;e.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>e.hidden=true,6000)}
+let toastT;function toast(t,keep){const e=$("toast");e.textContent=t;e.hidden=false;clearTimeout(toastT);if(!keep)toastT=setTimeout(()=>e.hidden=true,6000)}
+const TH=a=>"<thead><tr>"+a.map(x=>`<th${x[1]?' class="t"':""}>${x[0]}</th>`).join("")+"</tr></thead>";
 
 /* ---------- reading the SAP export ---------- */
 function toSec(v){if(v==null||v==="")return -1;if(typeof v==="number")return Math.round((v%1)*86400);const m=String(v).match(/(\d+):(\d+)(?::(\d+))?/);return m?+m[1]*3600+ +m[2]*60+ +(m[3]||0):-1}
@@ -238,50 +290,103 @@ function parse(buf,name){
   const miss=["Warehouse Task","Warehouse Task Status","Confirmed By","Confirmation Date","Confirmation Time","Created On","Created At","Whse Process Type"].filter(n=>!h.includes(n));
   if(!qC)miss.push("Act. Qty Dest. BUoM or Act Dest Qty Alt UoM");if(!col("Activity","Whse Process Category Desc."))miss.push("Activity or Whse Process Category Desc.");
   if(miss.length)throw new Error("This file is missing these columns: "+miss.join(", ")+". Load the SAP warehouse task export.");
-  const c=n=>h.indexOf(n),v=(r,n)=>c(n)<0?"":r[c(n)],g=(r,n)=>String(v(r,n)??"").trim();let date=-1,last=-1;const rows=[];
+  const c=n=>h.indexOf(n),v=(r,n)=>c(n)<0?"":r[c(n)],g=(r,n)=>String(v(r,n)??"").trim();let last=-1;const rows=[];
   for(let i=1;i<a.length;i++){const r=a[i];if(g(r,"Warehouse Task")==="")continue;const st=g(r,"Warehouse Task Status").toUpperCase(),done=st==="C";
-    const cd=toDay(v(r,"Confirmation Date")),cr=dts(v(r,"Created On"),v(r,"Created At")),cf=done?dts(v(r,"Confirmation Date"),v(r,"Confirmation Time")):-1;
-    if(date<0&&done&&cd>=0)date=cd;last=Math.max(last,cr,cf);const df=+v(r,dC)||0;
+    const cr=dts(v(r,"Created On"),v(r,"Created At")),cf=done?dts(v(r,"Confirmation Date"),v(r,"Confirmation Time")):-1;
+    last=Math.max(last,cr,cf);const df=+v(r,dC)||0;
     rows.push([done?toSec(v(r,"Confirmation Time")):-1,g(r,"Confirmed By")||"(blank)",g(r,"Activity"),g(r,"Whse Process Type"),+v(r,qC)||0,eC?g(r,eC):df?(df>0?"+":"")+df:"",
       g(r,"Product"),g(r,"Product Short Description"),g(r,"Source Storage Bin"),g(r,"Destination Bin"),g(r,"Warehouse Order"),g(r,"Warehouse Task"),
       st,cr,g(r,"Queue"),g(r,"Created By"),+v(r,sC)||0,cf,g(r,"Whse Process Category Desc."),g(r,"Wave"),g(r,"Pull header ID")])}
   if(!rows.length)throw new Error("No warehouse task lines were found in this file.");
-  const now=wallNow();if(date<0)date=Math.floor((last>0?last:now)/86400)*86400;
-  return {date:new Date(date*1000).toISOString().slice(0,10),file:str(name.replace(/\.[^.]+$/,""),80),asOf:last>0?last:now,excKind:eC?"code":"diff",rows}}
+  return {file:str(name.replace(/\.[^.]+$/,""),80),asOf:last>0?last:wallNow(),excKind:eC?"code":"diff",rows}}
 
-/* ---------- shared data: wt/current (summary) + wt/current/chunks/{version}_{n} (the task lines, as JSON text) ---------- */
+/* ---------- turning task lines into one summary per day ----------
+   A day keeps a "cube" of counts, one entry per associate, type, process type and hour: [user, type, processType, hour, lines, units].
+   Every table and chart on the Completed and Trends sections is added up from those entries, so the task lines themselves are not stored. */
+function buildDays(d){
+  const m=new Map();
+  for(const r of d.rows){if(r[12]!=="C"||r[17]<0)continue;
+    const date=new Date(Math.floor(r[17]/86400)*86400000).toISOString().slice(0,10),sec=Math.max(0,r[0]),t=typ(r),pt=r[3]||"(blank)";
+    let o=m.get(date);if(!o){o={cube:new Map(),spans:{},exc:[],n:0,units:0};m.set(date,o)}
+    const k=[r[1],t,pt,Math.floor(sec/3600)].join("\t"),c=o.cube.get(k)||[0,0];c[0]++;c[1]+=r[4];o.cube.set(k,c);o.n++;o.units+=r[4];
+    const s=o.spans[r[1]]||(o.spans[r[1]]=[sec,sec]);if(sec<s[0])s[0]=sec;if(sec>s[1])s[1]=sec;
+    if(r[5]&&o.exc.length<MAXEXC)o.exc.push([sec,r[1],r[5],t,pt,r[6],d.excKind==="diff"?r[16]:r[7],r[4],r[8],r[9],r[11]])}
+  return m}
+const round3=x=>Math.round(x*1000)/1000;
+function dayDoc(date,o,d){
+  const cube=JSON.stringify([...o.cube].map(([k,v])=>{const p=k.split("\t");return [p[0],p[1],p[2],+p[3],v[0],round3(v[1])]}));
+  if(cube.length>900000)throw new Error("too-big");
+  return {date,n:o.n,units:round3(o.units),cube,spans:JSON.stringify(o.spans),exc:JSON.stringify(o.exc),excKind:d.excKind,file:d.file,by:S.authUser.uid,byName:S.myName||S.authUser.email||"",at:Date.now()}}
+function readDay(id,x,old){
+  if(old&&old.at===x.at)return old;
+  let cube=[],spans={},exc=[];try{cube=JSON.parse(x.cube||"[]");spans=JSON.parse(x.spans||"{}");exc=JSON.parse(x.exc||"[]")}catch(_){}
+  return {date:str(x.date,10)||id,n:+x.n||0,units:+x.units||0,cube,spans,exc,excKind:x.excKind==="code"?"code":"diff",file:str(x.file,80),byName:str(x.byName,40),at:+x.at||0}}
+
+/* ---------- shared data ----------
+   wtdays/{YYYY-MM-DD}             one summary per confirmation date (history builds up as exports are loaded)
+   wt/open + wt/open/chunks/{v}_{n} the open task lines from the most recent export, as JSON text */
 function chunkRows(rows){const out=[];let cur=[],len=0;for(const r of rows){const s=JSON.stringify(r);if(len+s.length>CHUNK&&cur.length){out.push("["+cur.join(",")+"]");cur=[];len=0}cur.push(s);len+=s.length+1}
   if(cur.length)out.push("["+cur.join(",")+"]");return out}
 async function publish(d){
-  const {Fs,fs}=S.fb,ver=Date.now().toString(36),parts=chunkRows(d.rows),prev=S.meta;
-  for(let i=0;i<parts.length;i++)await Fs.setDoc(Fs.doc(fs,"wt","current","chunks",ver+"_"+i),{ver,i,rows:parts[i]});
-  await Fs.setDoc(Fs.doc(fs,"wt","current"),{ver,chunks:parts.length,count:d.rows.length,date:d.date,file:d.file,asOf:d.asOf,excKind:d.excKind,by:S.authUser.uid,byName:S.myName||S.authUser.email||"",at:Date.now()});
-  if(prev&&prev.ver&&prev.ver!==ver)for(let i=0;i<(prev.chunks||0);i++)Fs.deleteDoc(Fs.doc(fs,"wt","current","chunks",prev.ver+"_"+i)).catch(()=>{});
-}
-async function pull(m){
+  const {Fs,fs}=S.fb,list=[...buildDays(d)].sort((a,b)=>a[0]<b[0]?-1:1),docs=list.map(([date,o])=>dayDoc(date,o,d));
+  for(let i=0;i<docs.length;i+=8){await Promise.all(docs.slice(i,i+8).map(x=>Fs.setDoc(Fs.doc(fs,"wtdays",x.date),x)));if(docs.length>8)toast("Saving day "+Math.min(docs.length,i+8)+" of "+docs.length+"…",true)}
+  const prev=S.openMeta;let openSaved=false;
+  if(!prev||d.asOf>=(+prev.asOf||0)){
+    const open=d.rows.filter(r=>r[12]===""||r[12]==="B"),ver=Date.now().toString(36),parts=chunkRows(open);
+    for(let i=0;i<parts.length;i++)await Fs.setDoc(Fs.doc(fs,"wt","open","chunks",ver+"_"+i),{ver,i,rows:parts[i]});
+    await Fs.setDoc(Fs.doc(fs,"wt","open"),{ver,chunks:parts.length,count:open.length,asOf:d.asOf,file:d.file,by:S.authUser.uid,byName:S.myName||S.authUser.email||"",at:Date.now()});
+    if(prev&&prev.ver&&prev.ver!==ver)for(let i=0;i<(prev.chunks||0);i++)Fs.deleteDoc(Fs.doc(fs,"wt","open","chunks",prev.ver+"_"+i)).catch(()=>{});
+    openSaved=true}
+  return {dates:docs.map(x=>x.date),openSaved,open:d.rows.filter(r=>r[12]===""||r[12]==="B").length}}
+async function pullOpen(m){
   const {Fs,fs}=S.fb,rows=[];
-  for(let i=0;i<m.chunks;i++){const s=await Fs.getDoc(Fs.doc(fs,"wt","current","chunks",m.ver+"_"+i));if(!s.exists())throw new Error("missing");rows.push(...JSON.parse(s.data().rows))}
-  return {date:str(m.date,10),file:str(m.file,80),asOf:+m.asOf||0,excKind:m.excKind==="code"?"code":"diff",rows}}
+  for(let i=0;i<(m.chunks||0);i++){const s=await Fs.getDoc(Fs.doc(fs,"wt","open","chunks",m.ver+"_"+i));if(!s.exists())throw new Error("missing");rows.push(...JSON.parse(s.data().rows))}
+  return {asOf:+m.asOf||0,file:str(m.file,80),byName:str(m.byName,40),at:+m.at||0,rows}}
+function span(){const t=today();return S.range==="today"?[t,t]:S.range==="week"?[addDays(t,-6),t]:S.range==="month"?[addDays(t,-29),t]:S.range==="day"&&S.day?[S.day,S.day]:["0000-00-00","9999-99-99"]}
+function trendSpan(){const [a,b]=span();return a===b?[addDays(b,-13),b]:[a,b]}
+function needStart(){const a=span()[0],t=trendSpan()[0];return S.view==="trends"&&t<a?t:a}
+function watchDays(){
+  if(!S.fb||!S.role)return;const start=needStart();
+  if(S.subStart!==null&&S.subStart<=start)return;
+  if(S.daysUnsub){S.daysUnsub();S.daysUnsub=null}
+  S.subStart=start;S.daysReady=false;const {Fs,fs}=S.fb;
+  S.daysUnsub=Fs.onSnapshot(Fs.query(Fs.collection(fs,"wtdays"),Fs.where("date",">=",start),Fs.orderBy("date")),snap=>{
+    S.conn=snap.metadata.fromCache?"offline":"live";
+    const m=new Map();snap.docs.forEach(x=>{const d=readDay(x.id,x.data()||{},S.days.get(x.id));m.set(d.date,d)});
+    S.days=m;S.daysReady=true;
+    render();
+  },()=>{S.conn="error";S.daysReady=true;render()});
+}
 function startData(){
   const {Fs,fs}=S.fb;
-  S.unsubs.push(Fs.onSnapshot(Fs.doc(fs,"wt","current"),async snap=>{
-    S.conn=snap.metadata.fromCache?"offline":"live";
-    if(!snap.exists()){S.meta=null;S.ver=null;S.data=null;render();return}
-    const m=snap.data();S.meta=m;
-    if(m.ver!==S.ver){try{const d=await pull(m);if(S.meta&&S.meta.ver===m.ver){S.data=d;S.ver=m.ver;S.type="All";S.user=null}}catch(_){if(!S.data)S.conn="error"}}
+  S.unsubs.push(Fs.onSnapshot(Fs.doc(fs,"wt","open"),async snap=>{
+    if(!snap.exists()){S.openMeta=null;S.openVer=null;S.open=null;render();return}
+    const m=snap.data();S.openMeta=m;
+    if(m.ver!==S.openVer){try{const o=await pullOpen(m);if(S.openMeta&&S.openMeta.ver===m.ver){S.open=o;S.openVer=m.ver}}catch(_){}}
     render();
-  },()=>{S.conn="error";render()}));
+  },()=>{}));
+  watchDays();
+  // "Today" starts with nothing loaded for today, so look once for the most recent day that has data.
+  Fs.getDocs(Fs.query(Fs.collection(fs,"wtdays"),Fs.orderBy("date","desc"),Fs.limit(1))).then(s=>{
+    if(s.docs.length&&S.range==="today"&&!S.days.has(today())&&!S.pickedRange){S.range="day";S.day=s.docs[0].id;render()}},()=>{});
 }
-function stopData(){S.unsubs.forEach(u=>{try{u()}catch(_){}});S.unsubs=[];S.data=null;S.meta=null;S.ver=null}
+function stopData(){S.unsubs.forEach(u=>{try{u()}catch(_){}});S.unsubs=[];if(S.daysUnsub){S.daysUnsub();S.daysUnsub=null}
+  S.subStart=null;S.days=new Map();S.daysReady=false;S.open=null;S.openMeta=null;S.openVer=null;S.pickedRange=false;S.view="done";S.range="today";S.day=null;S.type="All";S.user=null}
 function load(f){
   if(!f)return;
-  if(!S.canLoad){toast("Only supervisors and admins can load a new export.");return}
+  if(!S.canLoad){toast("Only supervisors and admins can load an export.");return}
   if(S.busy)return;
   const rd=new FileReader();rd.onload=async()=>{
     let d;try{d=parse(new Uint8Array(rd.result),f.name)}catch(e){$("msg").textContent=e.message;$("msg").hidden=false;return}
-    $("msg").hidden=true;S.busy=true;$("loadBtn").classList.add("busy");S.data=d;S.type="All";S.user=null;render();
-    try{await publish(d);toast("Loaded "+nf(d.rows.length)+" task lines. Everyone signed in now sees this file.")}
-    catch(e){$("msg").textContent="This file shows on your screen only. It could not be saved for everyone"+(e&&e.code==="permission-denied"?" because your account is not allowed to load exports.":". Check the connection and load it again.");$("msg").hidden=false}
+    $("msg").hidden=true;S.busy=true;$("loadBtn").classList.add("busy");toast("Saving "+nf(d.rows.length)+" task lines…",true);
+    try{const r=await publish(d);S.type="All";S.user=null;S.pickedRange=true;
+      if(r.dates.length===1){S.range=r.dates[0]===today()?"today":"day";S.day=r.dates[0]}else if(r.dates.length>1){S.range="all"}
+      toast(r.dates.length?"Loaded "+(r.dates.length===1?mdy(r.dates[0]):r.dates.length+" days, "+mdy(r.dates[0])+" to "+mdy(r.dates[r.dates.length-1]))+(r.openSaved?", with "+nf(r.open)+" open tasks.":". Open tasks were left as they are because a newer export is already loaded.")
+        :"This file has no confirmed task lines."+(r.openSaved?" Open tasks were updated ("+nf(r.open)+").":""));
+      render()}
+    catch(e){$("msg").textContent=e&&e.message==="too-big"?"One day in this file has too many task lines to save. Split the export into smaller date ranges and load them one at a time."
+      :"The file could not be saved"+(e&&e.code==="permission-denied"?" because Firebase refused it. Either your account is not a supervisor or admin, or the latest security rules have not been published yet.":". Check the connection and load it again.");
+      $("msg").hidden=false;$("toast").hidden=true}
     finally{S.busy=false;$("loadBtn").classList.remove("busy")}
   };rd.readAsArrayBuffer(f)}
 $("file").addEventListener("change",e=>{load(e.target.files[0]);e.target.value=""});
@@ -289,74 +394,142 @@ const W=$("app");["dragenter","dragover"].forEach(n=>W.addEventListener(n,e=>{e.
 ["dragleave","drop"].forEach(n=>W.addEventListener(n,e=>{e.preventDefault();W.classList.remove("drop")}));
 W.addEventListener("drop",e=>load(e.dataTransfer.files[0]));
 
-/* ---------- dashboard ---------- */
-function agg(rows){const o={n:0,u:0,ex:0,t:{},tu:{}};TYPES.forEach(t=>{o.t[t]=0;o.tu[t]=0});
-  rows.forEach(r=>{const t=typ(r);o.n++;o.u+=r[4];o.t[t]++;o.tu[t]+=r[4];if(r[5])o.ex++});return o}
-const TH=a=>"<thead><tr>"+a.map(x=>`<th${x[1]?' class="t"':""}>${x[0]}</th>`).join("")+"</tr></thead>";
+/* ---------- adding up days ---------- */
+function total(ds,type,user){
+  const o={n:0,u:0,t:{},tu:{},H:Array.from({length:24},()=>({n:0,t:{}})),P:{},users:new Set(),hrs:0};
+  for(const d of ds){const seen=new Set();
+    for(const e of d.cube){if(type!=="All"&&e[1]!==type)continue;if(user&&e[0]!==user)continue;seen.add(e[0]);
+      o.n+=e[4];o.u+=e[5];o.t[e[1]]=(o.t[e[1]]||0)+e[4];o.tu[e[1]]=(o.tu[e[1]]||0)+e[5];
+      const h=o.H[e[3]]||o.H[0];h.n+=e[4];h.t[e[1]]=(h.t[e[1]]||0)+e[4];
+      const p=o.P[e[2]]||(o.P[e[2]]=[0,0]);p[0]+=e[4];p[1]+=e[5];o.users.add(e[0])}
+    for(const u of seen){const s=d.spans[u];if(s)o.hrs+=(s[1]-s[0])/3600}
+  }
+  return o}
+const excOf=(ds,type,user)=>{const out=[];for(const d of ds)for(const x of d.exc){if(type!=="All"&&x[3]!==type)continue;if(user&&x[1]!==user)continue;out.push([d.date,d.excKind].concat(x))}return out};
+function bars(days,stacks,opt){
+  opt=opt||{};const w=640,h=220,L=46,B=24,T=18,pw=w-L-8,ph=h-B-T,n=Math.max(1,days.length),bw=pw/n;
+  const tot=days.map((_,i)=>stacks.reduce((a,s)=>a+(s.v[i]||0),0)),mx=Math.max(opt.min||1,...tot),e=Math.pow(10,Math.floor(Math.log10(mx))),f=mx/e,step=e*(f>5?2:f>2?1:.5);
+  const fmt=opt.fmt||nf,ax=opt.fmt||(v=>v>=1e6?+(v/1e6).toFixed(2)+"M":v>=1e4?+(v/1e3).toFixed(1)+"k":nf(v));let sv=`<svg viewBox="0 0 ${w} ${h}" width="100%" role="img" aria-label="${esc(opt.label||"")}">`;
+  for(let v=0;v<=mx*1.0001;v+=step){const y=T+ph-ph*v/mx;sv+=`<line x1="${L}" x2="${w-8}" y1="${y}" y2="${y}" stroke="var(--line)"/><text x="${L-6}" y="${y+4}" text-anchor="end">${ax(v)}</text>`}
+  const every=Math.ceil(n/12),lab=n<=16;
+  days.forEach((d,i)=>{let y=T+ph;const x=L+i*bw+bw*.15,bwid=Math.max(1,bw*.7);
+    stacks.forEach(s=>{const val=s.v[i]||0,bh=ph*val/mx;if(bh>0){y-=bh;sv+=`<rect x="${x}" y="${y}" width="${bwid}" height="${bh}" fill="var(${s.c})"><title>${md(d)} ${esc(s.name)}: ${fmt(val)}</title></rect>`}});
+    if(lab&&tot[i])sv+=`<text class="tl" x="${x+bwid/2}" y="${y-4}" text-anchor="middle">${fmt(tot[i])}</text>`;
+    if(i%every===0)sv+=`<text x="${x+bwid/2}" y="${h-6}" text-anchor="middle">${md(d)}</text>`});
+  return sv+"</svg>"}
+
+/* ---------- drawing ---------- */
 function render(){
-  const D=S.data,M=S.meta;
+  watchDays();
   $("loadBtn").hidden=!S.canLoad;
-  const dot=S.conn==="live"?"ok":S.conn==="error"?"bad":"",ct=S.conn==="live"?"Live":S.conn==="offline"?"Offline, showing the last saved file":S.conn==="error"?"Connection lost. Reload this page.":"Connecting…";
+  const all=[...S.days.values()].sort((a,b)=>a.date<b.date?-1:1),[a,b]=span(),ds=all.filter(d=>d.date>=a&&d.date<=b),single=a===b;
+  const openRows=S.open?S.open.rows.filter(r=>S.type==="All"||typ(r)===S.type):[];
+  // header
+  const dot=S.conn==="live"?"ok":S.conn==="error"?"bad":"",ct=S.conn==="live"?"Live":S.conn==="offline"?"Offline, showing the last saved data":S.conn==="error"?"Connection lost. Reload this page.":"Connecting…";
   let st=`<span><span class="dot ${dot}"></span>${ct}</span>`;
-  if(D){st+=`<span>Date <b>${esc(D.date.replace(/(\d+)-(\d+)-(\d+)/,"$2/$3/$1"))}</b></span><span>File <b>${esc(D.file)}</b></span>`;
-    if(M&&M.ver===S.ver&&M.at){const t=new Date(M.at);st+=`<span>Loaded by <b>${esc(str(M.byName,40)||"someone")}</b> ${esc(t.toLocaleDateString(undefined,{month:"short",day:"numeric"}))} ${p2(t.getHours())}:${p2(t.getMinutes())}</span>`}}
+  if(S.view==="open"){if(S.open)st+=`<span>Open tasks from <b>${esc(S.open.file)}</b></span>`+(S.open.at?`<span>Loaded by <b>${esc(S.open.byName||"someone")}</b> ${esc(new Date(S.open.at).toLocaleString(undefined,{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}))}</span>`:"")}
+  else{const [x,y]=S.view==="trends"?trendSpan():[a,b];st+=`<span>Showing <b>${x===y?mdy(x):S.range==="all"?(all.length?mdy(all[0].date)+" to "+mdy(all[all.length-1].date):"all days"):mdy(x)+" to "+mdy(y)}</b></span>`;
+    const lastD=ds.slice().sort((p,q)=>q.at-p.at)[0];if(lastD&&lastD.at)st+=`<span>Last load by <b>${esc(lastD.byName||"someone")}</b> ${esc(new Date(lastD.at).toLocaleString(undefined,{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}))}</span>`}
   $("status").innerHTML=st;
-  $("panels").hidden=!D;$("chips").hidden=!D;$("stats").hidden=!D;$("noData").hidden=!!D;
-  if(!D){$("noData").innerHTML=S.conn==="connecting"?"<strong>Loading…</strong>":`<strong>No export loaded yet</strong><span>${S.canLoad?"Select “Load today’s export” and choose the SAP warehouse task export (.xlsx), or drop the file on this page. Everyone signed in sees it straight away.":"A supervisor or admin loads the SAP warehouse task export. This page updates on its own when they do."}</span>`;return}
-  const diff=D.excKind==="diff";TYPES=TLIST.filter(t=>D.rows.some(r=>typ(r)===t));
-  const byType=D.rows.filter(r=>S.type==="All"||typ(r)===S.type);
-  const conf=byType.filter(r=>r[12]==="C"),open=byType.filter(r=>r[12]===""||r[12]==="B");
-  const rows=conf.filter(r=>!S.user||r[1]===S.user),A=agg(rows);
-  const asOf=D.asOf||wallNow();open.forEach(r=>r.age=r[13]<0?-1:Math.max(0,asOf-r[13]));open.sort((a,b)=>b.age-a.age);
-  const dated=open.filter(r=>r.age>=0),oldest=dated.length?dated[0].age:0,over4=dated.filter(r=>r.age>=AMBER).length;
+  $("views").innerHTML=[["done","Completed",""],["open","Open tasks",S.open?nf(S.open.rows.length):""],["trends","Trends",""]].map(v=>`<button type="button" class="view" role="tab" data-v="${v[0]}" aria-selected="${S.view===v[0]}">${v[1]}${v[2]!==""?`<span class="n">${v[2]}</span>`:""}</button>`).join("");
+  $("range").hidden=S.view==="open";
+  $("rangeBtns").innerHTML=RANGES.map(r=>`<button type="button" data-r="${r[0]}" aria-pressed="${S.range===r[0]}">${r[1]}</button>`).join("");
+  const dp=$("dayPick");dp.classList.toggle("on",S.range==="day");if(document.activeElement!==dp)dp.value=S.range==="day"&&S.day?S.day:"";
+  // activity tabs
+  const src=S.view==="open"?null:(S.view==="trends"?all.filter(d=>d.date>=trendSpan()[0]&&d.date<=trendSpan()[1]):ds);
+  const present=new Set();if(src)src.forEach(d=>d.cube.forEach(e=>present.add(e[1])));else if(S.open)S.open.rows.forEach(r=>present.add(typ(r)));
+  const TYPES=TLIST.filter(t=>present.has(t));
   let ch=["All"].concat(TYPES).map(t=>`<button class="tab" data-t="${t}" aria-pressed="${S.type===t}">${t}</button>`).join("");
-  if(S.user)ch+=`<button class="tab" data-u="1" aria-pressed="true">Associate: ${esc(S.user)} ✕</button>`;
-  $("chips").innerHTML=ch;
-  const H=Array.from({length:24},()=>({n:0,t:Object.fromEntries(TYPES.map(t=>[t,0]))}));
-  rows.forEach(r=>{if(r[0]<0)return;const h=H[Math.floor(r[0]/3600)];h.n++;h.t[typ(r)]++});
-  const mx=Math.max(1,...H.map(h=>h.n)),pk=H.findIndex(h=>h.n===mx),users=new Set(rows.map(r=>r[1]));
-  $("stats").innerHTML=[["Confirmed",nf(A.n),""],["Units",nf(A.u),""],["Associates",users.size,""],[diff?"Qty differences":"Exceptions",A.ex,A.ex?"warn":""],["Peak hour",A.n?p2(pk)+":00":"—",""],
-    ["Open tasks",nf(open.length),over4?"warn":""],["Oldest open",open.length&&dated.length?age(oldest):"—",oldest>=REDAGE?"hot":oldest>=AMBER?"warn":""]]
+  if(S.user&&S.view!=="open")ch+=`<button class="tab" data-u="1" aria-pressed="true">Associate: ${esc(S.user)} ✕</button>`;
+  $("chips").innerHTML=ch;$("chips").hidden=!TYPES.length;
+  ["vDone","vOpen","vTrends"].forEach(id=>$(id).hidden=true);$("noData").hidden=true;$("stats").hidden=false;
+  if(S.view==="open")return renderOpen(openRows,TYPES);
+  if(!S.daysReady){$("stats").hidden=true;$("noData").hidden=false;$("noData").innerHTML="<strong>Loading…</strong>";return}
+  if(S.view==="trends")return renderTrends(all,TYPES);
+  if(!ds.length){$("stats").hidden=true;$("noData").hidden=false;const latest=all.length?all[all.length-1].date:null;
+    $("noData").innerHTML=`<strong>Nothing loaded for ${single?mdy(a):"this range"}</strong><span>${S.canLoad?"Select “Load export” and choose the SAP warehouse task export (.xlsx), or drop the file on this page. A file can hold one day or many; every day in it is saved.":"A supervisor or admin loads the SAP warehouse task export. This page updates on its own when they do."}${latest?` The most recent day with data in view is <button type="button" class="linkbtn" data-day="${latest}">${mdy(latest)}</button>.`:""}</span>`;return}
+  $("vDone").hidden=false;
+  const diff=ds.every(d=>d.excKind==="diff"),A=total(ds,S.type,S.user),ex=excOf(ds,S.type,S.user),mx=Math.max(1,...A.H.map(h=>h.n)),pk=A.H.findIndex(h=>h.n===mx);
+  $("stats").innerHTML=[["Confirmed",nf(A.n),""],["Units",nf(A.u),""],["Associates",A.users.size,""],[diff?"Qty differences":"Exceptions",nf(ex.length),ex.length?"warn":""],["Peak hour",A.n?p2(pk)+":00":"—",""],[single?"Lines per assoc. hour":"Days with data",single?(A.hrs>=.5?(A.n/A.hrs).toFixed(1):"—"):ds.length,""]]
     .map(k=>`<div class="${k[2]}"><dt>${k[0]}</dt><dd>${k[1]}</dd></div>`).join("");
   const w=960,h=250,L=40,B=24,T=20,pw=w-L-8,ph=h-B-T,bw=pw/24,e=Math.pow(10,Math.floor(Math.log10(mx))),f=mx/e,step=mx<=10?2:e*(f>5?2:f>2?1:.5);
   let sv=`<svg viewBox="0 0 ${w} ${h}" width="100%" role="img" aria-label="Confirmed task lines by hour">`;
   for(let v=0;v<=mx;v+=step){const y=T+ph-ph*v/mx;sv+=`<line x1="${L}" x2="${w-8}" y1="${y}" y2="${y}" stroke="var(--line)"/><text x="${L-6}" y="${y+4}" text-anchor="end">${nf(v)}</text>`}
-  H.forEach((hr,i)=>{let y=T+ph;const x=L+i*bw+bw*.15;TYPES.forEach(t=>{const bh=ph*hr.t[t]/mx;if(bh>0){y-=bh;sv+=`<rect x="${x}" y="${y}" width="${bw*.7}" height="${bh}" fill="var(${TC[t]})"><title>${p2(i)}:00 ${t}: ${hr.t[t]}</title></rect>`}});
-    if(hr.n)sv+=`<text class="tl" x="${x+bw*.35}" y="${y-5}" text-anchor="middle">${hr.n}</text>`;
+  A.H.forEach((hr,i)=>{let y=T+ph;const x=L+i*bw+bw*.15;TYPES.forEach(t=>{const bh=ph*(hr.t[t]||0)/mx;if(bh>0){y-=bh;sv+=`<rect x="${x}" y="${y}" width="${bw*.7}" height="${bh}" fill="var(${TC[t]})"><title>${p2(i)}:00 ${t}: ${hr.t[t]}</title></rect>`}});
+    if(hr.n)sv+=`<text class="tl" x="${x+bw*.35}" y="${y-5}" text-anchor="middle">${nf(hr.n)}</text>`;
     sv+=`<text x="${x+bw*.35}" y="${h-6}" text-anchor="middle">${p2(i)}</text>`});
   $("chart").innerHTML=sv+"</svg>";$("cHour").textContent=nf(A.n);
   $("legend").innerHTML=TYPES.map(t=>`<span><i style="background:var(${TC[t]})"></i>${t}</span>`).join("");
-  $("cOpen").textContent=open.length?nf(open.length):"";
-  $("asOf").textContent=open.length&&D.asOf?"Ages as of "+tsFmt(D.asOf)+", the latest activity in the file":"";
-  if(!open.length){const all=D.rows.length,c=D.rows.filter(r=>r[12]==="C").length;
-    $("aging").innerHTML=`<div class="empty"><strong>No open tasks in this file</strong><span>${c===all?"All "+nf(all)+" task lines in this export are confirmed (status C).":"No open task lines match this selection."} To track aging, run the SAP export with open tasks included and load it here.</span></div>`}
-  else{const bm=Math.max(1,...BUCKETS.map(b=>dated.filter(r=>r.age>=b[1]&&r.age<b[2]).length));
-    let hA='<div class="ag">'+BUCKETS.map(b=>{const n=dated.filter(r=>r.age>=b[1]&&r.age<b[2]).length;return `<div class="${n?b[3]:""}"><div class="k">${b[0]}</div><div class="v">${nf(n)}</div><div class="b"><i style="width:${100*n/bm}%"></i></div></div>`}).join("")+"</div>";
-    const show=open.slice(0,150);
-    hA+='<div class="scroll"><table>'+TH([["Age",0],["Created",0],["Created by",1],["Type",1],["Wave",0],["Pull header",0],["Process type",0],["Product",1],["Units",0],["Source bin",1],["Destination bin",1],["Warehouse order",0],["Warehouse task",0]])+"<tbody>"+
-      show.map(r=>`<tr class="${r.age>=REDAGE?"hot":""}"><td><span class="pill ${r.age>=REDAGE?"p1":r.age>=AMBER?"p2":""}">${r.age<0?"No date":age(r.age)}</span></td><td>${tsFmt(r[13])}</td><td class="t">${esc(r[15])}</td><td class="t">${typ(r)}</td><td>${esc(r[19])}</td><td>${esc(r[20])}</td><td>${esc(r[3])}</td><td class="t" title="${esc(r[7])}">${esc(r[6])}</td><td>${nf(r[16]||r[4])}</td><td class="t">${esc(r[8])}</td><td class="t">${esc(r[9])}</td><td>${esc(r[10])}</td><td>${esc(r[11])}</td></tr>`).join("")+"</tbody></table></div>";
-    if(open.length>show.length)hA+=`<div class="gate-p" style="margin-top:.6em">Showing the ${show.length} oldest of ${nf(open.length)} open tasks.</div>`;
-    $("aging").innerHTML=hA}
   $("tAct").innerHTML=TH([["Activity",1],["Task lines",0],["% of total",0],["Units",0]])+"<tbody>"+
-    TYPES.map(t=>`<tr><td>${t}${t==="Other"?" (no activity code)":""}</td><td class="n">${nf(A.t[t])}</td><td>${A.n?pc(A.t[t]/A.n):""}</td><td>${nf(A.tu[t])}</td></tr>`).join("")+
+    TYPES.map(t=>`<tr><td>${t}${t==="Other"?" (no activity code)":""}</td><td class="n">${nf(A.t[t]||0)}</td><td>${A.n?pc((A.t[t]||0)/A.n):""}</td><td>${nf(A.tu[t]||0)}</td></tr>`).join("")+
     `<tr class="tot"><td>Total</td><td class="n">${nf(A.n)}</td><td>${A.n?"100.0%":""}</td><td>${nf(A.u)}</td></tr></tbody>`;
-  const P={};rows.forEach(r=>{const k=r[3]||"(blank)";(P[k]=P[k]||[0,0]);P[k][0]++;P[k][1]+=r[4]});
   $("tPt").innerHTML=TH([["Process type",1],["Task lines",0],["% of total",0],["Units",0]])+"<tbody>"+
-    Object.entries(P).sort((a,b)=>b[1][0]-a[1][0]).map(([k,v])=>`<tr><td>${esc(k)}</td><td class="n">${nf(v[0])}</td><td>${pc(v[0]/A.n)}</td><td>${nf(v[1])}</td></tr>`).join("")+"</tbody>";
-  const U={};conf.forEach(r=>{const u=U[r[1]]=U[r[1]]||{name:r[1],...Object.fromEntries(TYPES.map(t=>[t,0])),tot:0,u:0,ex:0,a:1e9,b:-1};
-    u[typ(r)]++;u.tot++;u.u+=r[4];if(r[5])u.ex++;if(r[0]>=0){u.a=Math.min(u.a,r[0]);u.b=Math.max(u.b,r[0])}});
-  const list=Object.values(U);list.forEach(u=>{u.hrs=u.b>=0?(u.b-u.a)/3600:0;u.lph=u.hrs>=.5?u.tot/u.hrs:-1});
-  list.sort((x,y)=>S.sort==="name"?S.dir*x.name.localeCompare(y.name):S.dir*(x[S.sort]-y[S.sort])||y.tot-x.tot);
-  const cols=[["name","Associate"],...TYPES.map(t=>[t,t]),["tot","Total"],["u","Units"],["ex",diff?"Qty diffs":"Exceptions"],["a","First"],["b","Last"],["hrs","Hours"],["lph","Lines per hour"]];
+    Object.entries(A.P).sort((p,q)=>q[1][0]-p[1][0]).map(([k,v])=>`<tr><td>${esc(k)}</td><td class="n">${nf(v[0])}</td><td>${A.n?pc(v[0]/A.n):""}</td><td>${nf(v[1])}</td></tr>`).join("")+"</tbody>";
+  // associates: filtered by activity, never by the selected associate
+  const U={};for(const d of ds){const seen=new Set();
+    for(const c of d.cube){if(S.type!=="All"&&c[1]!==S.type)continue;const u=U[c[0]]||(U[c[0]]={name:c[0],tot:0,u:0,ex:0,a:1e9,b:-1,hrs:0,days:0});u[c[1]]=(u[c[1]]||0)+c[4];u.tot+=c[4];u.u+=c[5];seen.add(c[0])}
+    for(const n of seen){const u=U[n],s=d.spans[n];u.days++;if(s){u.hrs+=(s[1]-s[0])/3600;u.a=Math.min(u.a,s[0]);u.b=Math.max(u.b,s[1])}}}
+  excOf(ds,S.type,null).forEach(x=>{if(U[x[3]])U[x[3]].ex++});
+  const list=Object.values(U);list.forEach(u=>{u.lph=u.hrs>=.5?u.tot/u.hrs:-1;TYPES.forEach(t=>u[t]=u[t]||0)});
+  list.sort((x,y)=>S.sort==="name"?S.dir*x.name.localeCompare(y.name):S.dir*((x[S.sort]||0)-(y[S.sort]||0))||y.tot-x.tot);
+  const cols=[["name","Associate"],...TYPES.map(t=>[t,t]),["tot","Total"],["u","Units"],["ex",diff?"Qty diffs":"Exceptions"],...(single?[["a","First"],["b","Last"]]:[["days","Days"]]),["hrs","Hours"],["lph","Lines per hour"]];
   const mt=Math.max(1,...list.map(u=>u.tot));$("cAs").textContent=list.length||"";
   $("tAs").innerHTML="<thead><tr><th>#</th>"+cols.map(c=>`<th class="s${c[0]==="name"?" t":""}" data-s="${esc(c[0])}">${c[1]}${S.sort===c[0]?(S.dir<0?" ▼":" ▲"):""}</th>`).join("")+"</tr></thead><tbody>"+
-    list.map((u,i)=>`<tr class="click${S.user===u.name?" sel":""}" data-u="${esc(u.name)}"><td>${i+1}</td><td class="t n">${esc(u.name)}</td>${TYPES.map(t=>`<td>${u[t]}</td>`).join("")}
-    <td class="n"><span class="meter" style="width:${4*u.tot/mt}em"></span>${u.tot}</td><td>${nf(u.u)}</td><td>${u.ex?`<span class="pill p2">${u.ex}</span>`:"0"}</td><td>${u.b>=0?hm(u.a):""}</td><td>${hm(u.b)}</td><td>${u.hrs.toFixed(1)}</td><td>${u.lph<0?"":u.lph.toFixed(1)}</td></tr>`).join("")+"</tbody>";
-  const ex=rows.filter(r=>r[5]).sort((a,b)=>a[0]-b[0]);$("cEx").textContent=ex.length||"";$("hEx").textContent=diff?"Quantity differences":"Exceptions";
-  $("tEx").innerHTML=ex.length?TH([["Time",0],["Associate",1],[diff?"Difference":"Code",0],["Type",1],["Process type",0],["Product",1],[diff?"Planned":"Description",diff?0:1],[diff?"Actual":"Units",0],["Source bin",1],["Destination bin",1],["Warehouse task",0]])+"<tbody>"+
-    ex.map(r=>`<tr><td class="n">${hm(r[0])}</td><td class="t">${esc(r[1])}</td><td><span class="pill p2">${esc(r[5])}</span></td><td class="t">${typ(r)}</td><td>${esc(r[3])}</td><td class="t">${esc(r[6])}</td>${diff?`<td>${nf(r[16])}</td>`:`<td class="t">${esc(r[7])}</td>`}<td>${nf(r[4])}</td><td class="t">${esc(r[8])}</td><td class="t">${esc(r[9])}</td><td>${esc(r[11])}</td></tr>`).join("")+"</tbody>"
+    list.map((u,i)=>`<tr class="click${S.user===u.name?" sel":""}" data-u="${esc(u.name)}"><td>${i+1}</td><td class="t n">${esc(u.name)}</td>${TYPES.map(t=>`<td>${nf(u[t])}</td>`).join("")}
+    <td class="n"><span class="meter" style="width:${4*u.tot/mt}em"></span>${nf(u.tot)}</td><td>${nf(u.u)}</td><td>${u.ex?`<span class="pill p2">${u.ex}</span>`:"0"}</td>${single?`<td>${u.b>=0?hm(u.a):""}</td><td>${hm(u.b)}</td>`:`<td>${u.days}</td>`}<td>${u.hrs.toFixed(1)}</td><td>${u.lph<0?"":u.lph.toFixed(1)}</td></tr>`).join("")+"</tbody>";
+  // exceptions: x = [date, kind, sec, user, code, type, pt, product, planned-or-description, actual, src, dst, task]
+  ex.sort((p,q)=>p[0]<q[0]?-1:p[0]>q[0]?1:p[2]-q[2]);$("cEx").textContent=ex.length?nf(ex.length):"";$("hEx").textContent=diff?"Quantity differences":"Exceptions";
+  const exShow=ex.slice(0,300);
+  $("tEx").innerHTML=ex.length?TH([...(single?[]:[["Date",0]]),["Time",0],["Associate",1],[diff?"Difference":"Code",0],["Type",1],["Process type",0],["Product",1],[diff?"Planned":"Description",diff?0:1],[diff?"Actual":"Units",0],["Source bin",1],["Destination bin",1],["Warehouse task",0]])+"<tbody>"+
+    exShow.map(x=>`<tr>${single?"":`<td>${md(x[0])}</td>`}<td class="n">${hm(x[2])}</td><td class="t">${esc(x[3])}</td><td><span class="pill p2">${esc(x[4])}</span></td><td class="t">${esc(x[5])}</td><td>${esc(x[6])}</td><td class="t">${esc(x[7])}</td>${x[1]==="diff"?`<td>${nf(+x[8]||0)}</td>`:`<td class="t">${esc(x[8])}</td>`}<td>${nf(x[9])}</td><td class="t">${esc(x[10])}</td><td class="t">${esc(x[11])}</td><td>${esc(x[12])}</td></tr>`).join("")+"</tbody>"
     :`<tbody><tr><td class="t">${diff?"No quantity differences":"No exceptions"} in this selection.</td></tr></tbody>`;
+  $("exNote").hidden=ex.length<=exShow.length;$("exNote").textContent="Showing the first "+exShow.length+" of "+nf(ex.length)+". Each day keeps up to "+MAXEXC+".";
 }
+function renderOpen(open,TYPES){
+  $("vOpen").hidden=false;
+  if(!S.open){$("stats").hidden=true;$("vOpen").hidden=true;$("noData").hidden=false;
+    $("noData").innerHTML=`<strong>No open task list yet</strong><span>Open tasks come from the most recent SAP export that is loaded. Run the export with open tasks included, then load it.</span>`;return}
+  const asOf=S.open.asOf||wallNow();open.forEach(r=>r.age=r[13]<0?-1:Math.max(0,asOf-r[13]));open.sort((a,b)=>b.age-a.age);
+  const dated=open.filter(r=>r.age>=0),oldest=dated.length?dated[0].age:0,over4=dated.filter(r=>r.age>=AMBER).length,over8=dated.filter(r=>r.age>=REDAGE).length;
+  $("stats").innerHTML=[["Open tasks",nf(open.length),""],["Oldest open",dated.length?age(oldest):"—",oldest>=REDAGE?"hot":oldest>=AMBER?"warn":""],["Over 4 hours",nf(over4),over4?"warn":""],["Over 8 hours",nf(over8),over8?"hot":""],["Open units",nf(open.reduce((s,r)=>s+(r[16]||r[4]||0),0)),""]]
+    .map(k=>`<div class="${k[2]}"><dt>${k[0]}</dt><dd>${k[1]}</dd></div>`).join("");
+  $("cOpen").textContent=open.length?nf(open.length):"";$("cOpen2").textContent=$("cOpen").textContent;
+  $("asOf").textContent="Ages as of "+tsFmt(asOf)+", the latest activity in the file";
+  const bm=Math.max(1,...BUCKETS.map(b=>dated.filter(r=>r.age>=b[1]&&r.age<b[2]).length));
+  $("aging").innerHTML=open.length?'<div class="ag" style="margin-bottom:0">'+BUCKETS.map(b=>{const n=dated.filter(r=>r.age>=b[1]&&r.age<b[2]).length;return `<div class="${n?b[3]:""}"><div class="k">${b[0]}</div><div class="v">${nf(n)}</div><div class="b"><i style="width:${100*n/bm}%"></i></div></div>`}).join("")+"</div>"
+    :`<div class="empty"><strong>No open tasks</strong><span>${S.open.rows.length?"No open task lines match this activity.":"The most recent export has no open task lines. Every task in it is confirmed."}</span></div>`;
+  const grp=(key)=>{const g={};open.forEach(r=>{const k=key(r)||"(blank)",o=g[k]||(g[k]={n:0,u:0,old:0});o.n++;o.u+=r[16]||r[4]||0;if(r.age>o.old)o.old=r.age});return Object.entries(g).sort((p,q)=>q[1].n-p[1].n)};
+  const gt=(rows,head)=>TH([[head,1],["Open tasks",0],["Units",0],["Oldest",0]])+"<tbody>"+(rows.length?rows.map(([k,o])=>`<tr><td>${esc(k)}</td><td class="n">${nf(o.n)}</td><td>${nf(o.u)}</td><td><span class="pill ${o.old>=REDAGE?"p1":o.old>=AMBER?"p2":""}">${age(o.old)}</span></td></tr>`).join(""):`<tr><td class="t">None</td><td></td><td></td><td></td></tr>`)+"</tbody>";
+  $("tOpAct").innerHTML=gt(grp(typ),"Activity");$("tOpBy").innerHTML=gt(grp(r=>r[15]).slice(0,15),"Created by");
+  const show=open.slice(0,300);
+  $("openList").innerHTML=open.length?'<div class="scroll"><table>'+TH([["Age",0],["Created",0],["Created by",1],["Type",1],["Wave",0],["Pull header",0],["Process type",0],["Product",1],["Units",0],["Source bin",1],["Destination bin",1],["Warehouse order",0],["Warehouse task",0]])+"<tbody>"+
+    show.map(r=>`<tr class="${r.age>=REDAGE?"hot":""}"><td><span class="pill ${r.age>=REDAGE?"p1":r.age>=AMBER?"p2":""}">${r.age<0?"No date":age(r.age)}</span></td><td>${tsFmt(r[13])}</td><td class="t">${esc(r[15])}</td><td class="t">${typ(r)}</td><td>${esc(r[19])}</td><td>${esc(r[20])}</td><td>${esc(r[3])}</td><td class="t" title="${esc(r[7])}">${esc(r[6])}</td><td>${nf(r[16]||r[4])}</td><td class="t">${esc(r[8])}</td><td class="t">${esc(r[9])}</td><td>${esc(r[10])}</td><td>${esc(r[11])}</td></tr>`).join("")+"</tbody></table></div>"+
+    (open.length>show.length?`<div class="gate-p" style="margin-top:.6em">Showing the ${show.length} oldest of ${nf(open.length)} open tasks.</div>`:""):`<div class="gate-p">Nothing to list.</div>`;
+}
+function renderTrends(all,TYPES){
+  const [a,b]=trendSpan(),ds=all.filter(d=>d.date>=a&&d.date<=b);
+  if(!ds.length){$("stats").hidden=true;$("noData").hidden=false;$("noData").innerHTML=`<strong>No days loaded in this range</strong><span>Trends are drawn from every day that has been loaded. Choose a wider range, or load exports for more days.${S.range==="today"||S.range==="day"?" With one day selected, Trends shows the 14 days up to it.":""}</span>`;return}
+  $("vTrends").hidden=false;
+  const diff=ds.every(d=>d.excKind==="diff"),rows=ds.map(d=>{const A=total([d],S.type,S.user),ex=excOf([d],S.type,S.user).length,mx=Math.max(...A.H.map(h=>h.n));return {date:d.date,A,ex,lph:A.hrs>=.5?A.n/A.hrs:0,pk:A.n?A.H.findIndex(h=>h.n===mx):-1}});
+  const dates=rows.map(r=>r.date),T=rows.reduce((s,r)=>({n:s.n+r.A.n,u:s.u+r.A.u,h:s.h+r.A.hrs,ex:s.ex+r.ex}),{n:0,u:0,h:0,ex:0}),best=rows.slice().sort((p,q)=>q.A.n-p.A.n)[0];
+  $("stats").innerHTML=[["Days with data",rows.length,""],["Confirmed",nf(T.n),""],["Average per day",nf(T.n/rows.length),""],["Busiest day",best&&best.A.n?md(best.date):"—",""],["Lines per assoc. hour",T.h>=.5?(T.n/T.h).toFixed(1):"—",""],[diff?"Qty differences":"Exceptions",nf(T.ex),T.ex?"warn":""]]
+    .map(k=>`<div class="${k[2]}"><dt>${k[0]}</dt><dd>${k[1]}</dd></div>`).join("");
+  $("tr1").innerHTML=bars(dates,TYPES.map(t=>({name:t,c:TC[t],v:rows.map(r=>r.A.t[t]||0)})),{label:"Confirmed lines per day"});
+  $("trLegend").innerHTML=TYPES.map(t=>`<span><i style="background:var(${TC[t]})"></i>${t}</span>`).join("");
+  $("tr2").innerHTML=bars(dates,[{name:"Units",c:"--s2",v:rows.map(r=>r.A.u)}],{label:"Units per day"});
+  $("tr3").innerHTML=bars(dates,[{name:"Lines per associate hour",c:"--s3",v:rows.map(r=>r.lph)}],{label:"Lines per associate hour",fmt:v=>(+v).toFixed(v<10?1:0)});
+  $("hTr4").textContent=(diff?"Quantity differences":"Exceptions")+" per day";
+  $("tr4").innerHTML=bars(dates,[{name:diff?"Quantity differences":"Exceptions",c:"--s5",v:rows.map(r=>r.ex)}],{label:"Exceptions per day",min:4});
+  $("cDays").textContent=rows.length;
+  $("tDays").innerHTML=TH([["Date",1],["Confirmed",0],["Units",0],["Associates",0],["Assoc. hours",0],["Lines per assoc. hour",0],[diff?"Qty diffs":"Exceptions",0],["Peak hour",0]])+"<tbody>"+
+    rows.slice().reverse().map(r=>`<tr class="click" data-day="${r.date}"><td class="n">${mdy(r.date)} ${new Date(r.date+"T12:00:00").toLocaleDateString(undefined,{weekday:"short"})}</td><td class="n">${nf(r.A.n)}</td><td>${nf(r.A.u)}</td><td>${r.A.users.size}</td><td>${r.A.hrs.toFixed(1)}</td><td>${r.lph?r.lph.toFixed(1):""}</td><td>${r.ex?`<span class="pill p2">${r.ex}</span>`:"0"}</td><td>${r.pk<0?"":p2(r.pk)+":00"}</td></tr>`).join("")+"</tbody>";
+}
+const goDay=d=>{S.range=d===today()?"today":"day";S.day=d;S.view="done";S.pickedRange=true;render()};
+$("views").addEventListener("click",e=>{const b=e.target.closest("button[data-v]");if(b){S.view=b.dataset.v;render()}});
+$("rangeBtns").addEventListener("click",e=>{const b=e.target.closest("button[data-r]");if(b){S.range=b.dataset.r;S.pickedRange=true;render()}});
+$("dayPick").addEventListener("change",e=>{if(e.target.value){S.range="day";S.day=e.target.value;S.pickedRange=true;render()}});
+$("noData").addEventListener("click",e=>{const b=e.target.closest("[data-day]");if(b)goDay(b.dataset.day)});
+$("tDays").addEventListener("click",e=>{const tr=e.target.closest("tr[data-day]");if(tr)goDay(tr.dataset.day)});
 $("chips").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;if(b.dataset.u)S.user=null;else S.type=b.dataset.t;render()});
 $("tAs").addEventListener("click",e=>{const th=e.target.closest("th[data-s]");if(th){const k=th.dataset.s;if(S.sort===k)S.dir=-S.dir;else{S.sort=k;S.dir=k==="name"?1:-1}render();return}
   const tr=e.target.closest("tr[data-u]");if(tr){S.user=S.user===tr.dataset.u?null:tr.dataset.u;render()}});
