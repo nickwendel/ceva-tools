@@ -6,6 +6,7 @@ Operational tools for CEVA sites, served with GitHub Pages.
 |---|---|---|
 | Receiving dock board | [`dock-board/`](dock-board/) | Floor TV display of trailers in the drop and today's appointments, with priority, door, pathway owner and status. Supervisors update it from a phone. |
 | NCI/Grief inbound exceptions | [`nci-inbound/`](nci-inbound/) | Shared log of error shipments (shortages, overages, damage, missing ASN…) worked by CEVA and NCI/Grief together. Either company raises an issue, posts updates, hands it to the other side and resolves it. A board shows what is open and who it is waiting on. |
+| Warehouse transactions | [`transactions/`](transactions/) | Daily dashboard of confirmed SAP EWM warehouse tasks by hour, activity, process type and associate, with open task aging. A supervisor loads the SAP export and everyone signed in sees it. |
 
 Shared files live in [`assets/`](assets/): `ceva-logo-whitered.png` is the white-and-red logo used on the dark headers and sign-in cards; `ceva-logo.svg` (navy and red) is only the browser-tab icon. Every page shares one look, matched to the Whitsett KPI dashboard: dark navy, card panels, CEVA red accent.
 
@@ -23,7 +24,7 @@ All tools use one Firebase project, **`ceva-tools`** (console: [console.firebase
 
 | Field | Values |
 |---|---|
-| `role` | `viewer` (see only), `supervisor` (dock board updates + inbound issues), `user` (inbound issues only), `admin` (everything, settings, people) |
+| `role` | `viewer` (see only), `supervisor` (dock board updates + inbound issues + load transaction exports), `user` (inbound issues only), `admin` (everything, settings, people) |
 | `company` | `ceva` or `partner` (NCI/Grief). Used by the inbound tool. |
 | `name` | Shown on boards and in update threads |
 
@@ -33,7 +34,7 @@ All tools use one Firebase project, **`ceva-tools`** (console: [console.firebase
 
 Admins can still add people by hand from **Settings → People**: Firebase console → **Authentication → Users → Add user**, copy the User UID, then paste it in with a name, company and role. That is the way to set up TV screens, which don't request access themselves.
 
-**Network:** screens and phones need to reach `gstatic.com`, `googleapis.com` and `firebaseapp.com`.
+**Network:** screens and phones need to reach `gstatic.com`, `googleapis.com` and `firebaseapp.com`. The transactions dashboard also needs `cdnjs.cloudflare.com`.
 
 ---
 
@@ -105,3 +106,39 @@ Each email names the shipment, issue type, who posted and what they wrote, with 
 ### Limits
 
 Firebase's free Spark plan allows 50,000 reads and 20,000 writes a day across both tools, far more than a few people working exceptions will use. Admins can delete resolved issues older than 30 days from **Settings**.
+
+
+---
+
+## Warehouse transactions
+
+**Live page:** `https://nickwendel.github.io/ceva-tools/transactions/`
+
+A daily view of warehouse task activity from SAP EWM. Sign in with the same account as the other tools.
+
+- **Load the day's file:** a supervisor or admin selects **Load today's export** (or drops the file on the page) and picks the SAP warehouse task export (`.xlsx`). The page reads the file in the browser, saves the task lines to Firebase, and every signed-in screen switches to the new file on its own. Loading again replaces the previous file.
+- **What it shows:** confirmed task lines, units, associates and peak hour; a chart of confirmations by hour; breakdowns by activity and warehouse process type; a sortable associate table (select a row to filter the page to that person); and exceptions, or quantity differences when the export has no exception codes.
+- **Open task aging:** every task line with a blank or `B` status is listed oldest first with its age since creation, counted in five age bands. Age runs to the latest activity time in the file, so an old file doesn't look worse than it was. Amber from 4 hours, red from 8 hours.
+- **Filters:** the tabs under the tiles limit the whole page to one activity (pick, putaway, internal move, posting change, goods issue, goods receipt).
+
+### The export
+
+Run the warehouse task list in SAP EWM for the day, include open and confirmed tasks, and export to Excel. Columns are matched by name, so their order doesn't matter. Two layouts are accepted:
+
+| Needed | Column names |
+|---|---|
+| Always | `Warehouse Task`, `Warehouse Task Status`, `Confirmed By`, `Confirmation Date`, `Confirmation Time`, `Created On`, `Created At`, `Whse Process Type` |
+| Activity | `Whse Process Category Desc.` (preferred) or `Activity` |
+| Quantity | `Act Dest Qty Alt UoM` or `Act. Qty Dest. BUoM` |
+| Optional | `Src Trgt Qty AUoM` / `Src Trgt Qty BUoM`, `Diff. Qty in Alt.Un`, `Exception Code`, `Created By`, `Product`, `Product Short Description`, `Source Storage Bin`, `Destination Bin`, `Warehouse Order`, `Wave`, `Pull header ID`, `Queue` |
+
+### Who can do what
+
+| Role | Can do |
+|---|---|
+| Viewer, User | See the dashboard |
+| Supervisor, Admin | Also load a new export for everyone |
+
+### Data and limits
+
+No task data is stored in this repository. The loaded export lives in Firestore under `wt/current` (a summary) and `wt/current/chunks` (the task lines as text, split to stay under Firestore's 1 MiB document limit). Only the latest file is kept. Loading a file is a handful of writes and each screen reads a handful of documents, far inside the free Spark plan. The page loads the SheetJS spreadsheet reader from `cdnjs.cloudflare.com`, so screens need to reach that host as well as the Firebase ones.

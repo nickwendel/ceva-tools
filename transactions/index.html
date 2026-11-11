@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Warehouse Transactions</title>
+<link rel="icon" href="../assets/ceva-logo.svg" type="image/svg+xml">
+<style>
+/* Visual system shared with the other CEVA tools (matched to the Whitsett KPI dashboard): dark navy, card panels, CEVA red accent, system type.
+   Layout: header + KPI tiles + filter tabs + card panels (hourly chart, open task aging, breakdowns, associates, exceptions). Dark only. */
+:root{
+  --bg:#0a1626; --card:#122A47; --row:#0e2038; --line:#1f3d61; --line-light:#2a4a73;
+  --fg:#e7eef7; --muted:#93a8c4; --faint:#5f7796;
+  --accent:#e2231a; --good:#2fbf71; --warn:#e8a33d; --bad:#e2231a; --info:#3d9fe8; --purple:#a78bfa;
+  --s1:#e7eef7; --s2:#3d9fe8; --s3:#2fbf71; --s4:#5f7796; --s5:#a78bfa; --s6:#4fd0e0; --s7:#3a5273;
+  --radius:10px;
+  --f:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{height:100%;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{min-height:100%;margin:0;color:var(--fg);font-family:var(--f);font-size:13.5px;line-height:1.45;-webkit-font-smoothing:antialiased;
+  background:radial-gradient(1200px 600px at 10% -10%,#123156 0%,var(--bg) 55%) fixed,var(--bg)}
+[hidden]{display:none!important}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--info);outline-offset:2px}
+::-webkit-scrollbar{height:8px;width:8px}
+::-webkit-scrollbar-thumb{background:var(--line-light);border-radius:4px}
+.gut{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.btn{background:var(--card);color:var(--fg);border:1px solid var(--line-light);border-radius:8px;min-height:2.6rem;padding:0 .95rem;font:600 13px/1 var(--f);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:.45rem;white-space:nowrap;position:relative;transition:filter .15s,border-color .15s}
+.btn:hover{border-color:var(--accent);filter:brightness(1.08)}
+.btn.primary{background:var(--accent);border-color:transparent;color:#fff}
+.btn.ghost{background:transparent;color:var(--muted)}
+.btn.ghost:hover{color:var(--fg)}
+.btn:disabled,.btn.busy{opacity:.45;cursor:default;filter:none}
+.btn input[type=file]{position:absolute;opacity:0;width:1px;height:1px}
+.btn:focus-within{outline:2px solid var(--info);outline-offset:2px}
+.inp{width:100%;min-height:2.6rem;background:var(--bg);color:var(--fg);border:1px solid var(--line-light);border-radius:8px;padding:.5rem .75rem;font-size:14px;outline:none}
+.inp:focus{border-color:var(--accent)}
+.fld{display:flex;flex-direction:column;gap:.35rem;min-width:0}
+.fld>label{font:600 10.5px/1 var(--f);letter-spacing:.5px;text-transform:uppercase;color:var(--faint)}
+.err{color:#f97066;font-weight:600;font-size:12px}
+
+/* sign-in gate */
+.gate{min-height:100vh;display:flex;align-items:center;justify-content:center;padding-block:2rem}
+.gate-card{width:100%;max-width:400px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:2.2rem 2.2rem 2rem;box-shadow:0 8px 40px rgba(0,0,0,.55);display:flex;flex-direction:column}
+.gate-head{display:flex;flex-direction:column;align-items:center;text-align:center;gap:.5rem;margin-bottom:1.4rem}
+.gate-head img{height:2.3rem;width:auto;display:block}
+.gate-site{font-size:12px;color:var(--faint);letter-spacing:.02em}
+.gate-body{display:flex;flex-direction:column;gap:.9rem}
+.gate-title{margin:0;font:700 20px/1.2 var(--f)}
+.gate-p{margin:0;color:var(--muted);line-height:1.5;font-size:12.5px}
+.gate-p b{color:var(--fg)}
+.gate form{display:flex;flex-direction:column;gap:.85rem}
+.gate .btn{width:100%;min-height:2.75rem;font-size:14px}
+.gate .btn.ghost{min-height:2.4rem;font-size:12.5px}
+.gate-alt{border-top:1px solid var(--line);padding-top:.85rem}
+
+/* app */
+.app{max-width:1500px;margin:0 auto;padding-bottom:3rem;font-size:14px}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:1.2em 1.6em;flex-wrap:wrap;padding-block:1.4em 1.1em;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:.9em;min-width:0}
+.logo-plate{height:2.6em;display:flex;align-items:center;flex:none}
+.logo-plate img{height:100%;width:auto;max-width:12em;object-fit:contain;display:block}
+.b-title{margin:0;font:700 1.35em/1.15 var(--f);letter-spacing:.2px}
+.status-line{display:flex;flex-wrap:wrap;align-items:center;gap:.3em 1em;margin-top:.45em;font-size:.85em;color:var(--faint)}
+.status-line b{color:var(--muted);font-weight:600}
+.dot{width:.6em;height:.6em;border-radius:50%;background:var(--warn);display:inline-block;margin-right:.4em}
+.dot.ok{background:var(--good)}.dot.bad{background:var(--bad)}
+.controls{display:flex;gap:.6em;align-items:center;flex-wrap:wrap}
+.b-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(9.5em,1fr));gap:.7em;margin:1.2em 0 0;padding:0}
+.b-stats>div{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:1.1em 1.2em 1em;position:relative;overflow:hidden;margin:0}
+.b-stats>div::before{content:"";position:absolute;top:0;left:0;width:3px;height:100%;background:var(--kpi,var(--line-light))}
+.b-stats>div:nth-child(1){--kpi:var(--accent)}.b-stats>div:nth-child(2){--kpi:var(--info)}.b-stats>div:nth-child(3){--kpi:var(--purple)}
+.b-stats>div:nth-child(5){--kpi:var(--good)}
+.b-stats>div.warn{--kpi:var(--warn)}.b-stats>div.hot{--kpi:var(--bad)}
+.b-stats dt{font:700 .75em/1.2 var(--f);letter-spacing:.6px;text-transform:uppercase;color:var(--faint);white-space:nowrap}
+.b-stats dd{margin:.45em 0 0;font:800 2.1em/1 var(--f);font-variant-numeric:tabular-nums;white-space:nowrap}
+.b-stats .hot dd{color:#ff6b61}.b-stats .warn dd{color:var(--warn)}
+.bar{display:flex;flex-wrap:wrap;gap:.6em;align-items:center;margin:1.2em 0 1em}
+.tab{background:transparent;border:1px solid var(--line-light);color:var(--muted);border-radius:2rem;min-height:2.3rem;padding:0 .9rem;font:600 13px/1 var(--f);cursor:pointer}
+.tab:hover{color:var(--fg)}
+.tab[aria-pressed="true"]{background:var(--accent);border-color:transparent;color:#fff}
+.msg{border:1px solid rgba(226,35,26,.5);color:#f97066;border-radius:8px;padding:.7rem 1rem;font-weight:600;margin-bottom:1em}
+.panels{display:flex;flex-direction:column;gap:1em}
+.b-panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);display:flex;flex-direction:column;min-width:0;padding:1em 1.1em .9em}
+.p-head{display:flex;align-items:baseline;flex-wrap:wrap;gap:.55em;padding-bottom:.6em;border-bottom:1px solid var(--line-light)}
+.p-head h2{margin:0;font:700 1.05em/1.2 var(--f)}
+.p-count{font:700 1.05em/1 var(--f);color:var(--muted);font-variant-numeric:tabular-nums}
+.p-page{margin-left:auto;font:600 .75em/1 var(--f);letter-spacing:.5px;text-transform:uppercase;color:var(--faint)}
+.p-body{padding-top:.7em}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:1em}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th{font:700 .72em/1 var(--f);letter-spacing:.5px;text-transform:uppercase;color:var(--faint);text-align:right;padding:.5em .7em;white-space:nowrap;border-bottom:1px solid var(--line)}
+th.s{cursor:pointer}th.s:hover{color:var(--fg)}
+th:first-child,td:first-child,th.t,td.t{text-align:left}
+td{padding:.5em .7em;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line)}
+tbody tr:last-child td{border-bottom:0}
+td.n{font-weight:700}
+tr.click{cursor:pointer}tr.click:hover td{background:var(--row)}tr.sel td{background:rgba(61,159,232,.14)}
+tr.tot td{font-weight:700;border-top:1px solid var(--line-light)}
+tr.hot td{background:rgba(226,35,26,.1)}
+.meter{display:inline-block;height:.4em;background:var(--info);vertical-align:middle;margin-right:.5em;border-radius:2px;opacity:.7}
+.pill{display:inline-block;padding:.2em .55em;border-radius:5px;font:700 .85em/1 var(--f);background:var(--row);color:var(--muted);border:1px solid var(--line-light)}
+.pill.p1{background:rgba(226,35,26,.16);color:#ff6b61;border-color:rgba(226,35,26,.5)}
+.pill.p2{background:rgba(232,163,61,.16);color:var(--warn);border-color:rgba(232,163,61,.5)}
+.legend{display:flex;flex-wrap:wrap;gap:.5em 1.2em;margin-top:.5em}
+.legend span{display:inline-flex;align-items:center;gap:.4em;font:600 .78em/1 var(--f);color:var(--muted)}
+.legend i{display:inline-block;width:.9em;height:.7em;border-radius:2px}
+svg text{font-family:var(--f);font-size:11px;fill:var(--muted)}svg .tl{fill:var(--fg);font-weight:700}
+.empty{border:1px dashed var(--line-light);border-radius:var(--radius);padding:1.2em;color:var(--muted);display:flex;flex-direction:column;gap:.35em}
+.empty strong{font:700 1.05em/1.2 var(--f);color:var(--fg)}
+.empty span{line-height:1.5;max-width:75ch}
+.ag{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.6em;margin-bottom:.8em}
+.ag>div{background:var(--row);border:1px solid var(--line);border-radius:8px;padding:.7em .9em;position:relative;overflow:hidden}
+.ag>div::before{content:"";position:absolute;top:0;left:0;width:3px;height:100%;background:var(--line-light)}
+.ag>div.ok::before{background:var(--good)}.ag>div.p2::before{background:var(--warn)}.ag>div.p1::before{background:var(--bad)}
+.ag .k{font:700 .72em/1.2 var(--f);letter-spacing:.5px;text-transform:uppercase;color:var(--faint)}
+.ag .v{font:800 1.7em/1 var(--f);font-variant-numeric:tabular-nums;margin-top:.3em}
+.ag .b{height:.35em;background:var(--line);border-radius:2px;margin-top:.55em;overflow:hidden}.ag .b i{display:block;height:100%;background:var(--muted)}
+.note{color:var(--faint);font-size:.88em;line-height:1.5;max-width:120ch;margin-top:1.2em;border-top:1px solid var(--line);padding-top:1em}
+.drop{outline:2px dashed var(--info);outline-offset:-6px}
+.toast{position:fixed;left:50%;bottom:calc(1.2rem + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:30;background:var(--card);color:var(--fg);border:1px solid var(--line-light);padding:.75rem 1.1rem;border-radius:8px;font:600 13px/1.35 var(--f);box-shadow:0 8px 24px rgba(0,0,0,.45);max-width:calc(100% - 32px)}
+</style>
+</head>
+<body>
+<noscript><p style="padding:1rem">This tool needs JavaScript turned on.</p></noscript>
+
+<!-- SIGN-IN GATE -->
+<section id="gate" class="gate gut" aria-label="Sign in">
+  <div class="gate-card">
+    <div class="gate-head"><img src="../assets/ceva-logo-whitered.png" alt="CEVA Logistics"><div class="gate-site">Warehouse transactions</div></div>
+    <div class="gate-body">
+      <h1 class="gate-title">Sign in</h1>
+      <p class="gate-p" id="gateWait">Connecting…</p>
+      <p class="gate-p" id="gateSetup" hidden>This tool isn’t connected to its database yet. Add the Firebase web config to <code>transactions/firebase-config.js</code> in the repository.</p>
+      <form id="gateLogin" novalidate hidden>
+        <p class="gate-p">Sign in with the same account you use on the other CEVA tools.</p>
+        <div class="fld"><label for="lEmail">Email</label><input class="inp" id="lEmail" type="email" autocomplete="username" inputmode="email"></div>
+        <div class="fld"><label for="lPass">Password</label><input class="inp" id="lPass" type="password" autocomplete="current-password"></div>
+        <div class="err" id="lErr" role="alert" hidden></div>
+        <button class="btn primary" type="submit" id="lGo">Sign in</button>
+        <button class="btn ghost" type="button" id="lForgot">Forgot password? Email me a reset link</button>
+        <div class="gate-alt"><button class="btn" type="button" id="lRequest">New here? Request access</button></div>
+      </form>
+      <form id="gateRequest" novalidate hidden>
+        <p class="gate-p">Tell us who you are and create a password. An admin approves requests, and you’re let in automatically once approved.</p>
+        <div class="fld"><label for="qName">Your name</label><input class="inp" id="qName" maxlength="40" autocomplete="name"></div>
+        <div class="fld"><label for="qEmail">Work email</label><input class="inp" id="qEmail" type="email" autocomplete="username" inputmode="email"></div>
+        <div class="fld"><label for="qPass">Create a password (8+ characters)</label><input class="inp" id="qPass" type="password" autocomplete="new-password" minlength="8"></div>
+        <div class="fld"><label for="qNote">Role or site (optional)</label><input class="inp" id="qNote" maxlength="120" autocomplete="off"></div>
+        <div class="err" id="qErr" role="alert" hidden></div>
+        <button class="btn primary" type="submit" id="qGo">Send request</button>
+        <button class="btn ghost" type="button" id="qBack">Back to sign in</button>
+      </form>
+      <div id="gateDenied" hidden>
+        <p class="gate-p" id="dPending" hidden><b>Request sent.</b> Signed in as <b id="dEmailP"></b>, waiting for an admin to approve. Keep this page open or come back later; it opens on its own once approved.</p>
+        <div id="dNone" hidden>
+          <p class="gate-p">Signed in as <b id="dEmail"></b>, but this account hasn’t been added to the tools yet. Ask for access and an admin will approve it.</p>
+          <form id="dRequest" novalidate style="margin-top:.7rem">
+            <div class="fld"><label for="dName">Your name</label><input class="inp" id="dName" maxlength="40" autocomplete="name"></div>
+            <div class="fld"><label for="dNote">Role or site (optional)</label><input class="inp" id="dNote" maxlength="120" autocomplete="off"></div>
+            <div class="err" id="dReqErr" role="alert" hidden></div>
+            <button class="btn primary" type="submit" id="dReqGo">Request access</button>
+          </form>
+        </div>
+        <button type="button" class="btn ghost" id="dOut" style="margin-top:.7rem">Sign out</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DASHBOARD -->
+<div id="app" class="app gut" hidden>
+  <header class="top">
+    <div class="brand">
+      <div class="logo-plate"><img src="../assets/ceva-logo-whitered.png" alt="CEVA Logistics"></div>
+      <div><h1 class="b-title">Warehouse transactions</h1><div class="status-line" id="status"></div></div>
+    </div>
+    <div class="controls">
+      <label class="btn primary" id="loadBtn" hidden>Load today’s export<input type="file" id="file" accept=".xlsx,.xls,.csv"></label>
+      <button type="button" class="btn ghost" id="signOut">Sign out</button>
+    </div>
+  </header>
+  <dl class="b-stats" id="stats"></dl>
+  <div class="bar" id="chips"></div>
+  <div class="msg" id="msg" hidden></div>
+  <div id="noData" class="empty" hidden></div>
+  <div class="panels" id="panels" hidden>
+    <section class="b-panel"><header class="p-head"><h2>Confirmed by hour</h2><span class="p-count" id="cHour"></span><span class="p-page">Hour of confirmation</span></header>
+      <div class="p-body"><div class="scroll"><div id="chart" style="min-width:640px"></div></div><div class="legend" id="legend"></div></div></section>
+    <section class="b-panel"><header class="p-head"><h2>Open task aging</h2><span class="p-count" id="cOpen"></span><span class="p-page" id="asOf"></span></header>
+      <div class="p-body" id="aging"></div></section>
+    <div class="two">
+      <section class="b-panel"><header class="p-head"><h2>By activity</h2></header><div class="p-body scroll"><table id="tAct"></table></div></section>
+      <section class="b-panel"><header class="p-head"><h2>By process type</h2></header><div class="p-body scroll"><table id="tPt"></table></div></section>
+    </div>
+    <section class="b-panel"><header class="p-head"><h2>By associate</h2><span class="p-count" id="cAs"></span><span class="p-page">Select a row to filter, a heading to sort</span></header>
+      <div class="p-body scroll"><table id="tAs"></table></div></section>
+    <section class="b-panel"><header class="p-head"><h2 id="hEx">Exceptions</h2><span class="p-count" id="cEx"></span></header><div class="p-body scroll"><table id="tEx"></table></div></section>
+  </div>
+  <div class="note">A transaction is one confirmed warehouse task line (status C). Type comes from the warehouse process category when the export has it, otherwise from the activity code. Units use the actual destination quantity. Associate is the Confirmed By user. Lines per hour uses the time from an associate’s first to last confirmation and is blank under 30 minutes. When the export has no exception codes, lines where the actual quantity differs from the planned quantity are listed instead. An open task is any line with a blank or B status. Its age runs from Created On and Created At to the latest activity time in the file, shown amber from 4 hours and red from 8 hours. Supervisors and admins update the dashboard for everyone with “Load today’s export” or by dropping the SAP warehouse task export (.xlsx) on this page.</div>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script src="firebase-config.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script type="module">
+const FB='https://www.gstatic.com/firebasejs/10.14.1/';
+const ROLE_LABEL={viewer:'Viewer',supervisor:'Supervisor',user:'User',admin:'Admin'};
+const TLIST=["Pick","Putaway","Internal move","Posting change","Goods issue","Goods receipt","Other"],TC={Pick:"--s1",Putaway:"--s2","Internal move":"--s3","Posting change":"--s4","Goods issue":"--s5","Goods receipt":"--s6",Other:"--s7"};
+let TYPES=TLIST;
+const CAT={"stock removal":"Pick","putaway":"Putaway","internal warehouse movement":"Internal move","posting change":"Posting change","goods issue posting":"Goods issue","goods receipt posting":"Goods receipt"};
+const TMAP={PICK:"Pick",PTWY:"Putaway",INTL:"Internal move"};
+const AMBER=4*3600,REDAGE=8*3600,CHUNK=600000;
+const BUCKETS=[["Under 1 hour",0,3600,"ok"],["1 to 4 hours",3600,AMBER,""],["4 to 8 hours",AMBER,REDAGE,"p2"],["8 to 24 hours",REDAGE,86400,"p1"],["Over 24 hours",86400,Infinity,"p1"]];
+const S={data:null,meta:null,ver:null,type:"All",user:null,sort:"tot",dir:-1,fb:null,authUser:null,role:null,myName:"",canLoad:false,conn:"connecting",busy:false,pendingReq:null,unsubs:[]};
+const $=id=>document.getElementById(id),nf=n=>Math.round(n).toLocaleString("en-US"),pc=x=>(x*100).toFixed(1)+"%",p2=n=>String(n).padStart(2,"0");
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const str=(v,n)=>typeof v==="string"?v.trim().slice(0,n||200):"";
+const hm=s=>s<0?"":p2(Math.floor(s/3600))+":"+p2(Math.floor(s%3600/60));
+const typ=r=>r.t||(r.t=CAT[String(r[18]||"").toLowerCase().replace(/\s+/g," ").trim()]||TMAP[r[2]]||"Other");
+const wallNow=()=>Math.floor(Date.now()/1000)-new Date().getTimezoneOffset()*60;
+function age(s){const m=Math.max(0,Math.floor(s/60));if(m<60)return m+"m";const h=Math.floor(m/60);return h<24?h+"h "+p2(m%60)+"m":Math.floor(h/24)+"d "+(h%24)+"h"}
+function tsFmt(t){if(t<0)return "";const d=new Date(t*1000);return p2(d.getUTCMonth()+1)+"/"+p2(d.getUTCDate())+" "+p2(d.getUTCHours())+":"+p2(d.getUTCMinutes())}
+let toastT;function toast(t){const e=$("toast");e.textContent=t;e.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>e.hidden=true,6000)}
+
+/* ---------- reading the SAP export ---------- */
+function toSec(v){if(v==null||v==="")return -1;if(typeof v==="number")return Math.round((v%1)*86400);const m=String(v).match(/(\d+):(\d+)(?::(\d+))?/);return m?+m[1]*3600+ +m[2]*60+ +(m[3]||0):-1}
+function toDay(v){if(v==null||v==="")return -1;if(typeof v==="number")return Math.floor(v-25569)*86400;const d=new Date(v);return isNaN(d)?-1:Math.floor((d.getTime()/1000-d.getTimezoneOffset()*60)/86400)*86400}
+function dts(d,t){const a=toDay(d);if(a<0)return -1;return a+Math.max(0,toSec(t))}
+function parse(buf,name){
+  const wb=XLSX.read(buf,{type:"array"}),a=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true,defval:""});
+  const h=(a[0]||[]).map(x=>String(x).trim()),col=(...n)=>n.find(x=>h.includes(x))||"";
+  const qC=col("Act. Qty Dest. BUoM","Act Dest Qty Alt UoM"),sC=col("Src Trgt Qty BUoM","Src Trgt Qty AUoM"),dC=col("Diff. Qty in Alt.Un","Diff. Qty in BUoM"),eC=col("Exception Code");
+  const miss=["Warehouse Task","Warehouse Task Status","Confirmed By","Confirmation Date","Confirmation Time","Created On","Created At","Whse Process Type"].filter(n=>!h.includes(n));
+  if(!qC)miss.push("Act. Qty Dest. BUoM or Act Dest Qty Alt UoM");if(!col("Activity","Whse Process Category Desc."))miss.push("Activity or Whse Process Category Desc.");
+  if(miss.length)throw new Error("This file is missing these columns: "+miss.join(", ")+". Load the SAP warehouse task export.");
+  const c=n=>h.indexOf(n),v=(r,n)=>c(n)<0?"":r[c(n)],g=(r,n)=>String(v(r,n)??"").trim();let date=-1,last=-1;const rows=[];
+  for(let i=1;i<a.length;i++){const r=a[i];if(g(r,"Warehouse Task")==="")continue;const st=g(r,"Warehouse Task Status").toUpperCase(),done=st==="C";
+    const cd=toDay(v(r,"Confirmation Date")),cr=dts(v(r,"Created On"),v(r,"Created At")),cf=done?dts(v(r,"Confirmation Date"),v(r,"Confirmation Time")):-1;
+    if(date<0&&done&&cd>=0)date=cd;last=Math.max(last,cr,cf);const df=+v(r,dC)||0;
+    rows.push([done?toSec(v(r,"Confirmation Time")):-1,g(r,"Confirmed By")||"(blank)",g(r,"Activity"),g(r,"Whse Process Type"),+v(r,qC)||0,eC?g(r,eC):df?(df>0?"+":"")+df:"",
+      g(r,"Product"),g(r,"Product Short Description"),g(r,"Source Storage Bin"),g(r,"Destination Bin"),g(r,"Warehouse Order"),g(r,"Warehouse Task"),
+      st,cr,g(r,"Queue"),g(r,"Created By"),+v(r,sC)||0,cf,g(r,"Whse Process Category Desc."),g(r,"Wave"),g(r,"Pull header ID")])}
+  if(!rows.length)throw new Error("No warehouse task lines were found in this file.");
+  const now=wallNow();if(date<0)date=Math.floor((last>0?last:now)/86400)*86400;
+  return {date:new Date(date*1000).toISOString().slice(0,10),file:str(name.replace(/\.[^.]+$/,""),80),asOf:last>0?last:now,excKind:eC?"code":"diff",rows}}
+
+/* ---------- shared data: wt/current (summary) + wt/current/chunks/{version}_{n} (the task lines, as JSON text) ---------- */
+function chunkRows(rows){const out=[];let cur=[],len=0;for(const r of rows){const s=JSON.stringify(r);if(len+s.length>CHUNK&&cur.length){out.push("["+cur.join(",")+"]");cur=[];len=0}cur.push(s);len+=s.length+1}
+  if(cur.length)out.push("["+cur.join(",")+"]");return out}
+async function publish(d){
+  const {Fs,fs}=S.fb,ver=Date.now().toString(36),parts=chunkRows(d.rows),prev=S.meta;
+  for(let i=0;i<parts.length;i++)await Fs.setDoc(Fs.doc(fs,"wt","current","chunks",ver+"_"+i),{ver,i,rows:parts[i]});
+  await Fs.setDoc(Fs.doc(fs,"wt","current"),{ver,chunks:parts.length,count:d.rows.length,date:d.date,file:d.file,asOf:d.asOf,excKind:d.excKind,by:S.authUser.uid,byName:S.myName||S.authUser.email||"",at:Date.now()});
+  if(prev&&prev.ver&&prev.ver!==ver)for(let i=0;i<(prev.chunks||0);i++)Fs.deleteDoc(Fs.doc(fs,"wt","current","chunks",prev.ver+"_"+i)).catch(()=>{});
+}
+async function pull(m){
+  const {Fs,fs}=S.fb,rows=[];
+  for(let i=0;i<m.chunks;i++){const s=await Fs.getDoc(Fs.doc(fs,"wt","current","chunks",m.ver+"_"+i));if(!s.exists())throw new Error("missing");rows.push(...JSON.parse(s.data().rows))}
+  return {date:str(m.date,10),file:str(m.file,80),asOf:+m.asOf||0,excKind:m.excKind==="code"?"code":"diff",rows}}
+function startData(){
+  const {Fs,fs}=S.fb;
+  S.unsubs.push(Fs.onSnapshot(Fs.doc(fs,"wt","current"),async snap=>{
+    S.conn=snap.metadata.fromCache?"offline":"live";
+    if(!snap.exists()){S.meta=null;S.ver=null;S.data=null;render();return}
+    const m=snap.data();S.meta=m;
+    if(m.ver!==S.ver){try{const d=await pull(m);if(S.meta&&S.meta.ver===m.ver){S.data=d;S.ver=m.ver;S.type="All";S.user=null}}catch(_){if(!S.data)S.conn="error"}}
+    render();
+  },()=>{S.conn="error";render()}));
+}
+function stopData(){S.unsubs.forEach(u=>{try{u()}catch(_){}});S.unsubs=[];S.data=null;S.meta=null;S.ver=null}
+function load(f){
+  if(!f)return;
+  if(!S.canLoad){toast("Only supervisors and admins can load a new export.");return}
+  if(S.busy)return;
+  const rd=new FileReader();rd.onload=async()=>{
+    let d;try{d=parse(new Uint8Array(rd.result),f.name)}catch(e){$("msg").textContent=e.message;$("msg").hidden=false;return}
+    $("msg").hidden=true;S.busy=true;$("loadBtn").classList.add("busy");S.data=d;S.type="All";S.user=null;render();
+    try{await publish(d);toast("Loaded "+nf(d.rows.length)+" task lines. Everyone signed in now sees this file.")}
+    catch(e){$("msg").textContent="This file shows on your screen only. It could not be saved for everyone"+(e&&e.code==="permission-denied"?" because your account is not allowed to load exports.":". Check the connection and load it again.");$("msg").hidden=false}
+    finally{S.busy=false;$("loadBtn").classList.remove("busy")}
+  };rd.readAsArrayBuffer(f)}
+$("file").addEventListener("change",e=>{load(e.target.files[0]);e.target.value=""});
+const W=$("app");["dragenter","dragover"].forEach(n=>W.addEventListener(n,e=>{e.preventDefault();if(S.canLoad)W.classList.add("drop")}));
+["dragleave","drop"].forEach(n=>W.addEventListener(n,e=>{e.preventDefault();W.classList.remove("drop")}));
+W.addEventListener("drop",e=>load(e.dataTransfer.files[0]));
+
+/* ---------- dashboard ---------- */
+function agg(rows){const o={n:0,u:0,ex:0,t:{},tu:{}};TYPES.forEach(t=>{o.t[t]=0;o.tu[t]=0});
+  rows.forEach(r=>{const t=typ(r);o.n++;o.u+=r[4];o.t[t]++;o.tu[t]+=r[4];if(r[5])o.ex++});return o}
+const TH=a=>"<thead><tr>"+a.map(x=>`<th${x[1]?' class="t"':""}>${x[0]}</th>`).join("")+"</tr></thead>";
+function render(){
+  const D=S.data,M=S.meta;
+  $("loadBtn").hidden=!S.canLoad;
+  const dot=S.conn==="live"?"ok":S.conn==="error"?"bad":"",ct=S.conn==="live"?"Live":S.conn==="offline"?"Offline, showing the last saved file":S.conn==="error"?"Connection lost. Reload this page.":"Connecting…";
+  let st=`<span><span class="dot ${dot}"></span>${ct}</span>`;
+  if(D){st+=`<span>Date <b>${esc(D.date.replace(/(\d+)-(\d+)-(\d+)/,"$2/$3/$1"))}</b></span><span>File <b>${esc(D.file)}</b></span>`;
+    if(M&&M.ver===S.ver&&M.at){const t=new Date(M.at);st+=`<span>Loaded by <b>${esc(str(M.byName,40)||"someone")}</b> ${esc(t.toLocaleDateString(undefined,{month:"short",day:"numeric"}))} ${p2(t.getHours())}:${p2(t.getMinutes())}</span>`}}
+  $("status").innerHTML=st;
+  $("panels").hidden=!D;$("chips").hidden=!D;$("stats").hidden=!D;$("noData").hidden=!!D;
+  if(!D){$("noData").innerHTML=S.conn==="connecting"?"<strong>Loading…</strong>":`<strong>No export loaded yet</strong><span>${S.canLoad?"Select “Load today’s export” and choose the SAP warehouse task export (.xlsx), or drop the file on this page. Everyone signed in sees it straight away.":"A supervisor or admin loads the SAP warehouse task export. This page updates on its own when they do."}</span>`;return}
+  const diff=D.excKind==="diff";TYPES=TLIST.filter(t=>D.rows.some(r=>typ(r)===t));
+  const byType=D.rows.filter(r=>S.type==="All"||typ(r)===S.type);
+  const conf=byType.filter(r=>r[12]==="C"),open=byType.filter(r=>r[12]===""||r[12]==="B");
+  const rows=conf.filter(r=>!S.user||r[1]===S.user),A=agg(rows);
+  const asOf=D.asOf||wallNow();open.forEach(r=>r.age=r[13]<0?-1:Math.max(0,asOf-r[13]));open.sort((a,b)=>b.age-a.age);
+  const dated=open.filter(r=>r.age>=0),oldest=dated.length?dated[0].age:0,over4=dated.filter(r=>r.age>=AMBER).length;
+  let ch=["All"].concat(TYPES).map(t=>`<button class="tab" data-t="${t}" aria-pressed="${S.type===t}">${t}</button>`).join("");
+  if(S.user)ch+=`<button class="tab" data-u="1" aria-pressed="true">Associate: ${esc(S.user)} ✕</button>`;
+  $("chips").innerHTML=ch;
+  const H=Array.from({length:24},()=>({n:0,t:Object.fromEntries(TYPES.map(t=>[t,0]))}));
+  rows.forEach(r=>{if(r[0]<0)return;const h=H[Math.floor(r[0]/3600)];h.n++;h.t[typ(r)]++});
+  const mx=Math.max(1,...H.map(h=>h.n)),pk=H.findIndex(h=>h.n===mx),users=new Set(rows.map(r=>r[1]));
+  $("stats").innerHTML=[["Confirmed",nf(A.n),""],["Units",nf(A.u),""],["Associates",users.size,""],[diff?"Qty differences":"Exceptions",A.ex,A.ex?"warn":""],["Peak hour",A.n?p2(pk)+":00":"—",""],
+    ["Open tasks",nf(open.length),over4?"warn":""],["Oldest open",open.length&&dated.length?age(oldest):"—",oldest>=REDAGE?"hot":oldest>=AMBER?"warn":""]]
+    .map(k=>`<div class="${k[2]}"><dt>${k[0]}</dt><dd>${k[1]}</dd></div>`).join("");
+  const w=960,h=250,L=40,B=24,T=20,pw=w-L-8,ph=h-B-T,bw=pw/24,e=Math.pow(10,Math.floor(Math.log10(mx))),f=mx/e,step=mx<=10?2:e*(f>5?2:f>2?1:.5);
+  let sv=`<svg viewBox="0 0 ${w} ${h}" width="100%" role="img" aria-label="Confirmed task lines by hour">`;
+  for(let v=0;v<=mx;v+=step){const y=T+ph-ph*v/mx;sv+=`<line x1="${L}" x2="${w-8}" y1="${y}" y2="${y}" stroke="var(--line)"/><text x="${L-6}" y="${y+4}" text-anchor="end">${nf(v)}</text>`}
+  H.forEach((hr,i)=>{let y=T+ph;const x=L+i*bw+bw*.15;TYPES.forEach(t=>{const bh=ph*hr.t[t]/mx;if(bh>0){y-=bh;sv+=`<rect x="${x}" y="${y}" width="${bw*.7}" height="${bh}" fill="var(${TC[t]})"><title>${p2(i)}:00 ${t}: ${hr.t[t]}</title></rect>`}});
+    if(hr.n)sv+=`<text class="tl" x="${x+bw*.35}" y="${y-5}" text-anchor="middle">${hr.n}</text>`;
+    sv+=`<text x="${x+bw*.35}" y="${h-6}" text-anchor="middle">${p2(i)}</text>`});
+  $("chart").innerHTML=sv+"</svg>";$("cHour").textContent=nf(A.n);
+  $("legend").innerHTML=TYPES.map(t=>`<span><i style="background:var(${TC[t]})"></i>${t}</span>`).join("");
+  $("cOpen").textContent=open.length?nf(open.length):"";
+  $("asOf").textContent=open.length&&D.asOf?"Ages as of "+tsFmt(D.asOf)+", the latest activity in the file":"";
+  if(!open.length){const all=D.rows.length,c=D.rows.filter(r=>r[12]==="C").length;
+    $("aging").innerHTML=`<div class="empty"><strong>No open tasks in this file</strong><span>${c===all?"All "+nf(all)+" task lines in this export are confirmed (status C).":"No open task lines match this selection."} To track aging, run the SAP export with open tasks included and load it here.</span></div>`}
+  else{const bm=Math.max(1,...BUCKETS.map(b=>dated.filter(r=>r.age>=b[1]&&r.age<b[2]).length));
+    let hA='<div class="ag">'+BUCKETS.map(b=>{const n=dated.filter(r=>r.age>=b[1]&&r.age<b[2]).length;return `<div class="${n?b[3]:""}"><div class="k">${b[0]}</div><div class="v">${nf(n)}</div><div class="b"><i style="width:${100*n/bm}%"></i></div></div>`}).join("")+"</div>";
+    const show=open.slice(0,150);
+    hA+='<div class="scroll"><table>'+TH([["Age",0],["Created",0],["Created by",1],["Type",1],["Wave",0],["Pull header",0],["Process type",0],["Product",1],["Units",0],["Source bin",1],["Destination bin",1],["Warehouse order",0],["Warehouse task",0]])+"<tbody>"+
+      show.map(r=>`<tr class="${r.age>=REDAGE?"hot":""}"><td><span class="pill ${r.age>=REDAGE?"p1":r.age>=AMBER?"p2":""}">${r.age<0?"No date":age(r.age)}</span></td><td>${tsFmt(r[13])}</td><td class="t">${esc(r[15])}</td><td class="t">${typ(r)}</td><td>${esc(r[19])}</td><td>${esc(r[20])}</td><td>${esc(r[3])}</td><td class="t" title="${esc(r[7])}">${esc(r[6])}</td><td>${nf(r[16]||r[4])}</td><td class="t">${esc(r[8])}</td><td class="t">${esc(r[9])}</td><td>${esc(r[10])}</td><td>${esc(r[11])}</td></tr>`).join("")+"</tbody></table></div>";
+    if(open.length>show.length)hA+=`<div class="gate-p" style="margin-top:.6em">Showing the ${show.length} oldest of ${nf(open.length)} open tasks.</div>`;
+    $("aging").innerHTML=hA}
+  $("tAct").innerHTML=TH([["Activity",1],["Task lines",0],["% of total",0],["Units",0]])+"<tbody>"+
+    TYPES.map(t=>`<tr><td>${t}${t==="Other"?" (no activity code)":""}</td><td class="n">${nf(A.t[t])}</td><td>${A.n?pc(A.t[t]/A.n):""}</td><td>${nf(A.tu[t])}</td></tr>`).join("")+
+    `<tr class="tot"><td>Total</td><td class="n">${nf(A.n)}</td><td>${A.n?"100.0%":""}</td><td>${nf(A.u)}</td></tr></tbody>`;
+  const P={};rows.forEach(r=>{const k=r[3]||"(blank)";(P[k]=P[k]||[0,0]);P[k][0]++;P[k][1]+=r[4]});
+  $("tPt").innerHTML=TH([["Process type",1],["Task lines",0],["% of total",0],["Units",0]])+"<tbody>"+
+    Object.entries(P).sort((a,b)=>b[1][0]-a[1][0]).map(([k,v])=>`<tr><td>${esc(k)}</td><td class="n">${nf(v[0])}</td><td>${pc(v[0]/A.n)}</td><td>${nf(v[1])}</td></tr>`).join("")+"</tbody>";
+  const U={};conf.forEach(r=>{const u=U[r[1]]=U[r[1]]||{name:r[1],...Object.fromEntries(TYPES.map(t=>[t,0])),tot:0,u:0,ex:0,a:1e9,b:-1};
+    u[typ(r)]++;u.tot++;u.u+=r[4];if(r[5])u.ex++;if(r[0]>=0){u.a=Math.min(u.a,r[0]);u.b=Math.max(u.b,r[0])}});
+  const list=Object.values(U);list.forEach(u=>{u.hrs=u.b>=0?(u.b-u.a)/3600:0;u.lph=u.hrs>=.5?u.tot/u.hrs:-1});
+  list.sort((x,y)=>S.sort==="name"?S.dir*x.name.localeCompare(y.name):S.dir*(x[S.sort]-y[S.sort])||y.tot-x.tot);
+  const cols=[["name","Associate"],...TYPES.map(t=>[t,t]),["tot","Total"],["u","Units"],["ex",diff?"Qty diffs":"Exceptions"],["a","First"],["b","Last"],["hrs","Hours"],["lph","Lines per hour"]];
+  const mt=Math.max(1,...list.map(u=>u.tot));$("cAs").textContent=list.length||"";
+  $("tAs").innerHTML="<thead><tr><th>#</th>"+cols.map(c=>`<th class="s${c[0]==="name"?" t":""}" data-s="${esc(c[0])}">${c[1]}${S.sort===c[0]?(S.dir<0?" ▼":" ▲"):""}</th>`).join("")+"</tr></thead><tbody>"+
+    list.map((u,i)=>`<tr class="click${S.user===u.name?" sel":""}" data-u="${esc(u.name)}"><td>${i+1}</td><td class="t n">${esc(u.name)}</td>${TYPES.map(t=>`<td>${u[t]}</td>`).join("")}
+    <td class="n"><span class="meter" style="width:${4*u.tot/mt}em"></span>${u.tot}</td><td>${nf(u.u)}</td><td>${u.ex?`<span class="pill p2">${u.ex}</span>`:"0"}</td><td>${u.b>=0?hm(u.a):""}</td><td>${hm(u.b)}</td><td>${u.hrs.toFixed(1)}</td><td>${u.lph<0?"":u.lph.toFixed(1)}</td></tr>`).join("")+"</tbody>";
+  const ex=rows.filter(r=>r[5]).sort((a,b)=>a[0]-b[0]);$("cEx").textContent=ex.length||"";$("hEx").textContent=diff?"Quantity differences":"Exceptions";
+  $("tEx").innerHTML=ex.length?TH([["Time",0],["Associate",1],[diff?"Difference":"Code",0],["Type",1],["Process type",0],["Product",1],[diff?"Planned":"Description",diff?0:1],[diff?"Actual":"Units",0],["Source bin",1],["Destination bin",1],["Warehouse task",0]])+"<tbody>"+
+    ex.map(r=>`<tr><td class="n">${hm(r[0])}</td><td class="t">${esc(r[1])}</td><td><span class="pill p2">${esc(r[5])}</span></td><td class="t">${typ(r)}</td><td>${esc(r[3])}</td><td class="t">${esc(r[6])}</td>${diff?`<td>${nf(r[16])}</td>`:`<td class="t">${esc(r[7])}</td>`}<td>${nf(r[4])}</td><td class="t">${esc(r[8])}</td><td class="t">${esc(r[9])}</td><td>${esc(r[11])}</td></tr>`).join("")+"</tbody>"
+    :`<tbody><tr><td class="t">${diff?"No quantity differences":"No exceptions"} in this selection.</td></tr></tbody>`;
+}
+$("chips").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;if(b.dataset.u)S.user=null;else S.type=b.dataset.t;render()});
+$("tAs").addEventListener("click",e=>{const th=e.target.closest("th[data-s]");if(th){const k=th.dataset.s;if(S.sort===k)S.dir=-S.dir;else{S.sort=k;S.dir=k==="name"?1:-1}render();return}
+  const tr=e.target.closest("tr[data-u]");if(tr){S.user=S.user===tr.dataset.u?null:tr.dataset.u;render()}});
+
+/* ---------- sign-in gate (same accounts, roles and access requests as the other CEVA tools) ---------- */
+function showGate(mode,waitText){
+  const ready=mode==="ready";$("gate").hidden=ready;$("app").hidden=!ready;
+  $("gateWait").hidden=mode!=="wait";if(waitText)$("gateWait").textContent=waitText;
+  $("gateSetup").hidden=mode!=="setup";$("gateLogin").hidden=mode!=="login";$("gateRequest").hidden=mode!=="request";$("gateDenied").hidden=mode!=="denied";
+  if(mode==="denied")renderDenied();
+}
+function renderDenied(){const em=S.authUser?S.authUser.email||"":"";$("dEmail").textContent=em;$("dEmailP").textContent=em;$("dPending").hidden=!S.myReq;$("dNone").hidden=!!S.myReq}
+function reqErrMsg(c){return c==="auth/email-already-in-use"?"That email already has a login. Go back and sign in, or use Forgot password."
+  :c==="auth/invalid-email"?"That doesn’t look like an email address.":c==="auth/weak-password"?"Use a password of at least 8 characters."
+  :c==="auth/network-request-failed"?"No connection. Check the network and try again.":"Couldn’t send the request. Try again in a moment."}
+function fileRequest(user,name,note){const {Fs,fs}=S.fb;return Fs.setDoc(Fs.doc(fs,"requests",user.uid),{name:str(name,40),email:str(user.email||"",80),company:"ceva",note:str(note,120),at:Date.now()})}
+$("gateLogin").addEventListener("submit",async e=>{e.preventDefault();const email=$("lEmail").value.trim(),pass=$("lPass").value,err=$("lErr");err.hidden=true;
+  if(!email||!pass){err.textContent="Enter your email and password.";err.hidden=false;return}
+  if(!S.fb)return;$("lGo").disabled=true;
+  try{await S.fb.F.signInWithEmailAndPassword(S.fb.auth,email,pass);$("lPass").value=""}
+  catch(x){const c=x&&x.code;err.textContent=c==="auth/too-many-requests"?"Too many tries. Wait a few minutes, then try again.":c==="auth/network-request-failed"?"No connection. Check the network and try again.":"That email and password don’t match an account on this tool.";err.hidden=false}
+  finally{$("lGo").disabled=false}});
+$("lForgot").addEventListener("click",async()=>{const email=$("lEmail").value.trim(),err=$("lErr");err.hidden=true;
+  if(!email){err.textContent="Type your email above first, then select this again.";err.hidden=false;$("lEmail").focus();return}
+  if(!S.fb)return;
+  try{await S.fb.F.sendPasswordResetEmail(S.fb.auth,email);toast("Reset link sent to "+email+". Check spam too; the link expires, so use it soon.")}
+  catch(x){err.textContent="Couldn’t send the reset link. Check the email address and the connection, then try again.";err.hidden=false}});
+$("lRequest").addEventListener("click",()=>{$("qEmail").value=$("lEmail").value;showGate("request");setTimeout(()=>$("qName").focus(),30)});
+$("qBack").addEventListener("click",()=>showGate("login"));
+$("gateRequest").addEventListener("submit",async e=>{e.preventDefault();const name=str($("qName").value,40),email=$("qEmail").value.trim(),pass=$("qPass").value,note=str($("qNote").value,120),err=$("qErr");err.hidden=true;
+  const bad=!name?"Enter your name so the admin knows who is asking.":!email?"Enter your work email.":pass.length<8?"Use a password of at least 8 characters.":"";
+  if(bad){err.textContent=bad;err.hidden=false;return}
+  if(!S.fb)return;$("qGo").disabled=true;S.pendingReq={name,note};
+  try{await S.fb.F.createUserWithEmailAndPassword(S.fb.auth,email,pass);$("qPass").value=""}
+  catch(x){S.pendingReq=null;err.textContent=reqErrMsg(x&&x.code);err.hidden=false}
+  finally{$("qGo").disabled=false}});
+$("dRequest").addEventListener("submit",async e=>{e.preventDefault();const name=str($("dName").value,40),note=str($("dNote").value,120),err=$("dReqErr");err.hidden=true;
+  if(!name){err.textContent="Enter your name so the admin knows who is asking.";err.hidden=false;return}
+  if(!S.fb||!S.authUser)return;$("dReqGo").disabled=true;
+  try{await fileRequest(S.authUser,name,note);toast("Request sent")}catch(x){err.textContent=reqErrMsg(x&&x.code);err.hidden=false}finally{$("dReqGo").disabled=false}});
+const signOut=()=>{if(S.fb)S.fb.F.signOut(S.fb.auth)};
+$("dOut").addEventListener("click",signOut);$("signOut").addEventListener("click",signOut);
+
+(async function connect(){
+  const cfg=window.FIREBASE_CONFIG;
+  if(!cfg||!cfg.apiKey||/PASTE/i.test(cfg.apiKey+cfg.projectId)){showGate("setup");return}
+  let A,F,Fs;
+  try{[A,F,Fs]=await Promise.all([import(FB+"firebase-app.js"),import(FB+"firebase-auth.js"),import(FB+"firebase-firestore.js")])}
+  catch(_){showGate("wait","Can’t reach Firebase from this network. Ask IT to allow gstatic.com, googleapis.com and firebaseapp.com, then reload.");return}
+  const app=A.initializeApp(cfg),auth=F.getAuth(app);let fs;
+  try{fs=Fs.initializeFirestore(app,{localCache:Fs.persistentLocalCache({tabManager:Fs.persistentMultipleTabManager()})})}catch(_){fs=Fs.getFirestore(app)}
+  S.fb={auth,F,Fs,fs};
+  let roleUnsub=null,reqUnsub=null;
+  F.onAuthStateChanged(auth,user=>{
+    if(roleUnsub){roleUnsub();roleUnsub=null}if(reqUnsub){reqUnsub();reqUnsub=null}
+    stopData();S.authUser=user;S.role=null;S.canLoad=false;S.myReq=null;S.conn="connecting";
+    if(!user){showGate("login");return}
+    if(S.pendingReq){const q=S.pendingReq;S.pendingReq=null;fileRequest(user,q.name,q.note).then(()=>toast("Request sent. An admin will approve it."),()=>toast("Signed up, but the request didn’t send. Fill in the form below."))}
+    showGate("wait","Checking access…");
+    reqUnsub=Fs.onSnapshot(Fs.doc(fs,"requests",user.uid),s=>{S.myReq=s.exists();if(!S.role&&!$("gateDenied").hidden)renderDenied()},()=>{});
+    roleUnsub=Fs.onSnapshot(Fs.doc(fs,"roles",user.uid),{includeMetadataChanges:true},snap=>{
+      const d=snap.exists()?(snap.data()||{}):{},role=d.role;
+      if(!ROLE_LABEL[role]){if(snap.metadata.fromCache){showGate("wait","Waiting for the network…");return}S.role=null;stopData();showGate("denied");return}
+      const first=!S.role;S.role=role;S.myName=str(d.name,40);S.canLoad=role==="supervisor"||role==="admin";
+      if(first){startData();showGate("ready")}
+      render();
+    },()=>{S.role=null;stopData();showGate("denied")});
+  });
+})();
+</script>
+</body>
+</html>
