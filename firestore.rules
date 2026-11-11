@@ -93,9 +93,23 @@ service cloud.firestore {
 
     // ───────── Warehouse transactions dashboard ─────────
 
-    // wt/current is the summary of the export that is loaded now (who, when, how many parts).
-    // wt/current/chunks/{version}_{n} hold the task lines as JSON text, split to stay under
-    // Firestore's 1 MiB document limit. Anyone with a role reads; supervisors and admins load.
+    // wtdays/{YYYY-MM-DD} is one summary per confirmation date: counts per associate, activity,
+    // process type and hour, kept as JSON text. History builds up as exports are loaded.
+    // Anyone with a role reads; supervisors and admins load; admins can remove a day.
+    match /wtdays/{day} {
+      allow read: if isViewer();
+      allow create, update: if isSupervisor()
+        && request.resource.data.date == day
+        && request.resource.data.by == request.auth.uid
+        && request.resource.data.cube is string
+        && request.resource.data.cube.size() < 1000000
+        && request.resource.data.size() <= 14;
+      allow delete: if isAdmin();
+    }
+
+    // wt/open is the summary of the open task list from the most recent export (who, when, how
+    // many parts). wt/open/chunks/{version}_{n} hold those task lines as JSON text, split to stay
+    // under Firestore's 1 MiB document limit.
     match /wt/{docId} {
       allow read: if isViewer();
       allow write: if isSupervisor()

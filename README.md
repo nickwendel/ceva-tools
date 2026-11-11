@@ -6,7 +6,7 @@ Operational tools for CEVA sites, served with GitHub Pages.
 |---|---|---|
 | Receiving dock board | [`dock-board/`](dock-board/) | Floor TV display of trailers in the drop and today's appointments, with priority, door, pathway owner and status. Supervisors update it from a phone. |
 | NCI/Grief inbound exceptions | [`nci-inbound/`](nci-inbound/) | Shared log of error shipments (shortages, overages, damage, missing ASN…) worked by CEVA and NCI/Grief together. Either company raises an issue, posts updates, hands it to the other side and resolves it. A board shows what is open and who it is waiting on. |
-| Warehouse transactions | [`transactions/`](transactions/) | Daily dashboard of confirmed SAP EWM warehouse tasks by hour, activity, process type and associate, with open task aging. A supervisor loads the SAP export and everyone signed in sees it. |
+| Warehouse transactions | [`transactions/`](transactions/) | Dashboard of SAP EWM warehouse tasks: completed work by hour, activity, process type and associate, open task aging, and trends over time. A supervisor loads the SAP export and everyone signed in sees it. |
 
 Shared files live in [`assets/`](assets/): `ceva-logo-whitered.png` is the white-and-red logo used on the dark headers and sign-in cards; `ceva-logo.svg` (navy and red) is only the browser-tab icon. Every page shares one look, matched to the Whitsett KPI dashboard: dark navy, card panels, CEVA red accent.
 
@@ -114,16 +114,28 @@ Firebase's free Spark plan allows 50,000 reads and 20,000 writes a day across bo
 
 **Live page:** `https://nickwendel.github.io/ceva-tools/transactions/`
 
-A daily view of warehouse task activity from SAP EWM. Sign in with the same account as the other tools.
+Warehouse task activity from SAP EWM, by day and over time. Sign in with the same account as the other tools.
 
-- **Load the day's file:** a supervisor or admin selects **Load today's export** (or drops the file on the page) and picks the SAP warehouse task export (`.xlsx`). The page reads the file in the browser, saves the task lines to Firebase, and every signed-in screen switches to the new file on its own. Loading again replaces the previous file.
-- **What it shows:** confirmed task lines, units, associates and peak hour; a chart of confirmations by hour; breakdowns by activity and warehouse process type; a sortable associate table (select a row to filter the page to that person); and exceptions, or quantity differences when the export has no exception codes.
-- **Open task aging:** every task line with a blank or `B` status is listed oldest first with its age since creation, counted in five age bands. Age runs to the latest activity time in the file, so an old file doesn't look worse than it was. Amber from 4 hours, red from 8 hours.
-- **Filters:** the tabs under the tiles limit the whole page to one activity (pick, putaway, internal move, posting change, goods issue, goods receipt).
+The page has three sections:
+
+- **Completed:** confirmed task lines, units, associates and peak hour; a chart of confirmations by hour; breakdowns by activity and warehouse process type; a sortable associate table (select a row to filter the page to that person); and exceptions, or quantity differences when the export has no exception codes.
+- **Open tasks:** every task line with a blank or `B` status in the most recent export, oldest first with its age since creation, counted in five age bands and broken down by activity and by who created it. Age runs to the latest activity time in that file. Amber from 4 hours, red from 8 hours.
+- **Trends:** lines, units, lines per associate hour and exceptions for each day in the range, plus a day by day table. Select a day in the table to open it.
+
+**Date range:** Today, Week (last 7 days), Month (last 30 days), All, or pick one day. The range applies to Completed and Trends. With a single day selected, Trends shows the 14 days up to it. The tabs under the tiles limit the page to one activity (pick, putaway, internal move, posting change, goods issue, goods receipt).
+
+### Loading exports
+
+A supervisor or admin selects **Load export** (or drops the file on the page) and picks the SAP warehouse task export (`.xlsx`). The page reads the file in the browser and saves a summary of each day to Firebase, and every signed-in screen updates on its own.
+
+- **History builds up.** Each load adds the days in the file to what is already saved. A file can hold one day or many, so a historical export loads the same way as today's.
+- **Loading a day again replaces it.** Every day that appears in a file is replaced by that file's lines for that day, so load whole days. Reloading today's export through the day is fine.
+- **Open tasks follow the newest file.** The open task list is replaced only when the file is at least as recent as the one it came from, so loading old history doesn't wipe today's open tasks.
+- **Very large files:** the file is read in the browser, so a file with hundreds of thousands of lines can be slow or run out of memory. Load history a month or a quarter at a time.
 
 ### The export
 
-Run the warehouse task list in SAP EWM for the day, include open and confirmed tasks, and export to Excel. Columns are matched by name, so their order doesn't matter. Two layouts are accepted:
+Run the warehouse task list in SAP EWM, include open and confirmed tasks, and export to Excel. Columns are matched by name, so their order doesn't matter. Two layouts are accepted:
 
 | Needed | Column names |
 |---|---|
@@ -137,8 +149,17 @@ Run the warehouse task list in SAP EWM for the day, include open and confirmed t
 | Role | Can do |
 |---|---|
 | Viewer, User | See the dashboard |
-| Supervisor, Admin | Also load a new export for everyone |
+| Supervisor, Admin | Also load exports for everyone |
 
 ### Data and limits
 
-No task data is stored in this repository. The loaded export lives in Firestore under `wt/current` (a summary) and `wt/current/chunks` (the task lines as text, split to stay under Firestore's 1 MiB document limit). Only the latest file is kept. Loading a file is a handful of writes and each screen reads a handful of documents, far inside the free Spark plan. The page loads the SheetJS spreadsheet reader from `cdnjs.cloudflare.com`, so screens need to reach that host as well as the Firebase ones.
+No task data is stored in this repository. In Firestore:
+
+| Where | What |
+|---|---|
+| `wtdays/{YYYY-MM-DD}` | One document per confirmation date: line and unit counts per associate, activity, process type and hour, each associate's first and last confirmation, and up to 300 exception lines. The confirmed task lines themselves are not kept. |
+| `wt/open`, `wt/open/chunks` | The open task lines from the most recent export. |
+
+To remove a day that was loaded by mistake, an admin deletes its document under `wtdays` in the Firebase console.
+
+Loading a file is one write per day in it. A screen reads one document per day in the range it shows (Today reads one, All reads every day), which stays far inside the free Spark plan for a handful of screens. The page loads the SheetJS spreadsheet reader from `cdnjs.cloudflare.com`, so screens need to reach that host as well as the Firebase ones.
