@@ -1,13 +1,15 @@
 rules_version = '2';
 
 // CEVA tools — Firestore security rules for the shared Firebase project (ceva-tools).
-// Covers both tools: the receiving dock board and the NCI/Grief inbound exceptions tool.
+// Covers every tool: the receiving dock board, the NCI/Grief inbound exceptions tool and the
+// warehouse transactions dashboard.
 // Deployed with `firebase deploy --only firestore:rules`, or paste into
 // Firebase console → Firestore Database → Rules → Publish.
 //
 // One people list for both tools, stored at roles/{uid}:
-//   role    viewer     → see the dock board; see inbound issues
-//           supervisor → also update trucks on the dock board; also work inbound issues
+//   role    viewer     → see the dock board; see inbound issues; see the transactions dashboard
+//           supervisor → also update trucks on the dock board; also work inbound issues; also load
+//                        a new SAP export into the transactions dashboard
 //           user       → work inbound issues (no dock board changes)
 //           admin      → everything, plus settings and people
 //   company ceva | partner (NCI/Grief) → which side of the inbound tool the person is on
@@ -87,6 +89,29 @@ service cloud.firestore {
     match /mail/{mailId} {
       allow create: if isUser() && request.resource.data.size() <= 6;
       allow read, update, delete: if false;
+    }
+
+    // ───────── Warehouse transactions dashboard ─────────
+
+    // wt/current is the summary of the export that is loaded now (who, when, how many parts).
+    // wt/current/chunks/{version}_{n} hold the task lines as JSON text, split to stay under
+    // Firestore's 1 MiB document limit. Anyone with a role reads; supervisors and admins load.
+    match /wt/{docId} {
+      allow read: if isViewer();
+      allow write: if isSupervisor()
+        && request.resource.data.by == request.auth.uid
+        && request.resource.data.chunks is int
+        && request.resource.data.chunks <= 40
+        && request.resource.data.size() <= 12;
+
+      match /chunks/{chunkId} {
+        allow read: if isViewer();
+        allow create, update: if isSupervisor()
+          && request.resource.data.rows is string
+          && request.resource.data.rows.size() < 1000000
+          && request.resource.data.size() <= 3;
+        allow delete: if isSupervisor();
+      }
     }
 
     // ───────── Shared ─────────
