@@ -109,7 +109,7 @@ tr.hot td{background:rgba(226,35,26,.1)}
 .legend{display:flex;flex-wrap:wrap;gap:.5em 1.2em;margin-top:.5em}
 .legend span{display:inline-flex;align-items:center;gap:.4em;font:600 .78em/1 var(--f);color:var(--muted)}
 .legend i{display:inline-block;width:.9em;height:.7em;border-radius:2px}
-svg text{font-family:var(--f);font-size:11px;fill:var(--muted)}svg .tl{fill:var(--fg);font-weight:700}
+svg text{font-family:var(--f);font-size:11px;fill:var(--muted)}svg .tl{fill:var(--fg);font-weight:700;paint-order:stroke;stroke:var(--card);stroke-width:3px;stroke-linejoin:round}
 .empty{border:1px dashed var(--line-light);border-radius:var(--radius);padding:1.2em;color:var(--muted);display:flex;flex-direction:column;gap:.35em}
 .empty strong{font:700 1.05em/1.2 var(--f);color:var(--fg)}
 .empty span{line-height:1.5;max-width:75ch}
@@ -137,6 +137,11 @@ svg text{font-family:var(--f);font-size:11px;fill:var(--muted)}svg .tl{fill:var(
 .dayinp{background:var(--card);border:1px solid var(--line-light);border-radius:8px;min-height:2.5rem;padding:0 .6rem;font:600 13px/1 var(--f);color:var(--fg)}
 .dayinp.on{border-color:var(--accent)}
 .grid4{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:1em}
+.trbar{display:flex;flex-wrap:wrap;gap:.6em 1em;align-items:center;justify-content:space-between}
+.cap{display:flex;flex-wrap:wrap;gap:.3em 1.3em;margin-top:.5em;font:600 .82em/1.35 var(--f);color:var(--muted)}
+.cap b{color:var(--fg)}
+.cap i{display:inline-block;width:1.5em;height:0;border-top:2px dashed var(--warn);vertical-align:middle;margin-right:.45em}
+.cap i.t{border-top:3px solid var(--accent)}
 .linkbtn{background:none;border:0;padding:0;color:var(--info);font:inherit;font-weight:600;cursor:pointer;text-decoration:underline}
 .toast{position:fixed;left:50%;bottom:calc(1.2rem + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:30;background:var(--card);color:var(--fg);border:1px solid var(--line-light);padding:.75rem 1.1rem;border-radius:8px;font:600 13px/1.35 var(--f);box-shadow:0 8px 24px rgba(0,0,0,.45);max-width:calc(100% - 32px)}
 </style>
@@ -238,16 +243,20 @@ svg text{font-family:var(--f);font-size:11px;fill:var(--muted)}svg .tl{fill:var(
 
   <!-- Trends -->
   <div class="panels" id="vTrends" hidden>
-    <div class="grid4">
-      <section class="b-panel"><header class="p-head"><h2>Confirmed lines per day</h2></header><div class="p-body"><div id="tr1"></div><div class="legend" id="trLegend"></div></div></section>
-      <section class="b-panel"><header class="p-head"><h2>Units per day</h2></header><div class="p-body" id="tr2"></div></section>
-      <section class="b-panel"><header class="p-head"><h2>Lines per associate hour</h2><span class="p-page">Lines ÷ hours from first to last confirmation</span></header><div class="p-body" id="tr3"></div></section>
-      <section class="b-panel"><header class="p-head"><h2 id="hTr4">Exceptions per day</h2></header><div class="p-body" id="tr4"></div></section>
+    <div class="trbar">
+      <div class="segm" id="trMode" role="group" aria-label="Trend grouping"></div>
+      <button type="button" class="btn" id="pptBtn">Export to PowerPoint</button>
     </div>
-    <section class="b-panel"><header class="p-head"><h2>Day by day</h2><span class="p-count" id="cDays"></span><span class="p-page">Select a day to open it</span></header><div class="p-body scroll"><table id="tDays"></table></div></section>
+    <div class="grid4">
+      <section class="b-panel"><header class="p-head"><h2 id="hTr1"></h2></header><div class="p-body"><div id="tr1"></div><div class="cap" id="cp1"></div><div class="legend" id="trLegend"></div></div></section>
+      <section class="b-panel"><header class="p-head"><h2 id="hTr2"></h2></header><div class="p-body"><div id="tr2"></div><div class="cap" id="cp2"></div></div></section>
+      <section class="b-panel"><header class="p-head"><h2 id="hTr3"></h2><span class="p-page">Lines ÷ hours from first to last confirmation</span></header><div class="p-body"><div id="tr3"></div><div class="cap" id="cp3"></div></div></section>
+      <section class="b-panel"><header class="p-head"><h2 id="hTr4"></h2></header><div class="p-body"><div id="tr4"></div><div class="cap" id="cp4"></div></div></section>
+    </div>
+    <section class="b-panel"><header class="p-head"><h2 id="hDays">Day by day</h2><span class="p-count" id="cDays"></span><span class="p-page" id="daysHint">Select a day to open it</span></header><div class="p-body scroll"><table id="tDays"></table></div></section>
   </div>
 
-  <div class="note">A transaction is one confirmed warehouse task line (status C), counted on its confirmation date. Type comes from the warehouse process category when the export has it, otherwise from the activity code. Units use the actual destination quantity. Associate is the Confirmed By user. Hours run from an associate’s first to last confirmation each day, and lines per hour is blank under 30 minutes. When the export has no exception codes, lines where the actual quantity differs from the planned quantity are listed instead. Week is the last 7 days and Month the last 30 days, both including today. Loading an export replaces every day that appears in it, so load whole days. Open tasks are the lines with a blank or B status in the most recent export. Their age runs from Created On and Created At to the latest activity time in that file, shown amber from 4 hours and red from 8 hours.</div>
+  <div class="note">A transaction is one confirmed warehouse task line (status C), counted on its confirmation date. Type comes from the warehouse process category when the export has it, otherwise from the activity code. Units use the actual destination quantity. Associate is the Confirmed By user. Hours run from an associate’s first to last confirmation each day, and lines per hour is blank under 30 minutes. When the export has no exception codes, lines where the actual quantity differs from the planned quantity are listed instead. Week is the last 7 days and Month the last 30 days, both including today. Loading an export replaces every day that appears in it, so load whole days. Open tasks are the lines with a blank or B status in the most recent export. Their age runs from Created On and Created At to the latest activity time in that file, shown amber from 4 hours and red from 8 hours. On Trends, the dashed line is the average and the solid red line is a straight-line trend fitted through the days or months shown (it needs at least 3). By month uses every day that has been loaded; the current month is shown lighter and left out of the average and trend because it is not finished.</div>
 </div>
 <div class="toast" id="toast" role="status" hidden></div>
 
@@ -262,7 +271,7 @@ const TMAP={PICK:"Pick",PTWY:"Putaway",INTL:"Internal move"};
 const AMBER=4*3600,REDAGE=8*3600,CHUNK=600000,MAXEXC=300;
 const BUCKETS=[["Under 1 hour",0,3600,"ok"],["1 to 4 hours",3600,AMBER,""],["4 to 8 hours",AMBER,REDAGE,"p2"],["8 to 24 hours",REDAGE,86400,"p1"],["Over 24 hours",86400,Infinity,"p1"]];
 const RANGES=[["today","Today"],["week","Week"],["month","Month"],["all","All"]];
-const S={days:new Map(),daysReady:false,open:null,openMeta:null,openVer:null,view:"done",range:"today",day:null,type:"All",user:null,sort:"tot",dir:-1,
+const S={days:new Map(),daysReady:false,open:null,openMeta:null,openVer:null,view:"done",range:"today",day:null,type:"All",user:null,sort:"tot",dir:-1,tmode:"day",trend:null,
   fb:null,authUser:null,role:null,myName:"",canLoad:false,conn:"connecting",busy:false,pendingReq:null,unsubs:[],daysUnsub:null,subStart:null};
 const $=id=>document.getElementById(id),nf=n=>Math.round(n).toLocaleString("en-US"),pc=x=>(x*100).toFixed(1)+"%",p2=n=>String(n).padStart(2,"0");
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -276,7 +285,7 @@ const addDays=(s,n)=>{const d=new Date(s+"T12:00:00");d.setDate(d.getDate()+n);r
 const mdy=s=>s.replace(/(\d+)-(\d+)-(\d+)/,"$2/$3/$1"),md=s=>s.slice(5).replace("-","/");
 function age(s){const m=Math.max(0,Math.floor(s/60));if(m<60)return m+"m";const h=Math.floor(m/60);return h<24?h+"h "+p2(m%60)+"m":Math.floor(h/24)+"d "+(h%24)+"h"}
 function tsFmt(t){if(t<0)return "";const d=new Date(t*1000);return p2(d.getUTCMonth()+1)+"/"+p2(d.getUTCDate())+" "+p2(d.getUTCHours())+":"+p2(d.getUTCMinutes())}
-let toastT;function toast(t,keep){const e=$("toast");e.textContent=t;e.hidden=false;clearTimeout(toastT);if(!keep)toastT=setTimeout(()=>e.hidden=true,6000)}
+let toastT;function toast(t,keep){const e=$("toast");e.textContent=t;e.hidden=false;clearTimeout(toastT);if(!keep)toastT=setTimeout(()=>e.hidden=true,typeof keep==="number"?keep:6000)}
 const TH=a=>"<thead><tr>"+a.map(x=>`<th${x[1]?' class="t"':""}>${x[0]}</th>`).join("")+"</tr></thead>";
 
 /* ---------- reading the SAP export ---------- */
@@ -290,15 +299,31 @@ function parse(buf,name){
   const miss=["Warehouse Task","Warehouse Task Status","Confirmed By","Confirmation Date","Confirmation Time","Created On","Created At","Whse Process Type"].filter(n=>!h.includes(n));
   if(!qC)miss.push("Act. Qty Dest. BUoM or Act Dest Qty Alt UoM");if(!col("Activity","Whse Process Category Desc."))miss.push("Activity or Whse Process Category Desc.");
   if(miss.length)throw new Error("This file is missing these columns: "+miss.join(", ")+". Load the SAP warehouse task export.");
-  const c=n=>h.indexOf(n),v=(r,n)=>c(n)<0?"":r[c(n)],g=(r,n)=>String(v(r,n)??"").trim();let last=-1;const rows=[];
-  for(let i=1;i<a.length;i++){const r=a[i];if(g(r,"Warehouse Task")==="")continue;const st=g(r,"Warehouse Task Status").toUpperCase(),done=st==="C";
+  const c=n=>h.indexOf(n),v=(r,n)=>c(n)<0?"":r[c(n)],g=(r,n)=>String(v(r,n)??"").trim();let last=-1,same=0;const rows=[],seen=new Set();
+  for(let i=1;i<a.length;i++){const r=a[i];if(g(r,"Warehouse Task")==="")continue;
+    const whole=JSON.stringify(r);if(seen.has(whole)){same++;continue}seen.add(whole);const st=g(r,"Warehouse Task Status").toUpperCase(),done=st==="C";
     const cr=dts(v(r,"Created On"),v(r,"Created At")),cf=done?dts(v(r,"Confirmation Date"),v(r,"Confirmation Time")):-1;
     last=Math.max(last,cr,cf);const df=+v(r,dC)||0;
     rows.push([done?toSec(v(r,"Confirmation Time")):-1,g(r,"Confirmed By")||"(blank)",g(r,"Activity"),g(r,"Whse Process Type"),+v(r,qC)||0,eC?g(r,eC):df?(df>0?"+":"")+df:"",
       g(r,"Product"),g(r,"Product Short Description"),g(r,"Source Storage Bin"),g(r,"Destination Bin"),g(r,"Warehouse Order"),g(r,"Warehouse Task"),
-      st,cr,g(r,"Queue"),g(r,"Created By"),+v(r,sC)||0,cf,g(r,"Whse Process Category Desc."),g(r,"Wave"),g(r,"Pull header ID")])}
+      st,cr,g(r,"Queue"),g(r,"Created By"),+v(r,sC)||0,cf,g(r,"Whse Process Category Desc."),g(r,"Wave"),g(r,"Pull header ID")]);
+    const one=(x,y)=>x&&!y?"from":y&&!x?"to":"";
+    rows[rows.length-1].side=one(g(r,"Source Storage Bin"),g(r,"Destination Bin"))||(g(r,"Source Storage Bin")?"":one(g(r,"Source Handling Unit"),g(r,"Dest. Handling Unit")))}
   if(!rows.length)throw new Error("No warehouse task lines were found in this file.");
-  return {file:str(name.replace(/\.[^.]+$/,""),80),asOf:last>0?last:wallNow(),excKind:eC?"code":"diff",rows}}
+  const legs=joinLegs(rows);
+  return {file:str(name.replace(/\.[^.]+$/,""),80),asOf:last>0?last:wallNow(),excKind:eC?"code":"diff",rows:rows.filter(r=>!r.drop),dup:{same,legs}}}
+/* SAP can list one task as two lines, one holding only the source side (bin, handling unit) and one holding only the destination side.
+   Lines that match on everything else are joined into one line, so the task is counted once. Returns how many lines were joined away. */
+function joinLegs(rows){
+  const groups=new Map();let n=0;
+  for(const r of rows){const from=r.side==="from";if(!r.side)continue;
+    const k=JSON.stringify([r[1],r[2],r[3],r[4],r[5],r[6],r[7],r[10],r[11],r[12],r[13],r[14],r[15],r[16],r[18],r[19],r[20]]);
+    let o=groups.get(k);if(!o){o={from:[],to:[]};groups.set(k,o)}(from?o.from:o.to).push(r)}
+  for(const o of groups.values())for(const f of o.from){
+    const near=t=>!t.drop&&(f[17]<0||t[17]<0?f[17]===t[17]:Math.abs(f[17]-t[17])<=60);
+    const t=o.to.find(t=>near(t)&&t[9]===f[8])||o.to.find(near);if(!t)continue;
+    if(t[9])f[9]=t[9];if(t[17]>f[17]){f[17]=t[17];f[0]=t[0]}t.drop=true;n++}
+  return n}
 
 /* ---------- turning task lines into one summary per day ----------
    A day keeps a "cube" of counts, one entry per associate, type, process type and hour: [user, type, processType, hour, lines, units].
@@ -344,7 +369,7 @@ async function pullOpen(m){
   return {asOf:+m.asOf||0,file:str(m.file,80),byName:str(m.byName,40),at:+m.at||0,rows}}
 function span(){const t=today();return S.range==="today"?[t,t]:S.range==="week"?[addDays(t,-6),t]:S.range==="month"?[addDays(t,-29),t]:S.range==="day"&&S.day?[S.day,S.day]:["0000-00-00","9999-99-99"]}
 function trendSpan(){const [a,b]=span();return a===b?[addDays(b,-13),b]:[a,b]}
-function needStart(){const a=span()[0],t=trendSpan()[0];return S.view==="trends"&&t<a?t:a}
+function needStart(){if(S.view==="trends"&&S.tmode==="month")return "0000-00-00";const a=span()[0],t=trendSpan()[0];return S.view==="trends"&&t<a?t:a}
 function watchDays(){
   if(!S.fb||!S.role)return;const start=needStart();
   if(S.subStart!==null&&S.subStart<=start)return;
@@ -371,7 +396,7 @@ function startData(){
     if(s.docs.length&&S.range==="today"&&!S.days.has(today())&&!S.pickedRange){S.range="day";S.day=s.docs[0].id;render()}},()=>{});
 }
 function stopData(){S.unsubs.forEach(u=>{try{u()}catch(_){}});S.unsubs=[];if(S.daysUnsub){S.daysUnsub();S.daysUnsub=null}
-  S.subStart=null;S.days=new Map();S.daysReady=false;S.open=null;S.openMeta=null;S.openVer=null;S.pickedRange=false;S.view="done";S.range="today";S.day=null;S.type="All";S.user=null}
+  S.subStart=null;S.days=new Map();S.daysReady=false;S.open=null;S.openMeta=null;S.openVer=null;S.pickedRange=false;S.view="done";S.tmode="day";S.trend=null;S.range="today";S.day=null;S.type="All";S.user=null}
 function load(f){
   if(!f)return;
   if(!S.canLoad){toast("Only supervisors and admins can load an export.");return}
@@ -379,10 +404,11 @@ function load(f){
   const rd=new FileReader();rd.onload=async()=>{
     let d;try{d=parse(new Uint8Array(rd.result),f.name)}catch(e){$("msg").textContent=e.message;$("msg").hidden=false;return}
     $("msg").hidden=true;S.busy=true;$("loadBtn").classList.add("busy");toast("Saving "+nf(d.rows.length)+" task lines…",true);
+    const dup=d.dup.same+d.dup.legs,dupNote=dup?" "+nf(dup)+" duplicate "+(dup===1?"line was":"lines were")+" removed ("+nf(d.dup.same)+" repeated, "+nf(d.dup.legs)+" second lines of a two-line task).":"";
     try{const r=await publish(d);S.type="All";S.user=null;S.pickedRange=true;
       if(r.dates.length===1){S.range=r.dates[0]===today()?"today":"day";S.day=r.dates[0]}else if(r.dates.length>1){S.range="all"}
-      toast(r.dates.length?"Loaded "+(r.dates.length===1?mdy(r.dates[0]):r.dates.length+" days, "+mdy(r.dates[0])+" to "+mdy(r.dates[r.dates.length-1]))+(r.openSaved?", with "+nf(r.open)+" open tasks.":". Open tasks were left as they are because a newer export is already loaded.")
-        :"This file has no confirmed task lines."+(r.openSaved?" Open tasks were updated ("+nf(r.open)+").":""));
+      toast((r.dates.length?"Loaded "+(r.dates.length===1?mdy(r.dates[0]):r.dates.length+" days, "+mdy(r.dates[0])+" to "+mdy(r.dates[r.dates.length-1]))+(r.openSaved?", with "+nf(r.open)+" open tasks.":". Open tasks were left as they are because a newer export is already loaded.")
+        :"This file has no confirmed task lines."+(r.openSaved?" Open tasks were updated ("+nf(r.open)+").":""))+dupNote,dup?15000:0);
       render()}
     catch(e){$("msg").textContent=e&&e.message==="too-big"?"One day in this file has too many task lines to save. Split the export into smaller date ranges and load them one at a time."
       :"The file could not be saved"+(e&&e.code==="permission-denied"?" because Firebase refused it. Either your account is not a supervisor or admin, or the latest security rules have not been published yet.":". Check the connection and load it again.");
@@ -406,17 +432,32 @@ function total(ds,type,user){
   }
   return o}
 const excOf=(ds,type,user)=>{const out=[];for(const d of ds)for(const x of d.exc){if(type!=="All"&&x[3]!==type)continue;if(user&&x[1]!==user)continue;out.push([d.date,d.excKind].concat(x))}return out};
+/* Straight-line (least squares) trend through the values. null values and the index in `skip` are left out. Needs 3 points for a slope. */
+function fitLine(v,skip){
+  const p=[];v.forEach((y,i)=>{if(y!=null&&i!==skip)p.push([i,y])});if(!p.length)return null;
+  const n=p.length,avg=p.reduce((s,q)=>s+q[1],0)/n;if(n<3)return {avg,n};
+  const mx=p.reduce((s,q)=>s+q[0],0)/n;let a=0,b=0;p.forEach(q=>{a+=(q[0]-mx)*(q[1]-avg);b+=(q[0]-mx)*(q[0]-mx)});
+  const m=b?a/b:0,c=avg-m*mx,at=i=>Math.max(0,m*i+c),i0=p[0][0],i1=p[n-1][0];
+  return {avg,n,m,c,at,i0,i1,y0:at(i0),y1:at(i1),change:at(i0)>0?(at(i1)-at(i0))/at(i0):null}}
+const small=v=>Math.abs(v)<10?(+v).toFixed(1):nf(v);
+function trendWords(f,unit){
+  if(!f||f.m==null)return "needs at least 3 "+unit+"s";
+  if(f.change!=null&&Math.abs(f.change)<.02)return "flat";
+  return (f.m>0?"up ":"down ")+small(Math.abs(f.m))+" per "+unit+(f.change!=null?" ("+(f.change>0?"+":"")+Math.round(f.change*100)+"% over the period)":"")}
 function bars(days,stacks,opt){
-  opt=opt||{};const w=640,h=220,L=46,B=24,T=18,pw=w-L-8,ph=h-B-T,n=Math.max(1,days.length),bw=pw/n;
-  const tot=days.map((_,i)=>stacks.reduce((a,s)=>a+(s.v[i]||0),0)),mx=Math.max(opt.min||1,...tot),e=Math.pow(10,Math.floor(Math.log10(mx))),f=mx/e,step=e*(f>5?2:f>2?1:.5);
+  opt=opt||{};const w=640,h=220,L=46,B=24,T=18,pw=w-L-8,ph=h-B-T,n=Math.max(1,days.length),bw=pw/n,f=opt.fit,lb=opt.lab||md;
+  const tot=days.map((_,i)=>stacks.reduce((a,s)=>a+(s.v[i]||0),0)),mx=Math.max(opt.min||1,...tot,f&&f.m!=null?Math.max(f.y0,f.y1):0),e=Math.pow(10,Math.floor(Math.log10(mx))),fr=mx/e,step=e*(fr>5?2:fr>2?1:.5);
   const fmt=opt.fmt||nf,ax=opt.fmt||(v=>v>=1e6?+(v/1e6).toFixed(2)+"M":v>=1e4?+(v/1e3).toFixed(1)+"k":nf(v));let sv=`<svg viewBox="0 0 ${w} ${h}" width="100%" role="img" aria-label="${esc(opt.label||"")}">`;
   for(let v=0;v<=mx*1.0001;v+=step){const y=T+ph-ph*v/mx;sv+=`<line x1="${L}" x2="${w-8}" y1="${y}" y2="${y}" stroke="var(--line)"/><text x="${L-6}" y="${y+4}" text-anchor="end">${ax(v)}</text>`}
-  const every=Math.ceil(n/12),lab=n<=16;
-  days.forEach((d,i)=>{let y=T+ph;const x=L+i*bw+bw*.15,bwid=Math.max(1,bw*.7);
-    stacks.forEach(s=>{const val=s.v[i]||0,bh=ph*val/mx;if(bh>0){y-=bh;sv+=`<rect x="${x}" y="${y}" width="${bwid}" height="${bh}" fill="var(${s.c})"><title>${md(d)} ${esc(s.name)}: ${fmt(val)}</title></rect>`}});
-    if(lab&&tot[i])sv+=`<text class="tl" x="${x+bwid/2}" y="${y-4}" text-anchor="middle">${fmt(tot[i])}</text>`;
-    if(i%every===0)sv+=`<text x="${x+bwid/2}" y="${h-6}" text-anchor="middle">${md(d)}</text>`});
-  return sv+"</svg>"}
+  const every=Math.ceil(n/12),lab=n<=16;let top="";
+  days.forEach((d,i)=>{let y=T+ph;const x=L+i*bw+bw*.15,bwid=Math.max(1,bw*.7),op=i===opt.dim?' opacity=".45"':"";
+    stacks.forEach(s=>{const val=s.v[i]||0,bh=ph*val/mx;if(bh>0){y-=bh;sv+=`<rect x="${x}" y="${y}" width="${bwid}" height="${bh}" fill="var(${s.c})"${op}><title>${lb(d)} ${esc(s.name)}: ${fmt(val)}</title></rect>`}});
+    if(lab&&tot[i])top+=`<text class="tl" x="${x+bwid/2}" y="${y-4}" text-anchor="middle">${fmt(tot[i])}</text>`;
+    if(i%every===0)sv+=`<text x="${x+bwid/2}" y="${h-6}" text-anchor="middle">${lb(d)}</text>`});
+  if(f){const Y=v=>T+ph-ph*v/mx,X=i=>L+i*bw+bw/2;
+    sv+=`<line x1="${L}" x2="${w-8}" y1="${Y(f.avg)}" y2="${Y(f.avg)}" stroke="var(--warn)" stroke-width="1.5" stroke-dasharray="6 4"><title>Average ${fmt(f.avg)}</title></line>`;
+    if(f.m!=null)sv+=`<line x1="${X(f.i0)}" x2="${X(f.i1)}" y1="${Y(f.y0)}" y2="${Y(f.y1)}" stroke="var(--bg)" stroke-width="5" stroke-linecap="round"/><line x1="${X(f.i0)}" x2="${X(f.i1)}" y1="${Y(f.y0)}" y2="${Y(f.y1)}" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"><title>Trend</title></line>`}
+  return sv+top+"</svg>"}
 
 /* ---------- drawing ---------- */
 function render(){
@@ -428,15 +469,15 @@ function render(){
   const dot=S.conn==="live"?"ok":S.conn==="error"?"bad":"",ct=S.conn==="live"?"Live":S.conn==="offline"?"Offline, showing the last saved data":S.conn==="error"?"Connection lost. Reload this page.":"Connecting…";
   let st=`<span><span class="dot ${dot}"></span>${ct}</span>`;
   if(S.view==="open"){if(S.open)st+=`<span>Open tasks from <b>${esc(S.open.file)}</b></span>`+(S.open.at?`<span>Loaded by <b>${esc(S.open.byName||"someone")}</b> ${esc(new Date(S.open.at).toLocaleString(undefined,{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}))}</span>`:"")}
-  else{const [x,y]=S.view==="trends"?trendSpan():[a,b];st+=`<span>Showing <b>${x===y?mdy(x):S.range==="all"?(all.length?mdy(all[0].date)+" to "+mdy(all[all.length-1].date):"all days"):mdy(x)+" to "+mdy(y)}</b></span>`;
+  else{const [x,y]=S.view==="trends"?trendSpan():[a,b],every=S.range==="all"||(S.view==="trends"&&S.tmode==="month");st+=`<span>Showing <b>${every?(all.length?mdy(all[0].date)+" to "+mdy(all[all.length-1].date):"all days"):x===y?mdy(x):mdy(x)+" to "+mdy(y)}</b></span>`;
     const lastD=ds.slice().sort((p,q)=>q.at-p.at)[0];if(lastD&&lastD.at)st+=`<span>Last load by <b>${esc(lastD.byName||"someone")}</b> ${esc(new Date(lastD.at).toLocaleString(undefined,{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}))}</span>`}
   $("status").innerHTML=st;
   $("views").innerHTML=[["done","Completed",""],["open","Open tasks",S.open?nf(S.open.rows.length):""],["trends","Trends",""]].map(v=>`<button type="button" class="view" role="tab" data-v="${v[0]}" aria-selected="${S.view===v[0]}">${v[1]}${v[2]!==""?`<span class="n">${v[2]}</span>`:""}</button>`).join("");
-  $("range").hidden=S.view==="open";
+  $("range").hidden=S.view==="open"||(S.view==="trends"&&S.tmode==="month");
   $("rangeBtns").innerHTML=RANGES.map(r=>`<button type="button" data-r="${r[0]}" aria-pressed="${S.range===r[0]}">${r[1]}</button>`).join("");
   const dp=$("dayPick");dp.classList.toggle("on",S.range==="day");if(document.activeElement!==dp)dp.value=S.range==="day"&&S.day?S.day:"";
   // activity tabs
-  const src=S.view==="open"?null:(S.view==="trends"?all.filter(d=>d.date>=trendSpan()[0]&&d.date<=trendSpan()[1]):ds);
+  const src=S.view==="open"?null:(S.view==="trends"?S.tmode==="month"?all:all.filter(d=>d.date>=trendSpan()[0]&&d.date<=trendSpan()[1]):ds);
   const present=new Set();if(src)src.forEach(d=>d.cube.forEach(e=>present.add(e[1])));else if(S.open)S.open.rows.forEach(r=>present.add(typ(r)));
   const TYPES=TLIST.filter(t=>present.has(t));
   let ch=["All"].concat(TYPES).map(t=>`<button class="tab" data-t="${t}" aria-pressed="${S.type===t}">${t}</button>`).join("");
@@ -506,24 +547,90 @@ function renderOpen(open,TYPES){
     show.map(r=>`<tr class="${r.age>=REDAGE?"hot":""}"><td><span class="pill ${r.age>=REDAGE?"p1":r.age>=AMBER?"p2":""}">${r.age<0?"No date":age(r.age)}</span></td><td>${tsFmt(r[13])}</td><td class="t">${esc(r[15])}</td><td class="t">${typ(r)}</td><td>${esc(r[19])}</td><td>${esc(r[20])}</td><td>${esc(r[3])}</td><td class="t" title="${esc(r[7])}">${esc(r[6])}</td><td>${nf(r[16]||r[4])}</td><td class="t">${esc(r[8])}</td><td class="t">${esc(r[9])}</td><td>${esc(r[10])}</td><td>${esc(r[11])}</td></tr>`).join("")+"</tbody></table></div>"+
     (open.length>show.length?`<div class="gate-p" style="margin-top:.6em">Showing the ${show.length} oldest of ${nf(open.length)} open tasks.</div>`:""):`<div class="gate-p">Nothing to list.</div>`;
 }
+const monLab=k=>new Date(k+"-15T12:00:00").toLocaleDateString("en-US",{month:"short",year:"2-digit"});
 function renderTrends(all,TYPES){
-  const [a,b]=trendSpan(),ds=all.filter(d=>d.date>=a&&d.date<=b);
+  const month=S.tmode==="month",unit=month?"month":"day",[a,b]=trendSpan(),ds=month?all:all.filter(d=>d.date>=a&&d.date<=b);
+  $("trMode").innerHTML=[["day","By day"],["month","By month"]].map(m=>`<button type="button" data-m="${m[0]}" aria-pressed="${S.tmode===m[0]}">${m[1]}</button>`).join("");
+  S.trend=null;
   if(!ds.length){$("stats").hidden=true;$("noData").hidden=false;$("noData").innerHTML=`<strong>No days loaded in this range</strong><span>Trends are drawn from every day that has been loaded. Choose a wider range, or load exports for more days.${S.range==="today"||S.range==="day"?" With one day selected, Trends shows the 14 days up to it.":""}</span>`;return}
   $("vTrends").hidden=false;
-  const diff=ds.every(d=>d.excKind==="diff"),rows=ds.map(d=>{const A=total([d],S.type,S.user),ex=excOf([d],S.type,S.user).length,mx=Math.max(...A.H.map(h=>h.n));return {date:d.date,A,ex,lph:A.hrs>=.5?A.n/A.hrs:0,pk:A.n?A.H.findIndex(h=>h.n===mx):-1}});
-  const dates=rows.map(r=>r.date),T=rows.reduce((s,r)=>({n:s.n+r.A.n,u:s.u+r.A.u,h:s.h+r.A.hrs,ex:s.ex+r.ex}),{n:0,u:0,h:0,ex:0}),best=rows.slice().sort((p,q)=>q.A.n-p.A.n)[0];
-  $("stats").innerHTML=[["Days with data",rows.length,""],["Confirmed",nf(T.n),""],["Average per day",nf(T.n/rows.length),""],["Busiest day",best&&best.A.n?md(best.date):"—",""],["Lines per assoc. hour",T.h>=.5?(T.n/T.h).toFixed(1):"—",""],[diff?"Qty differences":"Exceptions",nf(T.ex),T.ex?"warn":""]]
-    .map(k=>`<div class="${k[2]}"><dt>${k[0]}</dt><dd>${k[1]}</dd></div>`).join("");
-  $("tr1").innerHTML=bars(dates,TYPES.map(t=>({name:t,c:TC[t],v:rows.map(r=>r.A.t[t]||0)})),{label:"Confirmed lines per day"});
+  const groups=new Map();ds.forEach(d=>{const k=month?d.date.slice(0,7):d.date;(groups.get(k)||groups.set(k,[]).get(k)).push(d)});
+  const diff=ds.every(d=>d.excKind==="diff"),exName=diff?"Quantity differences":"Exceptions";
+  const rows=[...groups].map(([key,g])=>{const A=total(g,S.type,S.user),ex=excOf(g,S.type,S.user).length,mx=Math.max(...A.H.map(h=>h.n));return {key,days:g.length,A,ex,lph:A.hrs>=.5?A.n/A.hrs:null,pk:A.n?A.H.findIndex(h=>h.n===mx):-1}});
+  const keys=rows.map(r=>r.key),lab=month?monLab:md,dim=month&&keys[keys.length-1]===today().slice(0,7)?keys.length-1:-1;
+  const T=rows.reduce((s,r)=>({n:s.n+r.A.n,u:s.u+r.A.u,h:s.h+r.A.hrs,ex:s.ex+r.ex}),{n:0,u:0,h:0,ex:0}),best=rows.slice().sort((p,q)=>q.A.n-p.A.n)[0];
+  const one=v=>(+v).toFixed(1);
+  const M=[
+    {title:"Confirmed lines per "+unit,stacks:TYPES.map(t=>({name:t,c:TC[t],v:rows.map(r=>r.A.t[t]||0)})),vals:rows.map(r=>r.A.n),say:nf},
+    {title:"Units per "+unit,stacks:[{name:"Units",c:"--s2",v:rows.map(r=>r.A.u)}],vals:rows.map(r=>r.A.u),say:nf},
+    {title:"Lines per associate hour",stacks:[{name:"Lines per associate hour",c:"--s3",v:rows.map(r=>r.lph||0)}],vals:rows.map(r=>r.lph),say:one,fmt:v=>(+v).toFixed(v<10?1:0)},
+    {title:exName+" per "+unit,stacks:[{name:exName,c:"--s5",v:rows.map(r=>r.ex)}],vals:rows.map(r=>r.ex),say:small,min:4}];
+  M.forEach((m,i)=>{m.fit=fitLine(m.vals,dim);
+    $("hTr"+(i+1)).textContent=m.title;
+    $("tr"+(i+1)).innerHTML=bars(keys,m.stacks,{label:m.title,fmt:m.fmt,min:m.min,lab,dim,fit:m.fit});
+    $("cp"+(i+1)).innerHTML=m.fit?`<span><i></i>Average <b>${m.say(m.fit.avg)}</b></span><span><i class="t"></i>Trend <b>${trendWords(m.fit,unit)}</b></span>`:""});
   $("trLegend").innerHTML=TYPES.map(t=>`<span><i style="background:var(${TC[t]})"></i>${t}</span>`).join("");
-  $("tr2").innerHTML=bars(dates,[{name:"Units",c:"--s2",v:rows.map(r=>r.A.u)}],{label:"Units per day"});
-  $("tr3").innerHTML=bars(dates,[{name:"Lines per associate hour",c:"--s3",v:rows.map(r=>r.lph)}],{label:"Lines per associate hour",fmt:v=>(+v).toFixed(v<10?1:0)});
-  $("hTr4").textContent=(diff?"Quantity differences":"Exceptions")+" per day";
-  $("tr4").innerHTML=bars(dates,[{name:diff?"Quantity differences":"Exceptions",c:"--s5",v:rows.map(r=>r.ex)}],{label:"Exceptions per day",min:4});
-  $("cDays").textContent=rows.length;
-  $("tDays").innerHTML=TH([["Date",1],["Confirmed",0],["Units",0],["Associates",0],["Assoc. hours",0],["Lines per assoc. hour",0],[diff?"Qty diffs":"Exceptions",0],["Peak hour",0]])+"<tbody>"+
-    rows.slice().reverse().map(r=>`<tr class="click" data-day="${r.date}"><td class="n">${mdy(r.date)} ${new Date(r.date+"T12:00:00").toLocaleDateString(undefined,{weekday:"short"})}</td><td class="n">${nf(r.A.n)}</td><td>${nf(r.A.u)}</td><td>${r.A.users.size}</td><td>${r.A.hrs.toFixed(1)}</td><td>${r.lph?r.lph.toFixed(1):""}</td><td>${r.ex?`<span class="pill p2">${r.ex}</span>`:"0"}</td><td>${r.pk<0?"":p2(r.pk)+":00"}</td></tr>`).join("")+"</tbody>";
+  $("stats").innerHTML=[[month?"Months with data":"Days with data",rows.length,""],["Confirmed",nf(T.n),""],["Average per "+unit,M[0].fit?nf(M[0].fit.avg):"—",""],["Busiest "+unit,best&&best.A.n?lab(best.key):"—",""],["Lines per assoc. hour",T.h>=.5?(T.n/T.h).toFixed(1):"—",""],[diff?"Qty differences":"Exceptions",nf(T.ex),T.ex?"warn":""]]
+    .map(k=>`<div class="${k[2]}"><dt>${k[0]}</dt><dd>${k[1]}</dd></div>`).join("");
+  $("cDays").textContent=rows.length;$("hDays").textContent=month?"Month over month":"Day by day";$("daysHint").hidden=month;
+  const chg=(x,y)=>y>0?`<span class="pill ${x<y?"p2":""}">${x>=y?"+":""}${Math.round((x-y)/y*100)}%</span>`:"";
+  $("tDays").innerHTML=month
+    ?TH([["Month",1],["Days loaded",0],["Confirmed",0],["Per day",0],["Per day vs prior month",0],["Units",0],["Units per day",0],["Assoc. hours",0],["Lines per assoc. hour",0],[diff?"Qty diffs":"Exceptions",0]])+"<tbody>"+
+      rows.map((r,i)=>{const p=rows[i-1];return `<tr><td class="n">${new Date(r.key+"-15T12:00:00").toLocaleDateString("en-US",{month:"long",year:"numeric"})}${i===dim?" (to date)":""}</td><td>${r.days}</td><td class="n">${nf(r.A.n)}</td><td>${nf(r.A.n/r.days)}</td><td>${p?chg(r.A.n/r.days,p.A.n/p.days):""}</td><td>${nf(r.A.u)}</td><td>${nf(r.A.u/r.days)}</td><td>${r.A.hrs.toFixed(1)}</td><td>${r.lph?r.lph.toFixed(1):""}</td><td>${r.ex?`<span class="pill p2">${r.ex}</span>`:"0"}</td></tr>`}).reverse().join("")+"</tbody>"
+    :TH([["Date",1],["Confirmed",0],["Units",0],["Associates",0],["Assoc. hours",0],["Lines per assoc. hour",0],[diff?"Qty diffs":"Exceptions",0],["Peak hour",0]])+"<tbody>"+
+      rows.slice().reverse().map(r=>`<tr class="click" data-day="${r.key}"><td class="n">${mdy(r.key)} ${new Date(r.key+"T12:00:00").toLocaleDateString(undefined,{weekday:"short"})}</td><td class="n">${nf(r.A.n)}</td><td>${nf(r.A.u)}</td><td>${r.A.users.size}</td><td>${r.A.hrs.toFixed(1)}</td><td>${r.lph?r.lph.toFixed(1):""}</td><td>${r.ex?`<span class="pill p2">${r.ex}</span>`:"0"}</td><td>${r.pk<0?"":p2(r.pk)+":00"}</td></tr>`).join("")+"</tbody>";
+  S.trend={unit,dim,labels:keys.map((k,i)=>lab(k)+(i===dim?" (to date)":"")),metrics:M,
+    period:mdy(ds[0].date)+" to "+mdy(ds[ds.length-1].date),filter:[S.type==="All"?"All activities":S.type,S.user?"Associate "+S.user:""].filter(Boolean).join(", ")};
 }
+
+/* ---------- Trends to PowerPoint: a title slide, then one slide per chart, built in the browser ---------- */
+const PPTX_SRC="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js";
+const PCOL={Pick:"021D49",Putaway:"407EC9","Internal move":"6CACE4","Posting change":"999999","Goods issue":"1D4289","Goods receipt":"BDD6E6",Other:"E3E3E3"};
+function needPptx(){return window.PptxGenJS?Promise.resolve():new Promise((ok,no)=>{const x=document.createElement("script");x.src=PPTX_SRC;x.onload=()=>ok();x.onerror=()=>no(new Error("lib"));document.head.appendChild(x)})}
+async function pic(src,w,h){try{const im=new Image();im.src=src;await im.decode();const c=document.createElement("canvas");c.width=w;c.height=h;c.getContext("2d").drawImage(im,0,0,w,h);return c.toDataURL("image/png")}catch(_){return null}}
+async function exportPpt(){
+  const t=S.trend;if(!t||S.pptBusy)return;S.pptBusy=true;$("pptBtn").classList.add("busy");toast("Building the PowerPoint…",true);
+  try{
+    await needPptx();
+    const [logo,logoW]=await Promise.all([pic("../assets/ceva-logo.svg",640,201),pic("../assets/ceva-logo-whitered.png",640,201)]);
+    const P=new window.PptxGenJS(),BLUE="021D49",RED="FF0000",GREY="666666",F="Arial",made=new Date().toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"});
+    P.layout="LAYOUT_WIDE";P.title="Warehouse transaction trends";P.company="CEVA Logistics";
+    P.defineSlideMaster({title:"METRIC",background:{color:"FFFFFF"},objects:[
+      {rect:{x:.5,y:1.2,w:5.6,h:.06,fill:{color:RED}}},{rect:{x:6.1,y:1.2,w:2.8,h:.06,fill:{color:BLUE}}},
+      ...(logo?[{image:{x:10.95,y:.35,w:1.9,h:.6,data:logo}}]:[]),
+      {text:{text:"Warehouse transactions  |  "+t.period+"  |  "+t.filter,options:{x:.5,y:6.98,w:10,h:.3,fontFace:F,fontSize:9,color:GREY}}}],
+      slideNumber:{x:12.2,y:6.98,w:.7,h:.3,fontFace:F,fontSize:9,color:GREY,align:"right"}});
+    const s0=P.addSlide();s0.background={color:BLUE};
+    if(logoW)s0.addImage({data:logoW,x:.7,y:.6,w:2.55,h:.8});
+    s0.addText("WAREHOUSE TRANSACTION TRENDS",{x:.7,y:2.6,w:11.9,h:1,fontFace:F,fontSize:38,bold:true,color:"FFFFFF"});
+    s0.addShape(P.ShapeType.rect,{x:.7,y:3.65,w:2.4,h:.08,fill:{color:RED},line:{color:RED,width:0}});
+    s0.addText([{text:(t.unit==="month"?"Month over month":"Day by day")+", "+t.period,options:{breakLine:true}},{text:t.filter,options:{breakLine:true}},{text:"Prepared "+made}],{x:.7,y:3.95,w:11.9,h:1.5,fontFace:F,fontSize:18,color:"BDD6E6",valign:"top",paraSpaceAfter:6});
+    t.metrics.forEach(m=>{
+      const sl=P.addSlide({masterName:"METRIC"}),f=m.fit,r2=v=>Math.round((v||0)*100)/100;
+      sl.addText(m.title.toUpperCase(),{x:.5,y:.4,w:10.2,h:.7,fontFace:F,fontSize:26,bold:true,color:RED});
+      const parts=[{type:P.charts.BAR,data:m.stacks.map(k=>({name:k.name,labels:t.labels,values:k.v.map(r2)})),options:{barGrouping:"stacked",barGapWidthPct:45,chartColors:m.stacks.map((k,i)=>PCOL[k.name]||["407EC9","6CACE4","1D4289"][i%3])}}];
+      if(f){const ln=[{name:"Average",labels:t.labels,values:t.labels.map(()=>r2(f.avg))}];if(f.m!=null)ln.push({name:"Trend",labels:t.labels,values:t.labels.map((_,i)=>r2(f.at(i)))});
+        parts.push({type:P.charts.LINE,data:ln,options:{chartColors:[GREY,RED],lineSize:2.25,lineDataSymbol:"none",lineDash:["dash","solid"]}})}
+      sl.addChart(parts,{x:.4,y:1.45,w:9.2,h:t.dim>=0?5.1:5.4,showLegend:true,legendPos:"b",legendFontFace:F,legendFontSize:11,legendColor:BLUE,
+        catAxisLabelFontFace:F,catAxisLabelFontSize:10,catAxisLabelColor:GREY,valAxisLabelFontFace:F,valAxisLabelFontSize:10,valAxisLabelColor:GREY,
+        valAxisLabelFormatCode:m.say===nf?"#,##0":"#,##0.0",valAxisMinVal:0,valGridLine:{color:"E3E3E3",size:.75},catGridLine:{style:"none"}});
+      const live=m.vals.map((v,i)=>[v,i]).filter(q=>q[0]!=null&&q[1]!==t.dim),hi=live.slice().sort((p,q)=>q[0]-p[0])[0],last=live[live.length-1];
+      const facts=[["AVERAGE",f?m.say(f.avg):"—","per "+t.unit+" shown"],["TREND",f&&f.m!=null?(f.change!=null&&Math.abs(f.change)<.02?"Flat":(f.m>0?"Up ":"Down ")+small(Math.abs(f.m))):"—",f&&f.m!=null?"per "+t.unit+(f.change!=null?", "+(f.change>0?"+":"")+Math.round(f.change*100)+"% over the period":""):"needs at least 3 "+t.unit+"s"],
+        ["HIGHEST",hi?m.say(hi[0]):"—",hi?t.labels[hi[1]]:""],["LATEST",last?m.say(last[0]):"—",last?t.labels[last[1]]:""]];
+      facts.forEach((k,i)=>{const y=1.6+i*1.3;
+        sl.addShape(P.ShapeType.rect,{x:9.9,y,w:.06,h:1.05,fill:{color:i===1?RED:BLUE},line:{color:i===1?RED:BLUE,width:0}});
+        sl.addText(k[0],{x:10.1,y,w:2.8,h:.28,fontFace:F,fontSize:10,bold:true,color:GREY});
+        sl.addText(String(k[1]),{x:10.1,y:y+.26,w:2.8,h:.5,fontFace:F,fontSize:24,bold:true,color:BLUE});
+        sl.addText(k[2],{x:10.1,y:y+.74,w:2.8,h:.3,fontFace:F,fontSize:10,color:GREY})});
+      if(t.dim>=0)sl.addText("The current month is not finished, so it is left out of the average and the trend.",{x:.5,y:6.6,w:9,h:.25,fontFace:F,fontSize:9,italic:true,color:GREY});
+    });
+    await P.writeFile({fileName:"CEVA Warehouse Transaction Trends "+(t.unit==="month"?"by month ":"by day ")+today()+".pptx"});
+    toast("PowerPoint saved to your downloads. "+(t.metrics.length+1)+" slides.");
+  }catch(e){toast(e&&e.message==="lib"?"The PowerPoint builder could not be downloaded. Check the connection and try again.":"The PowerPoint could not be built. Try again.")}
+  finally{S.pptBusy=false;$("pptBtn").classList.remove("busy")}
+}
+$("pptBtn").addEventListener("click",exportPpt);
+$("trMode").addEventListener("click",e=>{const b=e.target.closest("button[data-m]");if(b){S.tmode=b.dataset.m;render()}});
 const goDay=d=>{S.range=d===today()?"today":"day";S.day=d;S.view="done";S.pickedRange=true;render()};
 $("views").addEventListener("click",e=>{const b=e.target.closest("button[data-v]");if(b){S.view=b.dataset.v;render()}});
 $("rangeBtns").addEventListener("click",e=>{const b=e.target.closest("button[data-r]");if(b){S.range=b.dataset.r;S.pickedRange=true;render()}});

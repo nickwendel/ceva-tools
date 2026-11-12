@@ -120,7 +120,7 @@ The page has three sections:
 
 - **Completed:** confirmed task lines, units, associates and peak hour; a chart of confirmations by hour; breakdowns by activity and warehouse process type; a sortable associate table (select a row to filter the page to that person); and exceptions, or quantity differences when the export has no exception codes.
 - **Open tasks:** every task line with a blank or `B` status in the most recent export, oldest first with its age since creation, counted in five age bands and broken down by activity and by who created it. Age runs to the latest activity time in that file. Amber from 4 hours, red from 8 hours.
-- **Trends:** lines, units, lines per associate hour and exceptions for each day in the range, plus a day by day table. Select a day in the table to open it.
+- **Trends:** lines, units, lines per associate hour and exceptions, **By day** for the selected range or **By month** for every day that has been loaded, plus a day by day or month over month table. Each chart has a dashed average line and a solid red straight-line trend (it needs at least 3 days or months), with the average and the rate of change written underneath. In By month the current month is drawn lighter and left out of the average and trend because it is not finished. **Export to PowerPoint** saves a deck of the charts as shown: a title slide, then one slide per chart with editable charts and the average, trend, highest and latest figures. The deck is built in the browser, so nothing is uploaded.
 
 **Date range:** Today, Week (last 7 days), Month (last 30 days), All, or pick one day. The range applies to Completed and Trends. With a single day selected, Trends shows the 14 days up to it. The tabs under the tiles limit the page to one activity (pick, putaway, internal move, posting change, goods issue, goods receipt).
 
@@ -130,6 +130,7 @@ A supervisor or admin selects **Load export** (or drops the file on the page) an
 
 - **History builds up.** Each load adds the days in the file to what is already saved. A file can hold one day or many, so a historical export loads the same way as today's.
 - **Loading a day again replaces it.** Every day that appears in a file is replaced by that file's lines for that day, so load whole days. Reloading today's export through the day is fine.
+- **Duplicates are removed.** A line that appears more than once in the file, identical in every column, is kept once. When SAP lists one task as two lines, one with only the source bin or handling unit and one with only the destination bin or handling unit, and everything else the same, they are joined into one line. The message after a load says how many lines were removed.
 - **Open tasks follow the newest file.** The open task list is replaced only when the file is at least as recent as the one it came from, so loading old history doesn't wipe today's open tasks.
 - **Very large files:** the file is read in the browser, so a file with hundreds of thousands of lines can be slow or run out of memory. Load history a month or a quarter at a time.
 
