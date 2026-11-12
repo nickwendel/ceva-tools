@@ -130,6 +130,7 @@ A supervisor or admin selects **Load export** (or drops the file on the page) an
 
 - **History builds up.** Each load adds the days in the file to what is already saved. A file can hold one day or many, so a historical export loads the same way as today's.
 - **Loading a day again replaces it.** Every day that appears in a file is replaced by that file's lines for that day, so load whole days. Reloading today's export through the day is fine.
+- **Duplicates are removed.** A line that appears more than once in the file, identical in every column, is kept once. When SAP lists one task as two lines, one with only the source bin or handling unit and one with only the destination bin or handling unit, and everything else the same, they are joined into one line. The message after a load says how many lines were removed.
 - **Open tasks follow the newest file.** The open task list is replaced only when the file is at least as recent as the one it came from, so loading old history doesn't wipe today's open tasks.
 - **Very large files:** the file is read in the browser, so a file with hundreds of thousands of lines can be slow or run out of memory. Load history a month or a quarter at a time.
 
