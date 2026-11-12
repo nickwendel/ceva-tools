@@ -276,7 +276,7 @@ const addDays=(s,n)=>{const d=new Date(s+"T12:00:00");d.setDate(d.getDate()+n);r
 const mdy=s=>s.replace(/(\d+)-(\d+)-(\d+)/,"$2/$3/$1"),md=s=>s.slice(5).replace("-","/");
 function age(s){const m=Math.max(0,Math.floor(s/60));if(m<60)return m+"m";const h=Math.floor(m/60);return h<24?h+"h "+p2(m%60)+"m":Math.floor(h/24)+"d "+(h%24)+"h"}
 function tsFmt(t){if(t<0)return "";const d=new Date(t*1000);return p2(d.getUTCMonth()+1)+"/"+p2(d.getUTCDate())+" "+p2(d.getUTCHours())+":"+p2(d.getUTCMinutes())}
-let toastT;function toast(t,keep){const e=$("toast");e.textContent=t;e.hidden=false;clearTimeout(toastT);if(!keep)toastT=setTimeout(()=>e.hidden=true,6000)}
+let toastT;function toast(t,keep){const e=$("toast");e.textContent=t;e.hidden=false;clearTimeout(toastT);if(!keep)toastT=setTimeout(()=>e.hidden=true,typeof keep==="number"?keep:6000)}
 const TH=a=>"<thead><tr>"+a.map(x=>`<th${x[1]?' class="t"':""}>${x[0]}</th>`).join("")+"</tr></thead>";
 
 /* ---------- reading the SAP export ---------- */
@@ -290,15 +290,31 @@ function parse(buf,name){
   const miss=["Warehouse Task","Warehouse Task Status","Confirmed By","Confirmation Date","Confirmation Time","Created On","Created At","Whse Process Type"].filter(n=>!h.includes(n));
   if(!qC)miss.push("Act. Qty Dest. BUoM or Act Dest Qty Alt UoM");if(!col("Activity","Whse Process Category Desc."))miss.push("Activity or Whse Process Category Desc.");
   if(miss.length)throw new Error("This file is missing these columns: "+miss.join(", ")+". Load the SAP warehouse task export.");
-  const c=n=>h.indexOf(n),v=(r,n)=>c(n)<0?"":r[c(n)],g=(r,n)=>String(v(r,n)??"").trim();let last=-1;const rows=[];
-  for(let i=1;i<a.length;i++){const r=a[i];if(g(r,"Warehouse Task")==="")continue;const st=g(r,"Warehouse Task Status").toUpperCase(),done=st==="C";
+  const c=n=>h.indexOf(n),v=(r,n)=>c(n)<0?"":r[c(n)],g=(r,n)=>String(v(r,n)??"").trim();let last=-1,same=0;const rows=[],seen=new Set();
+  for(let i=1;i<a.length;i++){const r=a[i];if(g(r,"Warehouse Task")==="")continue;
+    const whole=JSON.stringify(r);if(seen.has(whole)){same++;continue}seen.add(whole);const st=g(r,"Warehouse Task Status").toUpperCase(),done=st==="C";
     const cr=dts(v(r,"Created On"),v(r,"Created At")),cf=done?dts(v(r,"Confirmation Date"),v(r,"Confirmation Time")):-1;
     last=Math.max(last,cr,cf);const df=+v(r,dC)||0;
     rows.push([done?toSec(v(r,"Confirmation Time")):-1,g(r,"Confirmed By")||"(blank)",g(r,"Activity"),g(r,"Whse Process Type"),+v(r,qC)||0,eC?g(r,eC):df?(df>0?"+":"")+df:"",
       g(r,"Product"),g(r,"Product Short Description"),g(r,"Source Storage Bin"),g(r,"Destination Bin"),g(r,"Warehouse Order"),g(r,"Warehouse Task"),
-      st,cr,g(r,"Queue"),g(r,"Created By"),+v(r,sC)||0,cf,g(r,"Whse Process Category Desc."),g(r,"Wave"),g(r,"Pull header ID")])}
+      st,cr,g(r,"Queue"),g(r,"Created By"),+v(r,sC)||0,cf,g(r,"Whse Process Category Desc."),g(r,"Wave"),g(r,"Pull header ID")]);
+    const one=(x,y)=>x&&!y?"from":y&&!x?"to":"";
+    rows[rows.length-1].side=one(g(r,"Source Storage Bin"),g(r,"Destination Bin"))||(g(r,"Source Storage Bin")?"":one(g(r,"Source Handling Unit"),g(r,"Dest. Handling Unit")))}
   if(!rows.length)throw new Error("No warehouse task lines were found in this file.");
-  return {file:str(name.replace(/\.[^.]+$/,""),80),asOf:last>0?last:wallNow(),excKind:eC?"code":"diff",rows}}
+  const legs=joinLegs(rows);
+  return {file:str(name.replace(/\.[^.]+$/,""),80),asOf:last>0?last:wallNow(),excKind:eC?"code":"diff",rows:rows.filter(r=>!r.drop),dup:{same,legs}}}
+/* SAP can list one task as two lines, one holding only the source side (bin, handling unit) and one holding only the destination side.
+   Lines that match on everything else are joined into one line, so the task is counted once. Returns how many lines were joined away. */
+function joinLegs(rows){
+  const groups=new Map();let n=0;
+  for(const r of rows){const from=r.side==="from";if(!r.side)continue;
+    const k=JSON.stringify([r[1],r[2],r[3],r[4],r[5],r[6],r[7],r[10],r[11],r[12],r[13],r[14],r[15],r[16],r[18],r[19],r[20]]);
+    let o=groups.get(k);if(!o){o={from:[],to:[]};groups.set(k,o)}(from?o.from:o.to).push(r)}
+  for(const o of groups.values())for(const f of o.from){
+    const near=t=>!t.drop&&(f[17]<0||t[17]<0?f[17]===t[17]:Math.abs(f[17]-t[17])<=60);
+    const t=o.to.find(t=>near(t)&&t[9]===f[8])||o.to.find(near);if(!t)continue;
+    if(t[9])f[9]=t[9];if(t[17]>f[17]){f[17]=t[17];f[0]=t[0]}t.drop=true;n++}
+  return n}
 
 /* ---------- turning task lines into one summary per day ----------
    A day keeps a "cube" of counts, one entry per associate, type, process type and hour: [user, type, processType, hour, lines, units].
@@ -379,10 +395,11 @@ function load(f){
   const rd=new FileReader();rd.onload=async()=>{
     let d;try{d=parse(new Uint8Array(rd.result),f.name)}catch(e){$("msg").textContent=e.message;$("msg").hidden=false;return}
     $("msg").hidden=true;S.busy=true;$("loadBtn").classList.add("busy");toast("Saving "+nf(d.rows.length)+" task lines…",true);
+    const dup=d.dup.same+d.dup.legs,dupNote=dup?" "+nf(dup)+" duplicate "+(dup===1?"line was":"lines were")+" removed ("+nf(d.dup.same)+" repeated, "+nf(d.dup.legs)+" second lines of a two-line task).":"";
     try{const r=await publish(d);S.type="All";S.user=null;S.pickedRange=true;
       if(r.dates.length===1){S.range=r.dates[0]===today()?"today":"day";S.day=r.dates[0]}else if(r.dates.length>1){S.range="all"}
-      toast(r.dates.length?"Loaded "+(r.dates.length===1?mdy(r.dates[0]):r.dates.length+" days, "+mdy(r.dates[0])+" to "+mdy(r.dates[r.dates.length-1]))+(r.openSaved?", with "+nf(r.open)+" open tasks.":". Open tasks were left as they are because a newer export is already loaded.")
-        :"This file has no confirmed task lines."+(r.openSaved?" Open tasks were updated ("+nf(r.open)+").":""));
+      toast((r.dates.length?"Loaded "+(r.dates.length===1?mdy(r.dates[0]):r.dates.length+" days, "+mdy(r.dates[0])+" to "+mdy(r.dates[r.dates.length-1]))+(r.openSaved?", with "+nf(r.open)+" open tasks.":". Open tasks were left as they are because a newer export is already loaded.")
+        :"This file has no confirmed task lines."+(r.openSaved?" Open tasks were updated ("+nf(r.open)+").":""))+dupNote,dup?15000:0);
       render()}
     catch(e){$("msg").textContent=e&&e.message==="too-big"?"One day in this file has too many task lines to save. Split the export into smaller date ranges and load them one at a time."
       :"The file could not be saved"+(e&&e.code==="permission-denied"?" because Firebase refused it. Either your account is not a supervisor or admin, or the latest security rules have not been published yet.":". Check the connection and load it again.");
