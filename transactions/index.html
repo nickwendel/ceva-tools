@@ -142,6 +142,7 @@ svg text{font-family:var(--f);font-size:11px;fill:var(--muted)}svg .tl{fill:var(
 .cap b{color:var(--fg)}
 .cap i{display:inline-block;width:1.5em;height:0;border-top:2px dashed var(--warn);vertical-align:middle;margin-right:.45em}
 .cap i.t{border-top:3px solid var(--accent)}
+.cap i.c{border-top:2px dotted var(--info)}
 .linkbtn{background:none;border:0;padding:0;color:var(--info);font:inherit;font-weight:600;cursor:pointer;text-decoration:underline}
 .toast{position:fixed;left:50%;bottom:calc(1.2rem + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:30;background:var(--card);color:var(--fg);border:1px solid var(--line-light);padding:.75rem 1.1rem;border-radius:8px;font:600 13px/1.35 var(--f);box-shadow:0 8px 24px rgba(0,0,0,.45);max-width:calc(100% - 32px)}
 </style>
@@ -268,6 +269,7 @@ const ROLE_LABEL={viewer:'Viewer',supervisor:'Supervisor',user:'User',admin:'Adm
 const TLIST=["Pick","Putaway","Internal move","Posting change","Goods issue","Goods receipt","Other"],TC={Pick:"--s1",Putaway:"--s2","Internal move":"--s3","Posting change":"--s4","Goods issue":"--s5","Goods receipt":"--s6",Other:"--s7"};
 const CAT={"stock removal":"Pick","putaway":"Putaway","internal warehouse movement":"Internal move","posting change":"Posting change","goods issue posting":"Goods issue","goods receipt posting":"Goods receipt"};
 const TMAP={PICK:"Pick",PTWY:"Putaway",INTL:"Internal move"};
+const PICK_CAP=300; // expected picking capacity, pick lines per day
 const AMBER=4*3600,REDAGE=8*3600,CHUNK=600000,MAXEXC=300;
 const BUCKETS=[["Under 1 hour",0,3600,"ok"],["1 to 4 hours",3600,AMBER,""],["4 to 8 hours",AMBER,REDAGE,"p2"],["8 to 24 hours",REDAGE,86400,"p1"],["Over 24 hours",86400,Infinity,"p1"]];
 const RANGES=[["today","Today"],["week","Week"],["month","Month"],["all","All"]];
@@ -445,9 +447,9 @@ function trendWords(f,unit){
   if(f.change!=null&&Math.abs(f.change)<.02)return "flat";
   return (f.m>0?"up ":"down ")+small(Math.abs(f.m))+" per "+unit+(f.change!=null?" ("+(f.change>0?"+":"")+Math.round(f.change*100)+"% over the period)":"")}
 function bars(days,stacks,opt){
-  opt=opt||{};const w=640,h=220,L=46,B=24,T=18,pw=w-L-8,ph=h-B-T,n=Math.max(1,days.length),bw=pw/n,f=opt.fit,lb=opt.lab||md;
-  const tot=days.map((_,i)=>stacks.reduce((a,s)=>a+(s.v[i]||0),0)),mx=Math.max(opt.min||1,...tot,f&&f.m!=null?Math.max(f.y0,f.y1):0),e=Math.pow(10,Math.floor(Math.log10(mx))),fr=mx/e,step=e*(fr>5?2:fr>2?1:.5);
-  const fmt=opt.fmt||nf,ax=opt.fmt||(v=>v>=1e6?+(v/1e6).toFixed(2)+"M":v>=1e4?+(v/1e3).toFixed(1)+"k":nf(v));let sv=`<svg viewBox="0 0 ${w} ${h}" width="100%" role="img" aria-label="${esc(opt.label||"")}">`;
+  opt=opt||{};const w=opt.w||640,h=opt.h||220,L=46,B=24,T=18,cap=opt.cap||0,pw=w-L-8,ph=h-B-T,n=Math.max(1,days.length),bw=pw/n,f=opt.fit,lb=opt.lab||md;
+  const tot=days.map((_,i)=>stacks.reduce((a,s)=>a+(s.v[i]||0),0)),mx=Math.max(opt.min||1,cap*1.08,...tot,f&&f.m!=null?Math.max(f.y0,f.y1):0),e=Math.pow(10,Math.floor(Math.log10(mx))),fr=mx/e,step=e*(fr>5?2:fr>2?1:.5);
+  const fmt=opt.fmt||nf,ax=opt.fmt||(v=>!v?"0":mx>=1e6?+(v/1e6).toFixed(2)+"M":mx>=1e4?+(v/1e3).toFixed(1)+"k":nf(v));let sv=`<svg viewBox="0 0 ${w} ${h}" width="100%" role="img" aria-label="${esc(opt.label||"")}">`;
   for(let v=0;v<=mx*1.0001;v+=step){const y=T+ph-ph*v/mx;sv+=`<line x1="${L}" x2="${w-8}" y1="${y}" y2="${y}" stroke="var(--line)"/><text x="${L-6}" y="${y+4}" text-anchor="end">${ax(v)}</text>`}
   const every=Math.ceil(n/12),lab=n<=16;let top="";
   days.forEach((d,i)=>{let y=T+ph;const x=L+i*bw+bw*.15,bwid=Math.max(1,bw*.7),op=i===opt.dim?' opacity=".45"':"";
@@ -457,6 +459,8 @@ function bars(days,stacks,opt){
   if(f){const Y=v=>T+ph-ph*v/mx,X=i=>L+i*bw+bw/2;
     sv+=`<line x1="${L}" x2="${w-8}" y1="${Y(f.avg)}" y2="${Y(f.avg)}" stroke="var(--warn)" stroke-width="1.5" stroke-dasharray="6 4"><title>Average ${fmt(f.avg)}</title></line>`;
     if(f.m!=null)sv+=`<line x1="${X(f.i0)}" x2="${X(f.i1)}" y1="${Y(f.y0)}" y2="${Y(f.y1)}" stroke="var(--bg)" stroke-width="5" stroke-linecap="round"/><line x1="${X(f.i0)}" x2="${X(f.i1)}" y1="${Y(f.y0)}" y2="${Y(f.y1)}" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"><title>Trend</title></line>`}
+  if(cap){const y=T+ph-ph*cap/mx;sv+=`<line x1="${L}" x2="${w-8}" y1="${y}" y2="${y}" stroke="var(--info)" stroke-width="2" stroke-dasharray="2 4" stroke-linecap="round"><title>Expected capacity ${fmt(cap)}</title></line>`;
+    top+=`<text class="tl" x="${L+6}" y="${y-6}" style="fill:var(--info)">Expected capacity ${fmt(cap)}</text>`}
   return sv+top+"</svg>"}
 
 /* ---------- drawing ---------- */
@@ -491,7 +495,8 @@ function render(){
     $("noData").innerHTML=`<strong>Nothing loaded for ${single?mdy(a):"this range"}</strong><span>${S.canLoad?"Select “Load export” and choose the SAP warehouse task export (.xlsx), or drop the file on this page. A file can hold one day or many; every day in it is saved.":"A supervisor or admin loads the SAP warehouse task export. This page updates on its own when they do."}${latest?` The most recent day with data in view is <button type="button" class="linkbtn" data-day="${latest}">${mdy(latest)}</button>.`:""}</span>`;return}
   $("vDone").hidden=false;
   const diff=ds.every(d=>d.excKind==="diff"),A=total(ds,S.type,S.user),ex=excOf(ds,S.type,S.user),mx=Math.max(1,...A.H.map(h=>h.n)),pk=A.H.findIndex(h=>h.n===mx);
-  $("stats").innerHTML=[["Confirmed",nf(A.n),""],["Units",nf(A.u),""],["Associates",A.users.size,""],[diff?"Qty differences":"Exceptions",nf(ex.length),ex.length?"warn":""],["Peak hour",A.n?p2(pk)+":00":"—",""],[single?"Lines per assoc. hour":"Days with data",single?(A.hrs>=.5?(A.n/A.hrs).toFixed(1):"—"):ds.length,""]]
+  $("stats").innerHTML=[["Confirmed",nf(A.n),""],["Units",nf(A.u),""],["Associates",A.users.size,""],[diff?"Qty differences":"Exceptions",nf(ex.length),ex.length?"warn":""],["Peak hour",A.n?p2(pk)+":00":"—",""],[single?"Lines per assoc. hour":"Days with data",single?(A.hrs>=.5?(A.n/A.hrs).toFixed(1):"—"):ds.length,""],
+    ...(S.type==="Pick"&&!S.user?[["Of capacity ("+nf(PICK_CAP)+" a day)",Math.round(100*A.n/(PICK_CAP*ds.length))+"%",A.n>PICK_CAP*ds.length?"warn":""]]:[])]
     .map(k=>`<div class="${k[2]}"><dt>${k[0]}</dt><dd>${k[1]}</dd></div>`).join("");
   const w=960,h=250,L=40,B=24,T=20,pw=w-L-8,ph=h-B-T,bw=pw/24,e=Math.pow(10,Math.floor(Math.log10(mx))),f=mx/e,step=mx<=10?2:e*(f>5?2:f>2?1:.5);
   let sv=`<svg viewBox="0 0 ${w} ${h}" width="100%" role="img" aria-label="Confirmed task lines by hour">`;
@@ -561,14 +566,15 @@ function renderTrends(all,TYPES){
   const T=rows.reduce((s,r)=>({n:s.n+r.A.n,u:s.u+r.A.u,h:s.h+r.A.hrs,ex:s.ex+r.ex}),{n:0,u:0,h:0,ex:0}),best=rows.slice().sort((p,q)=>q.A.n-p.A.n)[0];
   const one=v=>(+v).toFixed(1);
   const M=[
-    {title:"Confirmed lines per "+unit,stacks:TYPES.map(t=>({name:t,c:TC[t],v:rows.map(r=>r.A.t[t]||0)})),vals:rows.map(r=>r.A.n),say:nf},
+    {title:(S.type==="Pick"?"Pick lines per ":"Confirmed lines per ")+unit,stacks:TYPES.map(t=>({name:t,c:TC[t],v:rows.map(r=>r.A.t[t]||0)})),vals:rows.map(r=>r.A.n),say:nf,cap:S.type==="Pick"&&!month?PICK_CAP:0},
     {title:"Units per "+unit,stacks:[{name:"Units",c:"--s2",v:rows.map(r=>r.A.u)}],vals:rows.map(r=>r.A.u),say:nf},
     {title:"Lines per associate hour",stacks:[{name:"Lines per associate hour",c:"--s3",v:rows.map(r=>r.lph||0)}],vals:rows.map(r=>r.lph),say:one,fmt:v=>(+v).toFixed(v<10?1:0)},
     {title:exName+" per "+unit,stacks:[{name:exName,c:"--s5",v:rows.map(r=>r.ex)}],vals:rows.map(r=>r.ex),say:small,min:4}];
   M.forEach((m,i)=>{m.fit=fitLine(m.vals,dim);
     $("hTr"+(i+1)).textContent=m.title;
-    $("tr"+(i+1)).innerHTML=bars(keys,m.stacks,{label:m.title,fmt:m.fmt,min:m.min,lab,dim,fit:m.fit});
-    $("cp"+(i+1)).innerHTML=m.fit?`<span><i></i>Average <b>${m.say(m.fit.avg)}</b></span><span><i class="t"></i>Trend <b>${trendWords(m.fit,unit)}</b></span>`:""});
+    $("tr"+(i+1)).innerHTML=bars(keys,m.stacks,{label:m.title,fmt:m.fmt,min:m.min,lab,dim,fit:m.fit,cap:m.cap});
+    m.over=m.cap?m.vals.filter(v=>v>m.cap).length:0;
+    $("cp"+(i+1)).innerHTML=m.fit?`<span><i></i>Average <b>${m.say(m.fit.avg)}</b></span><span><i class="t"></i>Trend <b>${trendWords(m.fit,unit)}</b></span>`+(m.cap?`<span><i class="c"></i>Expected capacity <b>${nf(m.cap)}</b>, over on <b>${m.over} of ${m.vals.length}</b> days</span>`:""):""});
   $("trLegend").innerHTML=TYPES.map(t=>`<span><i style="background:var(${TC[t]})"></i>${t}</span>`).join("");
   $("stats").innerHTML=[[month?"Months with data":"Days with data",rows.length,""],["Confirmed",nf(T.n),""],["Average per "+unit,M[0].fit?nf(M[0].fit.avg):"—",""],["Busiest "+unit,best&&best.A.n?lab(best.key):"—",""],["Lines per assoc. hour",T.h>=.5?(T.n/T.h).toFixed(1):"—",""],[diff?"Qty differences":"Exceptions",nf(T.ex),T.ex?"warn":""]]
     .map(k=>`<div class="${k[2]}"><dt>${k[0]}</dt><dd>${k[1]}</dd></div>`).join("");
@@ -579,7 +585,7 @@ function renderTrends(all,TYPES){
       rows.map((r,i)=>{const p=rows[i-1];return `<tr><td class="n">${new Date(r.key+"-15T12:00:00").toLocaleDateString("en-US",{month:"long",year:"numeric"})}${i===dim?" (to date)":""}</td><td>${r.days}</td><td class="n">${nf(r.A.n)}</td><td>${nf(r.A.n/r.days)}</td><td>${p?chg(r.A.n/r.days,p.A.n/p.days):""}</td><td>${nf(r.A.u)}</td><td>${nf(r.A.u/r.days)}</td><td>${r.A.hrs.toFixed(1)}</td><td>${r.lph?r.lph.toFixed(1):""}</td><td>${r.ex?`<span class="pill p2">${r.ex}</span>`:"0"}</td></tr>`}).reverse().join("")+"</tbody>"
     :TH([["Date",1],["Confirmed",0],["Units",0],["Associates",0],["Assoc. hours",0],["Lines per assoc. hour",0],[diff?"Qty diffs":"Exceptions",0],["Peak hour",0]])+"<tbody>"+
       rows.slice().reverse().map(r=>`<tr class="click" data-day="${r.key}"><td class="n">${mdy(r.key)} ${new Date(r.key+"T12:00:00").toLocaleDateString(undefined,{weekday:"short"})}</td><td class="n">${nf(r.A.n)}</td><td>${nf(r.A.u)}</td><td>${r.A.users.size}</td><td>${r.A.hrs.toFixed(1)}</td><td>${r.lph?r.lph.toFixed(1):""}</td><td>${r.ex?`<span class="pill p2">${r.ex}</span>`:"0"}</td><td>${r.pk<0?"":p2(r.pk)+":00"}</td></tr>`).join("")+"</tbody>";
-  S.trend={unit,dim,labels:keys.map((k,i)=>lab(k)+(i===dim?" (to date)":"")),metrics:M,
+  S.trend={unit,dim,keys,lab,labels:keys.map((k,i)=>lab(k)+(i===dim?" (to date)":"")),metrics:M,
     period:mdy(ds[0].date)+" to "+mdy(ds[ds.length-1].date),filter:[S.type==="All"?"All activities":S.type,S.user?"Associate "+S.user:""].filter(Boolean).join(", ")};
 }
 
@@ -588,6 +594,21 @@ const PPTX_SRC="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundl
 const PCOL={Pick:"021D49",Putaway:"407EC9","Internal move":"6CACE4","Posting change":"999999","Goods issue":"1D4289","Goods receipt":"BDD6E6",Other:"E3E3E3"};
 function needPptx(){return window.PptxGenJS?Promise.resolve():new Promise((ok,no)=>{const x=document.createElement("script");x.src=PPTX_SRC;x.onload=()=>ok();x.onerror=()=>no(new Error("lib"));document.head.appendChild(x)})}
 async function pic(src,w,h){try{const im=new Image();im.src=src;await im.decode();const c=document.createElement("canvas");c.width=w;c.height=h;c.getContext("2d").drawImage(im,0,0,w,h);return c.toDataURL("image/png")}catch(_){return null}}
+/* A chart for a slide: the same drawing as on the page, recoloured for a white slide and turned into a picture, so it opens in any version of PowerPoint. */
+const LIGHT={"--line":"#E3E3E3","--bg":"#FFFFFF","--card":"#FFFFFF","--fg":"#021D49","--muted":"#666666","--warn":"#666666","--accent":"#FF0000","--info":"#407EC9","--s2":"#407EC9","--s3":"#407EC9","--s5":"#407EC9"};
+async function chartPng(t,m){
+  const W=920,H=510,CH=462,col=n=>"#"+(PCOL[n]||"407EC9");
+  let ch=bars(t.keys,m.stacks.map(k=>({name:k.name,v:k.v,c:"--x"+k.name})),{w:W,h:CH,fmt:m.fmt,min:m.min,lab:t.lab,dim:t.dim,fit:m.fit,cap:m.cap});
+  ch=ch.replace('width="100%"',`width="${W}" height="${CH}"`).replace(/var\(--x([^)]*)\)/g,(_,n)=>m.stacks.length>1||PCOL[n]?col(n):"#407EC9").replace(/var\((--[a-z0-9-]+)\)/g,(_,k)=>LIGHT[k]||"#666666");
+  const used=m.stacks.filter(k=>k.v.some(v=>v>0)),items=used.map(k=>[k.name,m.stacks.length>1||PCOL[k.name]?col(k.name):"#407EC9","box"]);
+  if(m.fit){items.push(["Average","#666666","dash"]);if(m.fit.m!=null)items.push(["Trend","#FF0000","line"])}
+  if(m.cap)items.push(["Expected capacity","#407EC9","dot"]);
+  const wid=items.map(k=>k[0].length*7.6+46),tw=wid.reduce((a,b)=>a+b,0);let x=Math.max(8,(W-tw)/2),lg="";
+  items.forEach((k,i)=>{const y=H-20;
+    lg+=k[2]==="box"?`<rect x="${x}" y="${y-10}" width="16" height="11" fill="${k[1]}"/>`:`<line x1="${x-4}" x2="${x+18}" y1="${y-4}" y2="${y-4}" stroke="${k[1]}" stroke-width="${k[2]==="line"?3:2}"${k[2]==="dash"?' stroke-dasharray="6 4"':k[2]==="dot"?' stroke-dasharray="2 4" stroke-linecap="round"':""}/>`;
+    lg+=`<text x="${x+24}" y="${y}">${esc(k[0])}</text>`;x+=wid[i]});
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${W*2}" height="${H*2}" viewBox="0 0 ${W} ${H}"><style>text{font-family:Arial,Helvetica,sans-serif;font-size:13px;fill:#666666}.tl{fill:#021D49;font-weight:700;paint-order:stroke;stroke:#FFFFFF;stroke-width:3px;stroke-linejoin:round}</style><rect width="${W}" height="${H}" fill="#FFFFFF"/>${ch}${lg}</svg>`;
+  return pic("data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg),W*2,H*2)}
 async function exportPpt(){
   const t=S.trend;if(!t||S.pptBusy)return;S.pptBusy=true;$("pptBtn").classList.add("busy");toast("Building the PowerPoint…",true);
   try{
@@ -605,25 +626,21 @@ async function exportPpt(){
     s0.addText("WAREHOUSE TRANSACTION TRENDS",{x:.7,y:2.6,w:11.9,h:1,fontFace:F,fontSize:38,bold:true,color:"FFFFFF"});
     s0.addShape(P.ShapeType.rect,{x:.7,y:3.65,w:2.4,h:.08,fill:{color:RED},line:{color:RED,width:0}});
     s0.addText([{text:(t.unit==="month"?"Month over month":"Day by day")+", "+t.period,options:{breakLine:true}},{text:t.filter,options:{breakLine:true}},{text:"Prepared "+made}],{x:.7,y:3.95,w:11.9,h:1.5,fontFace:F,fontSize:18,color:"BDD6E6",valign:"top",paraSpaceAfter:6});
-    t.metrics.forEach(m=>{
-      const sl=P.addSlide({masterName:"METRIC"}),f=m.fit,r2=v=>Math.round((v||0)*100)/100;
+    for(const m of t.metrics){
+      const sl=P.addSlide({masterName:"METRIC"}),f=m.fit;
       sl.addText(m.title.toUpperCase(),{x:.5,y:.4,w:10.2,h:.7,fontFace:F,fontSize:26,bold:true,color:RED});
-      const parts=[{type:P.charts.BAR,data:m.stacks.map(k=>({name:k.name,labels:t.labels,values:k.v.map(r2)})),options:{barGrouping:"stacked",barGapWidthPct:45,chartColors:m.stacks.map((k,i)=>PCOL[k.name]||["407EC9","6CACE4","1D4289"][i%3])}}];
-      if(f){const ln=[{name:"Average",labels:t.labels,values:t.labels.map(()=>r2(f.avg))}];if(f.m!=null)ln.push({name:"Trend",labels:t.labels,values:t.labels.map((_,i)=>r2(f.at(i)))});
-        parts.push({type:P.charts.LINE,data:ln,options:{chartColors:[GREY,RED],lineSize:2.25,lineDataSymbol:"none",lineDash:["dash","solid"]}})}
-      sl.addChart(parts,{x:.4,y:1.45,w:9.2,h:t.dim>=0?5.1:5.4,showLegend:true,legendPos:"b",legendFontFace:F,legendFontSize:11,legendColor:BLUE,
-        catAxisLabelFontFace:F,catAxisLabelFontSize:10,catAxisLabelColor:GREY,valAxisLabelFontFace:F,valAxisLabelFontSize:10,valAxisLabelColor:GREY,
-        valAxisLabelFormatCode:m.say===nf?"#,##0":"#,##0.0",valAxisMinVal:0,valGridLine:{color:"E3E3E3",size:.75},catGridLine:{style:"none"}});
+      const png=await chartPng(t,m);
+      if(png)sl.addImage({data:png,x:.4,y:1.45,w:9.2,h:5.1});
       const live=m.vals.map((v,i)=>[v,i]).filter(q=>q[0]!=null&&q[1]!==t.dim),hi=live.slice().sort((p,q)=>q[0]-p[0])[0],last=live[live.length-1];
       const facts=[["AVERAGE",f?m.say(f.avg):"—","per "+t.unit+" shown"],["TREND",f&&f.m!=null?(f.change!=null&&Math.abs(f.change)<.02?"Flat":(f.m>0?"Up ":"Down ")+small(Math.abs(f.m))):"—",f&&f.m!=null?"per "+t.unit+(f.change!=null?", "+(f.change>0?"+":"")+Math.round(f.change*100)+"% over the period":""):"needs at least 3 "+t.unit+"s"],
-        ["HIGHEST",hi?m.say(hi[0]):"—",hi?t.labels[hi[1]]:""],["LATEST",last?m.say(last[0]):"—",last?t.labels[last[1]]:""]];
+        ["HIGHEST",hi?m.say(hi[0]):"—",hi?t.labels[hi[1]]:""],m.cap?["EXPECTED CAPACITY",nf(m.cap),"over on "+m.over+" of "+m.vals.length+" days"]:["LATEST",last?m.say(last[0]):"—",last?t.labels[last[1]]:""]];
       facts.forEach((k,i)=>{const y=1.6+i*1.3;
         sl.addShape(P.ShapeType.rect,{x:9.9,y,w:.06,h:1.05,fill:{color:i===1?RED:BLUE},line:{color:i===1?RED:BLUE,width:0}});
         sl.addText(k[0],{x:10.1,y,w:2.8,h:.28,fontFace:F,fontSize:10,bold:true,color:GREY});
         sl.addText(String(k[1]),{x:10.1,y:y+.26,w:2.8,h:.5,fontFace:F,fontSize:24,bold:true,color:BLUE});
         sl.addText(k[2],{x:10.1,y:y+.74,w:2.8,h:.3,fontFace:F,fontSize:10,color:GREY})});
-      if(t.dim>=0)sl.addText("The current month is not finished, so it is left out of the average and the trend.",{x:.5,y:6.6,w:9,h:.25,fontFace:F,fontSize:9,italic:true,color:GREY});
-    });
+      if(t.dim>=0)sl.addText("The current month is not finished, so it is left out of the average and the trend.",{x:.5,y:6.62,w:9,h:.25,fontFace:F,fontSize:9,italic:true,color:GREY});
+    }
     await P.writeFile({fileName:"CEVA Warehouse Transaction Trends "+(t.unit==="month"?"by month ":"by day ")+today()+".pptx"});
     toast("PowerPoint saved to your downloads. "+(t.metrics.length+1)+" slides.");
   }catch(e){toast(e&&e.message==="lib"?"The PowerPoint builder could not be downloaded. Check the connection and try again.":"The PowerPoint could not be built. Try again.")}
