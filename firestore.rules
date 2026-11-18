@@ -130,29 +130,22 @@ service cloud.firestore {
 
     // ───────── Inventory differences ─────────
 
-    // inv/current is the summary of the most recent SAP inventory difference export (who, when, how
-    // many parts). inv/current/chunks/{version}_{n} hold the difference lines as JSON text.
-    // Anyone with a role reads; supervisors and admins load.
-    match /inv/{docId} {
+    // invdays/{YYYY-MM-DD} holds the differences confirmed on that date (warehouse task lines whose
+    // difference quantity is not zero), as JSON text. Loading an export adds to a day, so the list
+    // builds up. Anyone with a role reads; supervisors and admins load; admins can remove a day.
+    match /invdays/{day} {
       allow read: if isViewer();
-      allow write: if isSupervisor()
+      allow create, update: if isSupervisor()
+        && request.resource.data.date == day
         && request.resource.data.by == request.auth.uid
-        && request.resource.data.chunks is int
-        && request.resource.data.chunks <= 40
-        && request.resource.data.size() <= 14;
-
-      match /chunks/{chunkId} {
-        allow read: if isViewer();
-        allow create, update: if isSupervisor()
-          && request.resource.data.rows is string
-          && request.resource.data.rows.size() < 1000000
-          && request.resource.data.size() <= 3;
-        allow delete: if isSupervisor();
-      }
+        && request.resource.data.rows is string
+        && request.resource.data.rows.size() < 1000000
+        && request.resource.data.size() <= 10;
+      allow delete: if isAdmin();
     }
 
-    // invact/{product|bin|batch} is the action on one difference: status, owner and notes.
-    // It stays when a newer export is loaded. Supervisors and admins work them.
+    // invact/{task|product|bin} is the action on one difference: status, owner and notes.
+    // Supervisors and admins work them.
     match /invact/{actId} {
       allow read: if isViewer();
       allow create, update: if isSupervisor()
@@ -164,7 +157,7 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // invcfg/settings holds the priority thresholds (quantity and value limits for P1 and P2).
+    // invcfg/settings holds the priority thresholds (quantity limits for P1 and P2).
     match /invcfg/{docId} {
       allow read: if isViewer();
       allow write: if isAdmin() && request.resource.data.size() <= 10;
