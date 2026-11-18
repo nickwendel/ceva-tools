@@ -6,6 +6,7 @@ Operational tools for CEVA sites, served with GitHub Pages.
 |---|---|---|
 | Receiving dock board | [`dock-board/`](dock-board/) | Floor TV display of trailers in the drop and today's appointments, with priority, door, pathway owner and status. Supervisors update it from a phone. |
 | NCI/Grief inbound exceptions | [`nci-inbound/`](nci-inbound/) | Shared log of error shipments (shortages, overages, damage, missing ASN…) worked by CEVA and NCI/Grief together. Either company raises an issue, posts updates, hands it to the other side and resolves it. A board shows what is open and who it is waiting on. |
+| Inventory differences | [`inventory-differences/`](inventory-differences/) | Collates the SAP inventory difference export by product, bin and storage type, ranks what to chase first, and tracks status, owner and notes on each difference. Exports an action list for the Inventory Action Tracker. |
 | Access and people | [`access/`](access/) | One page to sign in, request access, see what your role opens in each tool and change your password. Admins approve requests and manage the people list for every tool here. |
 | Warehouse transactions | [`transactions/`](transactions/) | Dashboard of SAP EWM warehouse tasks: completed work by hour, activity, process type and associate, open task aging, and trends over time. A supervisor loads the SAP export and everyone signed in sees it. |
 
@@ -39,7 +40,7 @@ All tools use one Firebase project, **`ceva-tools`** (console: [console.firebase
 
 Admins can still add people by hand from **Settings → People**: Firebase console → **Authentication → Users → Add user**, copy the User UID, then paste it in with a name, company and role. That is the way to set up TV screens, which don't request access themselves.
 
-**Network:** screens and phones need to reach `gstatic.com`, `googleapis.com` and `firebaseapp.com`. The transactions dashboard also needs `cdnjs.cloudflare.com`.
+**Network:** screens and phones need to reach `gstatic.com`, `googleapis.com` and `firebaseapp.com`. The transactions dashboard and the inventory differences tool also need `cdnjs.cloudflare.com`.
 
 ---
 
@@ -169,3 +170,26 @@ No task data is stored in this repository. In Firestore:
 To remove a day that was loaded by mistake, an admin deletes its document under `wtdays` in the Firebase console.
 
 Loading a file is one write per day in it. A screen reads one document per day in the range it shows (Today reads one, All reads every day), which stays far inside the free Spark plan for a handful of screens. The page loads the SheetJS spreadsheet reader from `cdnjs.cloudflare.com`, so screens need to reach that host as well as the Firebase ones.
+
+---
+
+## Inventory differences
+
+**Live page:** `https://nickwendel.github.io/ceva-tools/inventory-differences/`
+
+Takes the SAP inventory difference export and turns it into a shared list of differences to work.
+
+- **Load:** a supervisor or admin selects **Load SAP export** (or drags the file onto the page). Excel and CSV both work. The newest export replaces the previous one for everyone.
+- **Action list:** one row per product, bin and batch, with book, counted and difference quantity, value when the export has it, count date and priority. Search, filter by priority and status, sort by any heading.
+- **Working a difference:** select a row to set its status (New, Recount, Researching, Ready to post, Closed), an owner and notes. These stay with that product, bin and batch when a newer export is loaded.
+- **By product:** gains, losses, net and gross per product. "Likely wrong bin" marks a product whose gains and losses in different bins cancel out to within a quarter.
+- **By storage type:** counts, gains and losses per storage type, and open differences by age of count.
+- **Export action list:** downloads the filtered list as Excel. Columns A to I follow the Inventory Action Tracker (category, action item, details, owner, priority, status, notes).
+
+**Columns.** The page finds columns by header name, so the order does not matter. It needs a product (or material) column and either a difference quantity or both book and counted quantity. It also uses, when present: description, storage bin, storage type, batch, unit, difference value or unit price, count date, counter, PI document and reason. The note at the bottom of the page shows which header was used for each.
+
+**Priority.** P1 from 50 units or $500, P2 from 10 units or $100, otherwise P3. Admins change these under **Thresholds**.
+
+**Roles.** Viewers see everything. Supervisors and admins load exports and work differences. Admins set thresholds.
+
+**Data.** `inv/current` and `inv/current/chunks` hold the latest export's differences, `invact/{product|bin|batch}` the action on each one, `invcfg/settings` the thresholds. Publish [`firestore.rules`](firestore.rules) after merging, or loading and saving will be refused.
