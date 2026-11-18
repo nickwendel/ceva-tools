@@ -8,7 +8,7 @@
 <link rel="icon" href="../assets/ceva-logo.svg" type="image/svg+xml">
 <style>
 /* Visual system shared with the other CEVA tools (matched to the Whitsett KPI dashboard): dark navy, card panels, CEVA red accent, system type.
-   Layout: header, KPI tiles, section tabs (Action list, By product, By storage type), filters, then card panels. Dark only. */
+   Layout: header, KPI tiles, section tabs with a date range, filters, then card panels. Dark only. */
 :root{
   --bg:#0a1626; --card:#122A47; --row:#0e2038; --line:#1f3d61; --line-light:#2a4a73;
   --fg:#e7eef7; --muted:#93a8c4; --faint:#5f7796;
@@ -237,14 +237,15 @@ dialog::backdrop{background:rgba(5,12,24,.7)}
     </div>
   </header>
   <dl class="b-stats" id="stats"></dl>
-  <div class="navrow"><div class="views" role="tablist" aria-label="Sections" id="views"></div></div>
+  <div class="navrow"><div class="views" role="tablist" aria-label="Sections" id="views"></div>
+    <div class="range"><div class="segm" id="rangeBtns" role="group" aria-label="Date range"></div></div></div>
   <div class="msg" id="msg" hidden></div>
   <div id="noData" class="empty" hidden></div>
 
   <!-- Action list -->
   <div id="vList" hidden>
     <div class="tools">
-      <input class="inp" id="q" type="search" placeholder="Search product, bin, batch, owner" aria-label="Search">
+      <input class="inp" id="q" type="search" placeholder="Search product, bin, associate, order, owner" aria-label="Search">
       <div class="chips" id="priChips" role="group" aria-label="Priority"></div>
       <div class="chips" id="stChips" role="group" aria-label="Action status"></div>
       <button type="button" class="btn" id="xlsBtn" style="margin-left:auto">Export action list</button>
@@ -253,17 +254,16 @@ dialog::backdrop{background:rgba(5,12,24,.7)}
       <div class="p-body scroll"><table id="tList"></table><div class="more" id="more"></div></div></section>
   </div>
 
-  <!-- By product -->
-  <div class="panels" id="vProd" hidden>
-    <section class="b-panel"><header class="p-head"><h2>By product</h2><span class="p-count" id="cProd"></span><span class="p-page">Select a row to see its bins</span></header>
-      <div class="p-body scroll"><table id="tProd"></table><div class="more" id="moreProd"></div></div></section>
+  <!-- Grouped views -->
+  <div class="panels" id="vGroup" hidden>
+    <section class="b-panel"><header class="p-head"><h2 id="hGroup"></h2><span class="p-count" id="cGroup"></span><span class="p-page">Select a row to see its differences, a heading to sort</span></header>
+      <div class="p-body scroll"><table id="tGroup"></table><div class="more" id="moreGroup"></div></div></section>
   </div>
 
-  <!-- By area -->
-  <div class="panels" id="vArea" hidden>
-    <section class="b-panel"><header class="p-head"><h2>By storage type</h2><span class="p-count" id="cArea"></span><span class="p-page">Select a row to filter the action list</span></header>
-      <div class="p-body scroll"><table id="tArea"></table></div></section>
-    <section class="b-panel"><header class="p-head"><h2>By age of count</h2></header><div class="p-body" id="ageTiles"></div></section>
+  <!-- By day -->
+  <div class="panels" id="vDay" hidden>
+    <section class="b-panel"><header class="p-head"><h2>By day</h2><span class="p-count" id="cDay"></span><span class="p-page">Confirmation date</span></header>
+      <div class="p-body scroll"><table id="tDay"></table></div></section>
   </div>
 
   <div class="note" id="note"></div>
@@ -282,12 +282,10 @@ dialog::backdrop{background:rgba(5,12,24,.7)}
 
 <dialog id="cfg" aria-labelledby="cTitle"><form method="dialog" class="dlg" id="cForm">
   <h2 id="cTitle">Priority thresholds</h2>
-  <p class="gate-p">A difference is P1 when it reaches either P1 limit, P2 when it reaches either P2 limit, otherwise P3. Quantity is the absolute difference in the export’s unit. Value only counts when the export has a value or price column.</p>
+  <p class="gate-p">A difference is P1 when its quantity (short or over) reaches the P1 limit, P2 when it reaches the P2 limit, otherwise P3.</p>
   <div class="two" style="gap:.8em">
     <div class="fld"><label for="cQ1">P1 from quantity</label><input class="inp" id="cQ1" type="number" min="0" step="any"></div>
-    <div class="fld"><label for="cV1">P1 from value ($)</label><input class="inp" id="cV1" type="number" min="0" step="any"></div>
     <div class="fld"><label for="cQ2">P2 from quantity</label><input class="inp" id="cQ2" type="number" min="0" step="any"></div>
-    <div class="fld"><label for="cV2">P2 from value ($)</label><input class="inp" id="cV2" type="number" min="0" step="any"></div>
   </div>
   <div class="err" id="cErr" role="alert" hidden></div>
   <div class="row"><button class="btn ghost" value="cancel" type="submit" formnovalidate>Close</button><button class="btn primary" type="button" id="cSave">Save</button></div>
@@ -299,126 +297,95 @@ dialog::backdrop{background:rgba(5,12,24,.7)}
 <script type="module">
 const FB='https://www.gstatic.com/firebasejs/10.14.1/';
 const ROLE_LABEL={viewer:'Viewer',supervisor:'Supervisor',user:'User',admin:'Admin'};
-const CHUNK=600000,PAGE=300;
+const PAGE=300,REPEAT=3;
 const STATUS=[["new","New"],["recount","Recount"],["research","Researching"],["post","Ready to post"],["closed","Closed"]],SL=Object.fromEntries(STATUS);
-const DEF_CFG={q1:50,v1:500,q2:10,v2:100};
-const AGE=[["Counted today or yesterday",0,2,"ok"],["2 to 6 days",2,7,""],["7 to 13 days",7,14,"p2"],["14 days or more",14,Infinity,"p1"],["No count date",-1,-1,""]];
-
-/* Which export column feeds which field. SAP layouts and languages differ, so columns are found by header name:
-   first an exact match on one of the names, then a header that contains one of the patterns. */
-const FIELDS=[
-  ["p","Product",["product","material","prod.","matl"],[/\bproduct\b(?!.*(desc|text|short|group|type))/,/\bmaterial\b(?!.*(desc|text|group|type))/],true],
-  ["d","Description",["product short description","product description","material description","description","short text","product text"],[/desc|short text/]],
-  ["b","Storage bin",["storage bin","bin","stor. bin","st. bin"],[/storage bin|\bbin\b/]],
-  ["st","Storage type",["storage type","stor. type","typ","st. type"],[/storage type|stor\.? ?type/]],
-  ["bt","Batch",["batch"],[/^batch/]],
-  ["bk","Book quantity",["book quantity","book qty","bk qty","book qty buom","book quantity in buom","book stock"],[/book/]],
-  ["ct","Counted quantity",["counted quantity","counted qty","count quantity","count qty","physical qty","counted qty buom","quantity counted"],[/count(ed)? q|physical q|counted/]],
-  ["df","Difference quantity",["difference quantity","difference qty","diff. quantity","diff. qty","diff qty","difference","diff. qty in buom","diff. qty in alt.un","difference qty buom","quantity difference"],[/^diff.*(qty|quan)|difference q|quantity diff|^difference$/]],
-  ["u","Unit",["base unit of measure","base unit","buom","unit","unit of measure","uom","bun","alt. unit of measure","alternative unit of measure"],[/unit|uom|bun\b/]],
-  ["v","Difference value",["difference value","diff. value","value of difference","diff. amount","difference amount","value","amount","value diff."],[/(diff|differ).*(value|amount)|(value|amount).*(diff)|^value$|^amount$/]],
-  ["pr","Unit price",["price","unit price","moving average price","standard price","map"],[/price/]],
-  ["dt","Count date",["count date","counted on","date of count","difference date","posting date","created on","date"],[/count.*date|counted on|date/]],
-  ["by","Counted by",["counter","counted by","created by","user","changed by"],[/counter|counted by|created by|user/]],
-  ["doc","PI document",["pi document","physical inventory document","phys. inv. doc.","pi doc.","pi doc","document","document number"],[/pi doc|phys.*inv.*doc|document/]],
-  ["rs","Reason",["reason","reason code","reason for difference","reason for pi"],[/reason/]],
-];
-const S={rows:null,meta:null,ver:null,acts:new Map(),cfg:{...DEF_CFG},view:"list",q:"",pri:"All",st:"open",area:null,sort:"pri",dir:1,show:PAGE,showProd:PAGE,psort:"gross",pdir:-1,
+const DEF_CFG={q1:500,q2:50};
+const RANGES=[["7","7 days"],["30","30 days"],["all","All"]];
+const GROUPS={bin:["By bin","Bin",r=>r.b||"(blank)"],prod:["By product","Product",r=>r.p||"(blank)"],user:["By associate","Associate",r=>r.by||"(blank)"]};
+const S={rows:null,days:new Map(),acts:new Map(),cfg:{...DEF_CFG},view:"list",range:"30",q:"",pri:"All",st:"open",kind:"All",sort:"pri",dir:1,show:PAGE,showG:PAGE,gsort:"n",gdir:-1,
   fb:null,authUser:null,role:null,myName:"",canLoad:false,canEdit:false,isAdmin:false,busy:false,pendingReq:null,unsubs:[],cur:null,dStatus:"new"};
 const $=id=>document.getElementById(id),p2=n=>String(n).padStart(2,"0");
 const nf=(n,d)=>(+n||0).toLocaleString("en-US",{maximumFractionDigits:d==null?2:d});
-const sgn=n=>(n>0?"+":"")+nf(n);
-const money=n=>(n<0?"−$":"$")+Math.abs(n).toLocaleString("en-US",{maximumFractionDigits:0});
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const str=(v,n)=>typeof v==="string"?v.trim().slice(0,n||200):"";
 const norm=s=>String(s==null?"":s).toLowerCase().replace(/\s+/g," ").trim();
 const dayNow=()=>Math.floor((Date.now()/1000-new Date().getTimezoneOffset()*60)/86400);
+const iso=d=>new Date(d*86400000).toISOString().slice(0,10);
 const mdyDay=d=>{if(d==null||d<0)return "";const x=new Date(d*86400000);return p2(x.getUTCMonth()+1)+"/"+p2(x.getUTCDate())+"/"+x.getUTCFullYear()};
+const hm=s=>s==null||s<0?"":p2(Math.floor(s/3600))+":"+p2(Math.floor(s%3600/60));
 let toastT;function toast(t,keep){const e=$("toast");e.textContent=t;e.hidden=false;clearTimeout(toastT);if(!keep)toastT=setTimeout(()=>e.hidden=true,typeof keep==="number"?keep:6000)}
-const keyOf=r=>[r.p,r.b,r.bt].join("|");
+const keyOf=r=>[r.t,r.p,r.b].join("|");
 const docId=k=>encodeURIComponent(k).slice(0,1400)||"_";
+const kindOf=r=>r.df>0?"Short pick":"Over pick";
 
-/* ---------- reading the SAP export ---------- */
-function num(v){if(typeof v==="number")return v;let s=String(v==null?"":v).trim();if(!s)return 0;
-  let neg=/-$/.test(s)||/^\(.*\)$/.test(s)||/^-/.test(s);s=s.replace(/[()\-\s$€£]/g,"");
-  if(/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(s))s=s.replace(/\./g,"").replace(",",".");else s=s.replace(/,/g,"");
-  const n=parseFloat(s);return isNaN(n)?0:neg?-n:n}
+/* ---------- reading the SAP export ----------
+   Every SAP pull uses the same warehouse task layout. A difference is a task line whose difference quantity is not zero:
+   positive when less was confirmed than the task asked for (short pick), negative when more was confirmed (over pick). */
 function toDayNum(v){if(v==null||v==="")return -1;if(typeof v==="number")return v>20000&&v<80000?Math.floor(v-25569):-1;
-  const s=String(v).trim();let m=s.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);if(m)return Math.floor(Date.UTC(+m[1],m[2]-1,+m[3])/86400000);
-  m=s.match(/^(\d{1,2})[/.](\d{1,2})[/.](\d{2,4})/);if(m){let y=+m[3];if(y<100)y+=2000;const a=+m[1],b=+m[2];
-    const [mo,da]=s.includes(".")?[b,a]:[a,b];return Math.floor(Date.UTC(y,mo-1,da)/86400000)}
-  m=s.match(/^(\d{4})(\d{2})(\d{2})$/);if(m)return Math.floor(Date.UTC(+m[1],m[2]-1,+m[3])/86400000);return -1}
-function mapCols(h){
-  const n=h.map(norm),used=new Set(),map={};
-  for(const [k,,names,pats] of FIELDS){let i=-1;
-    for(const nm of names){i=n.findIndex((x,j)=>!used.has(j)&&x===nm);if(i>=0)break}
-    if(i<0)for(const p of pats){i=n.findIndex((x,j)=>!used.has(j)&&x&&p.test(x));if(i>=0)break}
-    if(i>=0){map[k]=i;used.add(i)}}
-  return map}
+  const d=new Date(v);return isNaN(d)?-1:Math.floor((d.getTime()/1000-d.getTimezoneOffset()*60)/86400)}
+function toSec(v){if(v==null||v==="")return -1;if(typeof v==="number")return Math.round((v%1)*86400);const m=String(v).match(/(\d+):(\d+)(?::(\d+))?/);return m?+m[1]*3600+ +m[2]*60+ +(m[3]||0):-1}
 function parse(buf,name){
-  const wb=XLSX.read(buf,{type:"array",raw:false,cellDates:false});
-  let best=null;
-  for(const sn of wb.SheetNames){const a=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,raw:true,defval:""});
-    for(let i=0;i<Math.min(15,a.length);i++){const m=mapCols(a[i]||[]),sc=Object.keys(m).length+(m.p!=null?3:0)+(m.df!=null||(m.bk!=null&&m.ct!=null)?3:0);
-      if(!best||sc>best.sc)best={sc,a,hi:i,m,h:(a[i]||[]).map(x=>String(x).trim())}}}
-  if(!best)throw new Error("This file has no sheets with data.");
-  const {a,hi,m,h}=best,miss=[];
-  if(m.p==null)miss.push("Product (or Material)");
-  if(m.df==null&&(m.bk==null||m.ct==null))miss.push("a difference quantity, or both book and counted quantity");
-  if(miss.length)throw new Error("Couldn’t find "+miss.join(" and ")+" in this file. Headers found: "+h.filter(Boolean).slice(0,30).join(", ")+".");
-  const g=(r,k)=>m[k]==null?"":String(r[m[k]]??"").trim(),q=(r,k)=>m[k]==null?0:num(r[m[k]]);
-  const by=new Map();let lines=0,zero=0,maxDay=-1;
-  for(let i=hi+1;i<a.length;i++){const r=a[i];const p=g(r,"p");if(!p||/^(total|\*)/i.test(p))continue;
-    const bk=q(r,"bk"),ct=q(r,"ct"),df=m.df!=null?q(r,"df"):ct-bk;lines++;
-    if(!df){zero++;continue}
-    let v=m.v!=null?q(r,"v"):m.pr!=null?df*q(r,"pr"):null;
-    if(v!=null&&df&&v&&Math.sign(v)!==Math.sign(df)&&m.v!=null)v=-v; // some layouts show value unsigned
-    const dt=m.dt!=null?toDayNum(r[m.dt]):-1;if(dt>maxDay)maxDay=dt;
-    const row={p,d:g(r,"d"),b:g(r,"b"),st:g(r,"st"),bt:g(r,"bt"),bk,ct,df,u:g(r,"u"),v,dt,by:g(r,"by"),doc:g(r,"doc"),rs:g(r,"rs"),n:1};
-    const k=keyOf(row),o=by.get(k);
-    if(!o)by.set(k,row);else{o.bk+=bk;o.ct+=ct;o.df+=df;o.v=o.v==null&&v==null?null:(o.v||0)+(v||0);o.n++;if(dt>o.dt){o.dt=dt;o.by=row.by||o.by;o.doc=row.doc||o.doc;o.rs=row.rs||o.rs}}}
-  const rows=[...by.values()].filter(r=>Math.abs(r.df)>1e-9).map(r=>{for(const k of ["bk","ct","df"])r[k]=Math.round(r[k]*1000)/1000;if(r.v!=null)r.v=Math.round(r.v*100)/100;return r});
-  if(!lines)throw new Error("No product lines were found under the headers in this file.");
-  const cols={};for(const [k,label] of FIELDS)cols[label]=m[k]!=null?h[m[k]]:"";
-  return {file:str(name.replace(/\.[^.]+$/,""),80),rows,lines,zero,cols,maxDay,hasVal:m.v!=null||m.pr!=null}}
+  const wb=XLSX.read(buf,{type:"array"});let a=null,h=null,firstH=null;
+  const pick=(hh,...n)=>n.find(x=>hh.includes(x))||"";
+  for(const sn of wb.SheetNames){const x=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,raw:true,defval:""}),hh=(x[0]||[]).map(v=>String(v).trim());
+    if(!firstH)firstH=hh;if(hh.includes("Warehouse Task")&&pick(hh,"Diff. Qty in Alt.Un","Diff. Qty in BUoM")){a=x;h=hh;break}}
+  if(!a){h=firstH||[];
+    const miss=["Warehouse Task","Product","Source Storage Bin","Confirmation Date"].filter(n=>!h.includes(n));if(!pick(h,"Diff. Qty in Alt.Un","Diff. Qty in BUoM"))miss.push("Diff. Qty in Alt.Un");
+    throw new Error("This file is missing these columns: "+miss.join(", ")+". Load the SAP warehouse task export.")}
+  const dC=pick(h,"Diff. Qty in Alt.Un","Diff. Qty in BUoM"),tC=pick(h,"Src Trgt Qty AUoM","Src Trgt Qty BUoM"),qC=pick(h,"Act Dest Qty Alt UoM","Act. Qty Dest. BUoM");
+  const miss=["Product","Source Storage Bin","Confirmation Date"].filter(n=>!h.includes(n));
+  if(miss.length)throw new Error("This file is missing these columns: "+miss.join(", ")+". Load the SAP warehouse task export.");
+  const c=n=>h.indexOf(n),v=(r,n)=>n&&c(n)>=0?r[c(n)]:"",g=(r,n)=>String(v(r,n)??"").trim();
+  const by=new Map();let lines=0,minDay=Infinity,maxDay=-1;
+  for(let i=1;i<a.length;i++){const r=a[i];if(g(r,"Warehouse Task")==="")continue;lines++;
+    let dt=toDayNum(v(r,"Confirmation Date"));const conf=dt>=0;if(!conf)dt=toDayNum(v(r,"Created On"));
+    if(dt>=0){if(dt<minDay)minDay=dt;if(dt>maxDay)maxDay=dt}
+    const df=+v(r,dC)||0;if(!df||dt<0)continue;
+    const row={t:g(r,"Warehouse Task"),p:g(r,"Product"),b:g(r,"Source Storage Bin")||g(r,"Destination Bin"),tg:+v(r,tC)||0,ac:+v(r,qC)||0,df:Math.round(df*1000)/1000,
+      by:g(r,"Confirmed By")||g(r,"Created By"),dt,tm:toSec(v(r,conf?"Confirmation Time":"Created At")),pt:g(r,"Whse Process Type"),cat:g(r,"Whse Process Category Desc.")||g(r,"Activity"),
+      aa:g(r,"Activity Area"),wo:g(r,"Warehouse Order"),doc:g(r,"Document"),wv:g(r,"Wave"),ph:g(r,"Pull header ID")};
+    const k=keyOf(row);if(!by.has(k))by.set(k,row)}
+  if(!lines)throw new Error("No warehouse task lines were found in this file.");
+  return {file:str(name.replace(/\.[^.]+$/,""),80),rows:[...by.values()],lines,minDay,maxDay}}
 
 /* ---------- shared data ----------
-   inv/current + inv/current/chunks/{ver}_{n}  the differences from the most recent export, as JSON text
-   invact/{product|bin|batch}                  the action on one difference (status, owner, notes); kept across exports
-   invcfg/settings                             priority thresholds (admins) */
-function chunkRows(rows){const out=[];let cur=[],len=0;for(const r of rows){const s=JSON.stringify(r);if(len+s.length>CHUNK&&cur.length){out.push("["+cur.join(",")+"]");cur=[];len=0}cur.push(s);len+=s.length+1}
-  if(cur.length)out.push("["+cur.join(",")+"]");return out}
+   invdays/{YYYY-MM-DD}             the differences confirmed on that date, as JSON text. Loading an export adds to a day, it never removes
+                                    a difference that is already there, so the list builds up over time.
+   invact/{task|product|bin}        the action on one difference (status, owner, notes)
+   invcfg/settings                  priority thresholds (admins) */
 async function publish(d){
-  const {Fs,fs}=S.fb,ver=Date.now().toString(36),parts=chunkRows(d.rows),prev=S.meta;
-  if(parts.length>40)throw new Error("too-big");
-  for(let i=0;i<parts.length;i++)await Fs.setDoc(Fs.doc(fs,"inv","current","chunks",ver+"_"+i),{ver,i,rows:parts[i]});
-  await Fs.setDoc(Fs.doc(fs,"inv","current"),{ver,chunks:parts.length,count:d.rows.length,lines:d.lines,file:d.file,cols:JSON.stringify(d.cols),hasVal:!!d.hasVal,
-    by:S.authUser.uid,byName:S.myName||S.authUser.email||"",at:Date.now()});
-  if(prev&&prev.ver&&prev.ver!==ver)for(let i=0;i<(prev.chunks||0);i++)Fs.deleteDoc(Fs.doc(fs,"inv","current","chunks",prev.ver+"_"+i)).catch(()=>{})}
-async function pull(m){const {Fs,fs}=S.fb,rows=[];
-  for(let i=0;i<(m.chunks||0);i++){const s=await Fs.getDoc(Fs.doc(fs,"inv","current","chunks",m.ver+"_"+i));if(!s.exists())throw new Error("missing");rows.push(...JSON.parse(s.data().rows))}
-  return rows}
+  const {Fs,fs}=S.fb,m=new Map();for(const r of d.rows){const k=iso(r.dt);(m.get(k)||m.set(k,[]).get(k)).push(r)}
+  const dates=[...m.keys()].sort();let added=0,i=0;
+  for(const date of dates){
+    const snap=await Fs.getDoc(Fs.doc(fs,"invdays",date));let old=[];if(snap.exists()){try{old=JSON.parse(snap.data().rows||"[]")}catch(_){}}
+    const all=new Map(old.map(r=>[keyOf(r),r]));for(const r of m.get(date)){const k=keyOf(r);if(!all.has(k))added++;all.set(k,r)}
+    const rows=JSON.stringify([...all.values()]);if(rows.length>900000)throw new Error("too-big");
+    await Fs.setDoc(Fs.doc(fs,"invdays",date),{date,n:all.size,rows,file:d.file,by:S.authUser.uid,byName:S.myName||S.authUser.email||"",at:Date.now()});
+    if(dates.length>3)toast("Saving day "+(++i)+" of "+dates.length+"…",true)}
+  return {added,days:dates.length}}
 function startData(){
   const {Fs,fs}=S.fb;
-  S.unsubs.push(Fs.onSnapshot(Fs.doc(fs,"inv","current"),async snap=>{
-    if(!snap.exists()){S.meta=null;S.ver=null;S.rows=[];render();return}
-    const m=snap.data();S.meta=m;
-    if(m.ver!==S.ver){try{const rows=await pull(m);if(S.meta&&S.meta.ver===m.ver){S.rows=rows;S.ver=m.ver}}catch(_){if(!S.rows)S.rows=[]}}
-    render()},()=>{S.rows=S.rows||[];render()}));
+  S.unsubs.push(Fs.onSnapshot(Fs.collection(fs,"invdays"),snap=>{
+    const m=new Map();snap.docs.forEach(x=>{const d=x.data()||{},old=S.days.get(x.id);if(old&&old.at===d.at){m.set(x.id,old);return}
+      let rows=[];try{rows=JSON.parse(d.rows||"[]")}catch(_){}m.set(x.id,{at:+d.at||0,file:str(d.file,80),byName:str(d.byName,40),rows})});
+    S.days=m;S.rows=[].concat(...[...m.values()].map(d=>d.rows));render()},()=>{S.rows=S.rows||[];render()}));
   S.unsubs.push(Fs.onSnapshot(Fs.collection(fs,"invact"),snap=>{const m=new Map();snap.docs.forEach(x=>{const a=x.data()||{};m.set(str(a.k,600)||decodeURIComponent(x.id),a)});S.acts=m;render()},()=>{}));
   S.unsubs.push(Fs.onSnapshot(Fs.doc(fs,"invcfg","settings"),snap=>{const c=snap.exists()?snap.data():{};S.cfg={};for(const k in DEF_CFG)S.cfg[k]=typeof c[k]==="number"&&c[k]>=0?c[k]:DEF_CFG[k];render()},()=>{}));
 }
-function stopData(){S.unsubs.forEach(u=>{try{u()}catch(_){}});S.unsubs=[];S.rows=null;S.meta=null;S.ver=null;S.acts=new Map();S.cfg={...DEF_CFG}}
+function stopData(){S.unsubs.forEach(u=>{try{u()}catch(_){}});S.unsubs=[];S.rows=null;S.days=new Map();S.acts=new Map();S.cfg={...DEF_CFG}}
 function load(f){
   if(!f)return;
   if(!S.canLoad){toast("Only supervisors and admins can load an export.");return}
   if(S.busy)return;
   const rd=new FileReader();rd.onload=async()=>{
     let d;try{d=parse(new Uint8Array(rd.result),f.name)}catch(e){$("msg").textContent=e.message;$("msg").hidden=false;return}
-    $("msg").hidden=true;S.busy=true;$("loadBtn").classList.add("busy");toast("Saving "+nf(d.rows.length,0)+" differences…",true);
-    try{await publish(d);S.q="";$("q").value="";S.area=null;S.view="list";
-      toast("Loaded "+nf(d.lines,0)+" lines: "+nf(d.rows.length,0)+" bin and product differences to work"+(d.zero?", "+nf(d.zero,0)+" lines with no difference left out":"")+".",12000)}
-    catch(e){$("msg").textContent=e&&e.message==="too-big"?"This export is too large to save in one go. Filter it to fewer storage types or dates and load it again."
+    $("msg").hidden=true;
+    if(!d.rows.length){toast("Read "+nf(d.lines,0)+" task lines. None of them has a difference, so nothing was added.",10000);return}
+    S.busy=true;$("loadBtn").classList.add("busy");toast("Saving "+nf(d.rows.length,0)+" differences…",true);
+    try{const r=await publish(d);S.q="";$("q").value="";S.view="list";if(S.range!=="all"&&d.minDay<dayNow()-(+S.range-1))S.range="all";
+      toast("Read "+nf(d.lines,0)+" task lines from "+mdyDay(d.minDay)+" to "+mdyDay(d.maxDay)+" and found "+nf(d.rows.length,0)+" with a difference. "
+        +(r.added?nf(r.added,0)+(r.added===1?" is":" are")+" new to the list":"All of them were already on the list")+".",12000);render()}
+    catch(e){$("msg").textContent=e&&e.message==="too-big"?"One day in this file has too many differences to save. Tell the tool owner."
       :"The file could not be saved"+(e&&e.code==="permission-denied"?" because Firebase refused it. Either your account is not a supervisor or admin, or the latest security rules have not been published yet.":". Check the connection and load it again.");
       $("msg").hidden=false;$("toast").hidden=true}
     finally{S.busy=false;$("loadBtn").classList.remove("busy")}
@@ -429,98 +396,93 @@ const W=$("app");["dragenter","dragover"].forEach(n=>W.addEventListener(n,e=>{e.
 W.addEventListener("drop",e=>load(e.dataTransfer.files[0]));
 
 /* ---------- working out priority, status and groups ---------- */
-function pri(r){const c=S.cfg,q=Math.abs(r.df),v=r.v==null?0:Math.abs(r.v);return q>=c.q1||(r.v!=null&&v>=c.v1)?1:q>=c.q2||(r.v!=null&&v>=c.v2)?2:3}
-const act=r=>S.acts.get(keyOf(r))||null;
-const stOf=r=>{const a=act(r);return a&&SL[a.status]?a.status:"new"};
-const ageOf=r=>r.dt<0?-1:Math.max(0,dayNow()-r.dt);
-function enrich(){for(const r of S.rows){r._p=pri(r);r._s=stOf(r);r._a=act(r);r._g=ageOf(r)}}
-function byProduct(rows){const m=new Map();
-  for(const r of rows){let o=m.get(r.p);if(!o){o={p:r.p,d:r.d,u:r.u,bins:0,gain:0,loss:0,net:0,gv:0,nv:0,hasV:false,open:0};m.set(r.p,o)}
-    o.bins++;if(r.df>0)o.gain+=r.df;else o.loss+=r.df;o.net+=r.df;if(r.v!=null){o.hasV=true;o.nv+=r.v;o.gv+=Math.abs(r.v)}if(r._s!=="closed")o.open++;if(!o.d)o.d=r.d}
-  for(const o of m.values()){o.gross=o.gain-o.loss;o.offset=o.gain>0&&o.loss<0&&Math.abs(o.net)<=o.gross*0.25}
+function pri(r){const c=S.cfg,q=Math.abs(r.df);return q>=c.q1?1:q>=c.q2?2:3}
+function inRange(){if(S.range==="all")return S.rows;const from=dayNow()-(+S.range-1);return S.rows.filter(r=>r.dt>=from)}
+function enrich(rows){const bins=new Map();for(const r of rows){const k=r.b+"|"+r.p;bins.set(k,(bins.get(k)||0)+1)}
+  for(const r of rows){const a=S.acts.get(keyOf(r))||null;r._a=a;r._s=a&&SL[a.status]?a.status:"new";r._p=pri(r);r._r=bins.get(r.b+"|"+r.p)}}
+function group(rows,fn,other){const m=new Map();
+  for(const r of rows){const k=fn(r);let o=m.get(k);if(!o){o={k,n:0,sn:0,on:0,sq:0,oq:0,open:0,last:-1,x:new Set()};m.set(k,o)}
+    o.n++;if(r.df>0){o.sn++;o.sq+=r.df}else{o.on++;o.oq-=r.df}if(r._s!=="closed")o.open++;if(r.dt>o.last)o.last=r.dt;o.x.add(other(r))}
   return [...m.values()]}
-function listRows(){
+function listRows(R){
   const q=norm(S.q);
-  return S.rows.filter(r=>{
+  return R.filter(r=>{
     if(S.pri!=="All"&&r._p!==+S.pri)return false;
+    if(S.kind!=="All"&&(S.kind==="short")!==(r.df>0))return false;
     if(S.st==="open"?r._s==="closed":S.st!=="all"&&r._s!==S.st)return false;
-    if(S.area!=null&&(r.st||"(blank)")!==S.area)return false;
-    if(q){const a=r._a;const hay=norm([r.p,r.d,r.b,r.bt,r.st,r.doc,a&&a.owner,a&&a.note].join(" "));if(!q.split(" ").every(w=>hay.includes(w)))return false}
+    if(q){const a=r._a;const hay=norm([r.p,r.b,r.by,r.t,r.doc,r.wo,r.wv,a&&a.owner,a&&a.note].join(" "));if(!q.split(" ").every(w=>hay.includes(w)))return false}
     return true})}
-const SORTS={pri:r=>[r._p,-Math.abs(r.v||0),-Math.abs(r.df)],p:r=>[r.p,r.b],b:r=>[r.b,r.p],df:r=>[r.df],v:r=>[r.v==null?0:r.v],dt:r=>[-(r.dt)],s:r=>[STATUS.findIndex(x=>x[0]===r._s),r._p],o:r=>[norm(r._a&&r._a.owner)||"￿"]};
+const SORTS={pri:r=>[r._p,-Math.abs(r.df)],dt:r=>[-r.dt,-r.tm],p:r=>[r.p,r.b],b:r=>[r.b,r.p],df:r=>[-r.df],by:r=>[r.by],s:r=>[STATUS.findIndex(x=>x[0]===r._s),r._p],o:r=>[norm(r._a&&r._a.owner)||"￿"]};
 function cmp(a,b){for(let i=0;i<a.length;i++){if(a[i]<b[i])return -1;if(a[i]>b[i])return 1}return 0}
 
 /* ---------- drawing ---------- */
+let CUR=[];
 function render(){
   if(!S.role)return;
-  const has=!!(S.rows&&S.rows.length),m=S.meta;
+  const has=!!(S.rows&&S.rows.length);
   $("loadBtn").hidden=!S.canLoad;$("cfgBtn").hidden=!S.isAdmin;
-  const live=S.rows===null?"Loading…":m?`<b>${esc(m.file)}</b> · loaded ${esc(new Date(+m.at||0).toLocaleString("en-US",{month:"numeric",day:"numeric",hour:"numeric",minute:"2-digit"}))}${m.byName?" by "+esc(m.byName):""}`:"No export loaded yet";
+  let newest=null;for(const d of S.days.values())if(!newest||d.at>newest.at)newest=d;
+  const live=S.rows===null?"Loading…":newest?`${nf(S.rows.length,0)} differences kept over ${S.days.size} ${S.days.size===1?"day":"days"} · last load <b>${esc(newest.file)}</b> ${esc(new Date(newest.at).toLocaleString("en-US",{month:"numeric",day:"numeric",hour:"numeric",minute:"2-digit"}))}${newest.byName?" by "+esc(newest.byName):""}`:"No export loaded yet";
   $("status").innerHTML=`<span><span class="dot ok"></span>${esc(S.myName||"")}${S.myName?" · ":""}${ROLE_LABEL[S.role]}</span><span>${live}</span>`;
   $("noData").hidden=has||S.rows===null;
-  if(!has){$("noData").innerHTML=S.rows===null?"":`<strong>No differences loaded</strong><span>${S.canLoad?"Load the SAP inventory difference export with <b>Load SAP export</b>, or drag the file onto this page. Excel or CSV both work.":"A supervisor loads the SAP inventory difference export here. Once it is loaded, everyone signed in sees it."}</span>`;
-    ["vList","vProd","vArea"].forEach(id=>$(id).hidden=true);$("stats").innerHTML="";$("views").innerHTML="";renderNote();return}
-  enrich();
-  const R=S.rows,hv=R.some(r=>r.v!=null);let gain=0,loss=0,gv=0,lv=0,open=0,p1=0;
-  for(const r of R){if(r.df>0){gain+=r.df;if(r.v!=null)gv+=r.v}else{loss+=r.df;if(r.v!=null)lv+=r.v}if(r._s!=="closed"){open++;if(r._p===1)p1++}}
-  const tiles=[["Differences",nf(R.length,0),""],["Open actions",nf(open,0),""],["P1 open",nf(p1,0),p1?"hot":""],
-    ["Gains (units)",sgn(gain),""],["Losses (units)",nf(loss),loss?"warn":""]];
-  if(hv)tiles.push(["Net value",money(gv+lv),gv+lv<0?"hot":""],["Gross value",money(gv-lv),""]);
-  $("stats").innerHTML=tiles.map(t=>`<div class="${t[2]}"><dt>${t[0]}</dt><dd>${t[1]}</dd></div>`).join("");
-  const prods=byProduct(R),areas=new Set(R.map(r=>r.st||"(blank)"));
-  $("views").innerHTML=[["list","Action list",open],["prod","By product",prods.length],["area","By storage type",areas.size]]
-    .map(v=>`<button type="button" class="view" role="tab" data-v="${v[0]}" aria-selected="${S.view===v[0]}">${v[1]}<span class="n">${nf(v[2],0)}</span></button>`).join("");
-  $("vList").hidden=S.view!=="list";$("vProd").hidden=S.view!=="prod";$("vArea").hidden=S.view!=="area";
-  if(S.view==="list")renderList(hv);else if(S.view==="prod")renderProd(prods,hv);else renderArea(hv);
+  const hide=()=>["vList","vGroup","vDay"].forEach(id=>$(id).hidden=true);
+  if(!has){$("noData").innerHTML=S.rows===null?"":`<strong>No differences loaded</strong><span>${S.canLoad?"Load the SAP warehouse task export with <b>Load SAP export</b>, or drag the file onto this page. The page picks out the lines with a difference and keeps them.":"A supervisor loads the SAP warehouse task export here. Once it is loaded, everyone signed in sees the differences."}</span>`;
+    hide();$("stats").innerHTML="";$("views").innerHTML="";$("rangeBtns").innerHTML="";renderNote();return}
+  const R=CUR=inRange();enrich(R);
+  let sn=0,sq=0,on=0,oq=0,open=0,p1=0;const bins=new Set();
+  for(const r of R){if(r.df>0){sn++;sq+=r.df}else{on++;oq-=r.df}bins.add(r.b);if(r._s!=="closed"){open++;if(r._p===1)p1++}}
+  $("stats").innerHTML=[["Differences",nf(R.length,0),""],["Open actions",nf(open,0),""],["P1 open",nf(p1,0),p1?"hot":""],["Short picks",nf(sn,0),sn?"warn":""],["Units short",nf(sq),""],["Over picks",nf(on,0),""],["Units over",nf(oq),""],["Bins affected",nf(bins.size,0),""]]
+    .map(t=>`<div class="${t[2]}"><dt>${t[0]}</dt><dd>${t[1]}</dd></div>`).join("");
+  $("rangeBtns").innerHTML=RANGES.map(r=>`<button type="button" data-r="${r[0]}" aria-pressed="${S.range===r[0]}">${r[1]}</button>`).join("");
+  const cnt={list:open,bin:bins.size,prod:new Set(R.map(r=>r.p)).size,user:new Set(R.map(r=>r.by)).size,day:new Set(R.map(r=>r.dt)).size};
+  $("views").innerHTML=[["list","Action list"],["bin","By bin"],["prod","By product"],["user","By associate"],["day","By day"]]
+    .map(v=>`<button type="button" class="view" role="tab" data-v="${v[0]}" aria-selected="${S.view===v[0]}">${v[1]}<span class="n">${nf(cnt[v[0]],0)}</span></button>`).join("");
+  $("vList").hidden=S.view!=="list";$("vGroup").hidden=!GROUPS[S.view];$("vDay").hidden=S.view!=="day";
+  if(S.view==="list")renderList(R);else if(S.view==="day")renderDay(R);else renderGroup(R);
   renderNote()}
-function chip(group,val,label,on){return `<button type="button" class="tab" data-g="${group}" data-x="${esc(val)}" aria-pressed="${on}">${label}</button>`}
-function renderList(hv){
-  const pc={1:0,2:0,3:0};for(const r of S.rows)if(S.st==="open"?r._s!=="closed":true)pc[r._p]++;
-  $("priChips").innerHTML=chip("pri","All","All priorities",S.pri==="All")+[1,2,3].map(p=>chip("pri",String(p),`P${p} · ${nf(pc[p],0)}`,S.pri===String(p))).join("");
-  $("stChips").innerHTML=chip("st","open","Not closed",S.st==="open")+STATUS.map(s=>chip("st",s[0],s[1],S.st===s[0])).join("")+chip("st","all","All",S.st==="all")
-    +(S.area!=null?chip("area","","Storage type "+esc(S.area)+" ✕",true):"");
-  const rows=listRows(),f=SORTS[S.sort]||SORTS.pri;rows.sort((a,b)=>S.dir*cmp(f(a),f(b)));
+function chip(g,val,label,on){return `<button type="button" class="tab" data-g="${g}" data-x="${esc(val)}" aria-pressed="${on}">${label}</button>`}
+function renderList(R){
+  const pc={1:0,2:0,3:0};for(const r of R)if(S.st!=="open"||r._s!=="closed")pc[r._p]++;
+  $("priChips").innerHTML=chip("pri","All","All priorities",S.pri==="All")+[1,2,3].map(p=>chip("pri",String(p),`P${p} · ${nf(pc[p],0)}`,S.pri===String(p))).join("")
+    +chip("kind","All","Short and over",S.kind==="All")+chip("kind","short","Short picks",S.kind==="short")+chip("kind","over","Over picks",S.kind==="over");
+  $("stChips").innerHTML=chip("st","open","Not closed",S.st==="open")+STATUS.map(s=>chip("st",s[0],s[1],S.st===s[0])).join("")+chip("st","all","All",S.st==="all");
+  const rows=listRows(R),f=SORTS[S.sort]||SORTS.pri;rows.sort((a,b)=>S.dir*cmp(f(a),f(b)));
   $("cList").textContent=nf(rows.length,0);$("listHint").textContent=S.canEdit?"Select a row to set its status, owner and notes":"Select a row to see its details";
   const th=(k,l,t)=>`<th class="s${t?" t":""}" data-s="${k}">${l}${S.sort===k?(S.dir>0?" ▲":" ▼"):""}</th>`;
-  let h="<thead><tr>"+th("pri","Pri",1)+th("p","Product",1)+'<th class="t">Description</th>'+th("b","Bin",1)+'<th class="t">Type</th><th class="t">Batch</th><th>Book</th><th>Counted</th>'+th("df","Difference")+'<th class="t">Unit</th>'+(hv?th("v","Value"):"")+th("dt","Counted",1)+th("s","Status",1)+th("o","Owner",1)+'<th class="t">Notes</th></tr></thead><tbody>';
+  let h="<thead><tr>"+th("pri","Pri",1)+th("dt","Confirmed",1)+th("p","Product",1)+th("b","Bin",1)+'<th class="t">Type</th><th>Asked</th><th>Confirmed</th>'+th("df","Difference")+th("by","Associate",1)+'<th class="t">Document</th>'+th("s","Status",1)+th("o","Owner",1)+'<th class="t">Notes</th></tr></thead><tbody>';
   for(const r of rows.slice(0,S.show)){const a=r._a||{};
-    h+=`<tr class="click${r._s==="closed"?" closed":""}" data-k="${esc(keyOf(r))}"><td><span class="pill${r._p<3?" p"+r._p:" p3"}">P${r._p}</span></td><td class="t n">${esc(r.p)}</td><td class="t note">${esc(r.d)}</td><td class="t">${esc(r.b)}</td><td class="t">${esc(r.st)}</td><td class="t">${esc(r.bt)}</td>`
-      +`<td>${nf(r.bk)}</td><td>${nf(r.ct)}</td><td class="n ${r.df>0?"pos":"neg"}">${sgn(r.df)}</td><td class="t">${esc(r.u)}</td>${hv?`<td class="${r.v<0?"neg":r.v>0?"pos":""}">${r.v==null?"":money(r.v)}</td>`:""}`
-      +`<td class="t">${mdyDay(r.dt)}${r._g>=7?` <span class="pill ${r._g>=14?"p1":"p2"}">${r._g}d</span>`:""}</td><td class="t"><span class="pill st-${r._s}">${SL[r._s]}</span></td><td class="t">${esc(a.owner||"")}</td><td class="t note" title="${esc(a.note||"")}">${esc(a.note||"")}</td></tr>`}
-  if(!rows.length)h+=`<tr><td colspan="15" class="t" style="color:var(--muted)">Nothing matches these filters.</td></tr>`;
+    h+=`<tr class="click${r._s==="closed"?" closed":""}" data-k="${esc(keyOf(r))}"><td><span class="pill${r._p<3?" p"+r._p:" p3"}">P${r._p}</span></td><td class="t">${mdyDay(r.dt)} ${hm(r.tm)}</td><td class="t n">${esc(r.p||"(blank)")}</td>`
+      +`<td class="t">${esc(r.b)}${r._r>=REPEAT?` <span class="pill p2" title="This product has ${r._r} differences in this bin in the dates shown">×${r._r}</span>`:""}</td><td class="t"><span class="pill${r.df>0?"":" off"}">${kindOf(r)}</span></td>`
+      +`<td>${nf(r.tg)}</td><td>${nf(r.ac)}</td><td class="n ${r.df>0?"neg":"pos"}">${r.df>0?"short "+nf(r.df):"over "+nf(-r.df)}</td><td class="t">${esc(r.by)}</td><td class="t">${esc(r.doc)}</td>`
+      +`<td class="t"><span class="pill st-${r._s}">${SL[r._s]}</span></td><td class="t">${esc(a.owner||"")}</td><td class="t note" title="${esc(a.note||"")}">${esc(a.note||"")}</td></tr>`}
+  if(!rows.length)h+=`<tr><td colspan="13" class="t" style="color:var(--muted)">Nothing matches these filters.</td></tr>`;
   $("tList").innerHTML=h+"</tbody>";
   $("more").innerHTML=rows.length>S.show?`<button type="button" class="btn" data-more="list">Show ${nf(Math.min(PAGE,rows.length-S.show),0)} more of ${nf(rows.length-S.show,0)}</button>`:""}
-function renderProd(prods,hv){
-  const ks={gross:o=>o.gross,net:o=>o.net,nv:o=>o.nv,gv:o=>o.gv,bins:o=>o.bins,p:o=>o.p,open:o=>o.open};
-  const f=ks[S.psort]||ks.gross;prods.sort((a,b)=>{const x=f(a),y=f(b);return S.pdir*(x<y?-1:x>y?1:0)});
-  const th=(k,l,t)=>`<th class="s${t?" t":""}" data-ps="${k}">${l}${S.psort===k?(S.pdir>0?" ▲":" ▼"):""}</th>`;
-  let h="<thead><tr>"+th("p","Product",1)+'<th class="t">Description</th>'+th("bins","Bins")+'<th>Gains</th><th>Losses</th>'+th("net","Net")+th("gross","Gross")+(hv?th("nv","Net value")+th("gv","Gross value"):"")+th("open","Open")+'<th class="t">Read</th></tr></thead><tbody>';
-  for(const o of prods.slice(0,S.showProd))h+=`<tr class="click" data-p="${esc(o.p)}"><td class="t n">${esc(o.p)}</td><td class="t note">${esc(o.d)}</td><td>${o.bins}</td><td class="pos">${o.gain?sgn(o.gain):""}</td><td class="neg">${o.loss?nf(o.loss):""}</td>`
-    +`<td class="n ${o.net>0?"pos":o.net<0?"neg":""}">${sgn(o.net)}</td><td>${nf(o.gross)}</td>${hv?`<td class="${o.nv<0?"neg":""}">${o.hasV?money(o.nv):""}</td><td>${o.hasV?money(o.gv):""}</td>`:""}<td>${o.open}</td>`
-    +`<td class="t">${o.offset?'<span class="pill off" title="Gains and losses in different bins mostly cancel out: likely stock in the wrong bin rather than a real loss">Likely wrong bin</span>':o.net<0?'<span class="pill p2">Net loss</span>':'<span class="pill">Net gain</span>'}</td></tr>`;
-  $("tProd").innerHTML=h+"</tbody>";$("cProd").textContent=nf(prods.length,0);
-  $("moreProd").innerHTML=prods.length>S.showProd?`<button type="button" class="btn" data-more="prod">Show more</button>`:""}
-function renderArea(hv){
-  const m=new Map();for(const r of S.rows){const k=r.st||"(blank)";let o=m.get(k);if(!o){o={k,n:0,gain:0,loss:0,nv:0,open:0,p1:0};m.set(k,o)}
-    o.n++;if(r.df>0)o.gain+=r.df;else o.loss+=r.df;if(r.v!=null)o.nv+=r.v;if(r._s!=="closed"){o.open++;if(r._p===1)o.p1++}}
-  const L=[...m.values()].sort((a,b)=>b.n-a.n);
-  $("tArea").innerHTML='<thead><tr><th class="t">Storage type</th><th>Differences</th><th>Gains</th><th>Losses</th>'+(hv?"<th>Net value</th>":"")+"<th>Open</th><th>P1 open</th></tr></thead><tbody>"
-    +L.map(o=>`<tr class="click" data-a="${esc(o.k)}"><td class="t n">${esc(o.k)}</td><td>${nf(o.n,0)}</td><td class="pos">${o.gain?sgn(o.gain):""}</td><td class="neg">${o.loss?nf(o.loss):""}</td>${hv?`<td class="${o.nv<0?"neg":""}">${money(o.nv)}</td>`:""}<td>${o.open}</td><td class="${o.p1?"neg n":""}">${o.p1||""}</td></tr>`).join("")+"</tbody>";
-  $("cArea").textContent=nf(L.length,0);
-  const open=S.rows.filter(r=>r._s!=="closed"),n=open.length||1;
-  $("ageTiles").innerHTML='<div class="ag">'+AGE.map(([l,a,b,c])=>{const k=open.filter(r=>a<0?r._g<0:r._g>=a&&r._g<b).length;
-    return `<div class="${c}"><div class="k">${l}</div><div class="v">${nf(k,0)}</div><div class="b"><i style="width:${(k/n*100).toFixed(1)}%"></i></div></div>`}).join("")+'</div><div class="gate-p">Open (not closed) differences by days since their count date.</div>'}
+function renderGroup(R){
+  const [title,label,fn]=GROUPS[S.view],other=S.view==="bin"?r=>r.p||"(blank)":r=>r.b,oLabel=S.view==="bin"?"Products":"Bins";
+  const L=group(R,fn,other),ks={k:o=>o.k,n:o=>o.n,sn:o=>o.sn,sq:o=>o.sq,on:o=>o.on,oq:o=>o.oq,open:o=>o.open,last:o=>o.last,x:o=>o.x.size};
+  const f=ks[S.gsort]||ks.n;L.sort((a,b)=>{const x=f(a),y=f(b);return S.gdir*(x<y?-1:x>y?1:0)||b.sq+b.oq-a.sq-a.oq});
+  const th=(k,l,t)=>`<th class="s${t?" t":""}" data-gs="${k}">${l}${S.gsort===k?(S.gdir>0?" ▲":" ▼"):""}</th>`;
+  $("hGroup").textContent=title;$("cGroup").textContent=nf(L.length,0);
+  $("tGroup").innerHTML="<thead><tr>"+th("k",label,1)+th("n","Differences")+th("sn","Short picks")+th("sq","Units short")+th("on","Over picks")+th("oq","Units over")+th("x",oLabel)+th("open","Open")+th("last","Last seen",1)+"</tr></thead><tbody>"
+    +L.slice(0,S.showG).map(o=>`<tr class="click" data-g="${esc(o.k)}"><td class="t n">${esc(o.k)}${S.view!=="user"&&o.n>=REPEAT?' <span class="pill p2">Repeat</span>':""}</td><td class="n">${o.n}</td><td>${o.sn||""}</td><td class="neg">${o.sq?nf(o.sq):""}</td><td>${o.on||""}</td><td class="pos">${o.oq?nf(o.oq):""}</td>`
+      +`<td title="${esc([...o.x].slice(0,12).join(", "))}">${o.x.size===1?esc([...o.x][0]):o.x.size}</td><td>${o.open||""}</td><td class="t">${mdyDay(o.last)}</td></tr>`).join("")+"</tbody>";
+  $("moreGroup").innerHTML=L.length>S.showG?`<button type="button" class="btn" data-more="group">Show more</button>`:""}
+function renderDay(R){
+  const L=group(R,r=>r.dt,r=>r.b).sort((a,b)=>b.k-a.k),mx=Math.max(1,...L.map(o=>o.n));
+  $("cDay").textContent=nf(L.length,0);
+  $("tDay").innerHTML='<thead><tr><th class="t">Date</th><th class="t">Differences</th><th>Short picks</th><th>Units short</th><th>Over picks</th><th>Units over</th><th>Bins</th><th>Open</th></tr></thead><tbody>'
+    +L.map(o=>`<tr><td class="t n">${new Date(o.k*86400000).toLocaleDateString("en-US",{weekday:"short",timeZone:"UTC"})} ${mdyDay(o.k)}</td><td class="t"><span class="meter" style="width:${(o.n/mx*9).toFixed(2)}em"></span>${o.n}</td><td>${o.sn||""}</td><td class="neg">${o.sq?nf(o.sq):""}</td><td>${o.on||""}</td><td class="pos">${o.oq?nf(o.oq):""}</td><td>${o.x.size}</td><td>${o.open||""}</td></tr>`).join("")+"</tbody>"}
 function renderNote(){
-  const c=S.cfg,m=S.meta;let cols="";try{cols=m&&m.cols?JSON.parse(m.cols):""}catch(_){}
-  $("note").innerHTML=`A difference is one product in one bin (and batch), with every line for it in the export added together; lines with no difference are left out. Priority: P1 from ${nf(c.q1)} units or $${nf(c.v1)}, P2 from ${nf(c.q2)} units or $${nf(c.v2)}, otherwise P3${S.isAdmin?" (change under Thresholds)":""}. Value is the export’s difference value, or the difference times the unit price when only a price is given. “Likely wrong bin” marks a product whose gains and losses in different bins cancel out to within a quarter, which usually means stock sits in the wrong bin rather than being lost. The status, owner and notes on a difference stay with that product, bin and batch when a newer export is loaded. Counts older than 7 days are marked amber, 14 days red.`
-    +(cols?`<div class="map">`+Object.entries(cols).map(([k,v])=>v?`<span>${esc(k)}: <b>${esc(v)}</b></span>`:`<span class="miss">${esc(k)}: not in file</span>`).join("")+"</div>":"")}
+  const c=S.cfg;
+  $("note").innerHTML=`A difference is a warehouse task line in the SAP export whose difference quantity is not zero. Short pick means less was confirmed than the task asked for (the bin did not have the stock); over pick means more was confirmed than asked. Each difference is kept once, by task, product and bin, on its confirmation date. Loading another export only adds to the list, so the same days can be loaded again without doubling up and nothing is removed. Priority: P1 from ${nf(c.q1)} units, P2 from ${nf(c.q2)} units, otherwise P3${S.isAdmin?" (change under Thresholds)":""}. ×N and Repeat mark a bin or product with ${REPEAT} or more differences in the dates shown, which is where a count is most likely needed. 7 days and 30 days include today.`}
 
 /* ---------- editing one difference ---------- */
 function openDlg(k){
-  const r=S.rows.find(x=>keyOf(x)===k);if(!r)return;S.cur=r;const a=r._a||{};S.dStatus=r._s;
-  $("dTitle").textContent=r.p+(r.d?" · "+r.d:"");
-  const F=[["Bin",r.b||"—"],["Storage type",r.st||"—"],["Batch",r.bt||"—"],["Book",nf(r.bk)+" "+r.u],["Counted",nf(r.ct)+" "+r.u],["Difference",sgn(r.df)+" "+r.u],
-    ["Value",r.v==null?"—":money(r.v)],["Priority","P"+r._p],["Count date",mdyDay(r.dt)||"—"],["Counted by",r.by||"—"],["PI document",r.doc||"—"],["Reason",r.rs||"—"],["Lines",String(r.n)]];
+  const r=CUR.find(x=>keyOf(x)===k);if(!r)return;S.cur=r;const a=r._a||{};S.dStatus=r._s;
+  $("dTitle").textContent=(r.p||"(blank product)")+" · bin "+(r.b||"—");
+  const F=[["Type",kindOf(r)],["Asked",nf(r.tg)],["Confirmed",nf(r.ac)],["Difference",(r.df>0?"short ":"over ")+nf(Math.abs(r.df))],["Priority","P"+r._p],["Confirmed",mdyDay(r.dt)+" "+hm(r.tm)],["Associate",r.by||"—"],
+    ["Warehouse task",r.t],["Warehouse order",r.wo||"—"],["Document",r.doc||"—"],["Wave",r.wv||"—"],["Pull header",r.ph||"—"],["Process",[r.cat,r.pt].filter(Boolean).join(" · ")||"—"],["Activity area",r.aa||"—"],["Same bin and product",r._r+" in dates shown"]];
   $("dFacts").innerHTML=F.map(f=>`<div><b>${f[0]}</b><span>${esc(f[1])}</span></div>`).join("");
   $("dOwner").value=a.owner||"";$("dNoteIn").value=a.note||"";
   $("dWho").textContent=a.at?"Last updated "+new Date(a.at).toLocaleString("en-US",{month:"numeric",day:"numeric",hour:"numeric",minute:"2-digit"})+(a.byName?" by "+a.byName:""):"";
@@ -536,37 +498,36 @@ $("dSave").addEventListener("click",async()=>{
   finally{$("dSave").disabled=false}});
 
 /* ---------- thresholds (admins) ---------- */
-$("cfgBtn").addEventListener("click",()=>{$("cQ1").value=S.cfg.q1;$("cV1").value=S.cfg.v1;$("cQ2").value=S.cfg.q2;$("cV2").value=S.cfg.v2;$("cErr").hidden=true;$("cfg").showModal()});
+$("cfgBtn").addEventListener("click",()=>{$("cQ1").value=S.cfg.q1;$("cQ2").value=S.cfg.q2;$("cErr").hidden=true;$("cfg").showModal()});
 $("cSave").addEventListener("click",async()=>{
-  const v={q1:+$("cQ1").value,v1:+$("cV1").value,q2:+$("cQ2").value,v2:+$("cV2").value};
-  if(Object.values(v).some(x=>!isFinite(x)||x<0)||v.q2>v.q1||v.v2>v.v1){$("cErr").textContent="Use numbers of 0 or more, with the P2 limits no higher than the P1 limits.";$("cErr").hidden=false;return}
+  const v={q1:+$("cQ1").value,q2:+$("cQ2").value};
+  if(Object.values(v).some(x=>!isFinite(x)||x<0)||v.q2>v.q1){$("cErr").textContent="Use numbers of 0 or more, with the P2 limit no higher than the P1 limit.";$("cErr").hidden=false;return}
   try{await S.fb.Fs.setDoc(S.fb.Fs.doc(S.fb.fs,"invcfg","settings"),{...v,by:S.authUser.uid,at:Date.now()});$("cfg").close();toast("Thresholds saved")}
   catch(e){$("cErr").textContent="Couldn’t save. Only admins can change thresholds, and the latest security rules must be published.";$("cErr").hidden=false}});
 
 /* ---------- export for the Inventory Action Tracker ---------- */
 $("xlsBtn").addEventListener("click",()=>{
-  if(!S.rows||!S.rows.length)return;const rows=listRows(),f=SORTS[S.sort]||SORTS.pri;rows.sort((a,b)=>S.dir*cmp(f(a),f(b)));
-  const hv=S.rows.some(r=>r.v!=null),PN={1:"High",2:"Medium",3:"Low"},ST={new:"Not Started",recount:"In Progress",research:"In Progress",post:"In Progress",closed:"Complete"};
-  const head=["#","Category","Action Item","Details / Scope","Owner","Priority","Status","Action status","Notes / Updates","Product","Description","Storage bin","Storage type","Batch","Book qty","Counted qty","Difference","Unit"].concat(hv?["Difference value"]:[]).concat(["Count date","PI document"]);
-  const out=[head].concat(rows.map((r,i)=>{const a=r._a||{};return [i+1,"Inventory Control","Resolve "+(r.df>0?"gain":"loss")+" of "+nf(Math.abs(r.df))+" "+(r.u||"")+" on "+r.p+" in bin "+(r.b||"?"),
-    "Book "+nf(r.bk)+", counted "+nf(r.ct)+(r.bt?", batch "+r.bt:"")+(r.v!=null?", value "+money(r.v):"")+". Priority P"+r._p+".",a.owner||"",PN[r._p],ST[r._s],SL[r._s],a.note||"",
-    r.p,r.d,r.b,r.st,r.bt,r.bk,r.ct,r.df,r.u].concat(hv?[r.v==null?"":r.v]:[]).concat([mdyDay(r.dt),r.doc])}));
-  const ws=XLSX.utils.aoa_to_sheet(out);ws["!cols"]=head.map((h,i)=>({wch:[4,16,48,48,14,9,12,13,40][i]||14}));ws["!autofilter"]={ref:"A1:"+XLSX.utils.encode_col(head.length-1)+"1"};
+  if(!CUR.length)return;const rows=listRows(CUR),f=SORTS[S.sort]||SORTS.pri;rows.sort((a,b)=>S.dir*cmp(f(a),f(b)));
+  const PN={1:"High",2:"Medium",3:"Low"},ST={new:"Not Started",recount:"In Progress",research:"In Progress",post:"In Progress",closed:"Complete"};
+  const head=["#","Category","Action Item","Details / Scope","Owner","Priority","Status","Action status","Notes / Updates","Confirmed on","Time","Product","Source bin","Type","Asked qty","Confirmed qty","Difference","Associate","Warehouse task","Warehouse order","Document","Wave","Pull header ID","Process type","Same bin and product"];
+  const out=[head].concat(rows.map((r,i)=>{const a=r._a||{};return [i+1,"Inventory Control","Count bin "+(r.b||"?")+" for "+(r.p||"(blank product)")+": "+kindOf(r).toLowerCase()+" of "+nf(Math.abs(r.df)),
+    "Task asked for "+nf(r.tg)+", "+nf(r.ac)+" confirmed by "+(r.by||"?")+" on "+mdyDay(r.dt)+". Priority P"+r._p+"."+(r._r>=REPEAT?" "+r._r+" differences for this product in this bin.":""),a.owner||"",PN[r._p],ST[r._s],SL[r._s],a.note||"",
+    mdyDay(r.dt),hm(r.tm),r.p,r.b,kindOf(r),r.tg,r.ac,r.df,r.by,r.t,r.wo,r.doc,r.wv,r.ph,r.pt,r._r]}));
+  const ws=XLSX.utils.aoa_to_sheet(out);ws["!cols"]=head.map((h,i)=>({wch:[4,16,52,52,14,9,12,13,40][i]||14}));ws["!autofilter"]={ref:"A1:"+XLSX.utils.encode_col(head.length-1)+"1"};
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Inventory actions");
   const t=new Date();XLSX.writeFile(wb,"CEVA Inventory Actions "+t.getFullYear()+"-"+p2(t.getMonth()+1)+"-"+p2(t.getDate())+".xlsx");
   toast("Exported "+nf(rows.length,0)+" differences. Columns A to I line up with the Inventory Action Tracker.")});
 
 /* ---------- clicks ---------- */
-$("views").addEventListener("click",e=>{const b=e.target.closest("button[data-v]");if(b){S.view=b.dataset.v;render()}});
-document.querySelector("#vList .tools").addEventListener("click",e=>{const b=e.target.closest("button[data-g]");if(!b)return;
-  if(b.dataset.g==="pri")S.pri=b.dataset.x;else if(b.dataset.g==="st")S.st=b.dataset.x;else S.area=null;S.show=PAGE;render()});
+$("views").addEventListener("click",e=>{const b=e.target.closest("button[data-v]");if(b){S.view=b.dataset.v;S.showG=PAGE;S.gsort="n";S.gdir=-1;render()}});
+$("rangeBtns").addEventListener("click",e=>{const b=e.target.closest("button[data-r]");if(b){S.range=b.dataset.r;S.show=S.showG=PAGE;render()}});
+document.querySelector("#vList .tools").addEventListener("click",e=>{const b=e.target.closest("button[data-g]");if(!b)return;S[b.dataset.g]=b.dataset.x;S.show=PAGE;render()});
 let qT;$("q").addEventListener("input",e=>{clearTimeout(qT);qT=setTimeout(()=>{S.q=e.target.value;S.show=PAGE;render()},150)});
-$("tList").addEventListener("click",e=>{const th=e.target.closest("th[data-s]");if(th){const k=th.dataset.s;if(S.sort===k)S.dir=-S.dir;else{S.sort=k;S.dir=["df","v"].includes(k)?1:1}render();return}
+$("tList").addEventListener("click",e=>{const th=e.target.closest("th[data-s]");if(th){const k=th.dataset.s;if(S.sort===k)S.dir=-S.dir;else{S.sort=k;S.dir=1}render();return}
   const tr=e.target.closest("tr[data-k]");if(tr)openDlg(tr.dataset.k)});
-$("tProd").addEventListener("click",e=>{const th=e.target.closest("th[data-ps]");if(th){const k=th.dataset.ps;if(S.psort===k)S.pdir=-S.pdir;else{S.psort=k;S.pdir=k==="p"?1:-1}render();return}
-  const tr=e.target.closest("tr[data-p]");if(tr){S.q=tr.dataset.p;$("q").value=S.q;S.st="all";S.pri="All";S.area=null;S.view="list";S.show=PAGE;render()}});
-$("tArea").addEventListener("click",e=>{const tr=e.target.closest("tr[data-a]");if(tr){S.area=tr.dataset.a;S.view="list";S.show=PAGE;render()}});
-document.addEventListener("click",e=>{const b=e.target.closest("button[data-more]");if(!b)return;if(b.dataset.more==="list")S.show+=PAGE;else S.showProd+=PAGE;render()});
+$("tGroup").addEventListener("click",e=>{const th=e.target.closest("th[data-gs]");if(th){const k=th.dataset.gs;if(S.gsort===k)S.gdir=-S.gdir;else{S.gsort=k;S.gdir=k==="k"?1:-1}render();return}
+  const tr=e.target.closest("tr[data-g]");if(tr){S.q=tr.dataset.g==="(blank)"?"":tr.dataset.g;$("q").value=S.q;S.st="all";S.pri="All";S.kind="All";S.view="list";S.show=PAGE;render()}});
+document.addEventListener("click",e=>{const b=e.target.closest("button[data-more]");if(!b)return;if(b.dataset.more==="list")S.show+=PAGE;else S.showG+=PAGE;render()});
 /* ---------- sign-in gate (same accounts, roles and access requests as the other CEVA tools) ---------- */
 function showGate(mode,waitText){
   const ready=mode==="ready";$("gate").hidden=ready;$("app").hidden=!ready;
