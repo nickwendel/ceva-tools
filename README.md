@@ -7,12 +7,13 @@ Operational tools for CEVA sites, served with GitHub Pages.
 | Receiving dock board | [`dock-board/`](dock-board/) | Floor TV display of trailers in the drop and today's appointments, with priority, door, pathway owner and status. Supervisors update it from a phone. |
 | NCI/Grief inbound exceptions | [`nci-inbound/`](nci-inbound/) | Shared log of error shipments (shortages, overages, damage, missing ASN…) worked by CEVA and NCI/Grief together. Either company raises an issue, posts updates, hands it to the other side and resolves it. A board shows what is open and who it is waiting on. |
 | Inventory differences | [`inventory-differences/`](inventory-differences/) | Pulls the lines with a quantity difference (short and over picks) out of the SAP warehouse task export, keeps them as a running list by bin, product and associate, and tracks status, owner and notes on each one. Exports an action list for the Inventory Action Tracker. |
+| Data upload | [`data/`](data/) | One place to load the SAP warehouse task export. The file is read once and every tool that uses it (warehouse transactions, inventory differences) is updated together. Shows what each tool holds now. |
 | Access and people | [`access/`](access/) | One page to sign in, request access, see what your role opens in each tool and change your password. Admins approve requests and manage the people list for every tool here. |
 | Warehouse transactions | [`transactions/`](transactions/) | Dashboard of SAP EWM warehouse tasks: completed work by hour, activity, process type and associate, open task aging, and trends over time. A supervisor loads the SAP export and everyone signed in sees it. |
 
 The home page ([`index.html`](index.html), live at `https://nickwendel.github.io/ceva-tools/`) is the launcher: a card for every web tool, download cards for the templates in [`templates/`](templates/) (8D report in Word and Excel, action plan in Word, weekly staff meeting 4 Block deck in PowerPoint), and a list of the site workbooks that are not published here because they hold site data. A search box filters the cards. To add a tool, copy a card in `index.html` and give it `data-tags` words for the search. Only blank templates belong in `templates/`; this repository is public.
 
-Shared files live in [`assets/`](assets/): `ceva-logo-whitered.png` is the white-and-red logo used on the dark headers and sign-in cards; `ceva-logo.svg` (navy and red) is only the browser-tab icon. Every page shares one look, matched to the Whitsett KPI dashboard: dark navy, card panels, CEVA red accent.
+Shared files live in [`assets/`](assets/): `sap-export.js` is the one loader for the SAP warehouse task export (see [Data upload](#data-upload)); `ceva-logo-whitered.png` is the white-and-red logo used on the dark headers and sign-in cards; `ceva-logo.svg` (navy and red) is only the browser-tab icon. Every page shares one look, matched to the Whitsett KPI dashboard: dark navy, card panels, CEVA red accent.
 
 ## Firebase (shared by all tools)
 
@@ -170,6 +171,20 @@ No task data is stored in this repository. In Firestore:
 To remove a day that was loaded by mistake, an admin deletes its document under `wtdays` in the Firebase console.
 
 Loading a file is one write per day in it. A screen reads one document per day in the range it shows (Today reads one, All reads every day), which stays far inside the free Spark plan for a handful of screens. The page loads the SheetJS spreadsheet reader from `cdnjs.cloudflare.com`, so screens need to reach that host as well as the Firebase ones.
+
+---
+
+## Data upload
+
+**Live page:** `https://nickwendel.github.io/ceva-tools/data/`
+
+Every SAP pull is the same warehouse task export, so it is loaded once for all tools.
+
+- **Load:** a supervisor or admin selects **Load SAP export** on the Data upload page (or drags the file onto it). The page lists what each tool received from that file, and a table shows what each tool holds now, who loaded it and when.
+- **Same result from inside a tool:** the load buttons in Warehouse transactions and Inventory differences run the same loader, so a file loaded anywhere updates every tool.
+- **What is saved:** warehouse transactions gets one summary per confirmation date and the open task list; inventory differences gets the lines with a quantity difference, added to its running list. Loading the same days again refreshes them and does not double anything.
+- **How it is built:** [`assets/sap-export.js`](assets/sap-export.js) reads the workbook once and holds each tool's parse and save step. `SapExport.loadAll(...)` runs them all and reports per tool. To feed another tool from the export, add its step there and to `loadAll`; no page needs its own upload code. It writes the same Firestore documents as before, so no rules change is needed.
+- An older export layout without a difference quantity column still loads into warehouse transactions; the page says inventory differences was not updated.
 
 ---
 
