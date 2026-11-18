@@ -1,8 +1,8 @@
 rules_version = '2';
 
 // CEVA tools — Firestore security rules for the shared Firebase project (ceva-tools).
-// Covers every tool: the receiving dock board, the NCI/Grief inbound exceptions tool and the
-// warehouse transactions dashboard.
+// Covers every tool: the receiving dock board, the NCI/Grief inbound exceptions tool, the
+// warehouse transactions dashboard and the inventory differences tool.
 // Deployed with `firebase deploy --only firestore:rules`, or paste into
 // Firebase console → Firestore Database → Rules → Publish.
 //
@@ -126,6 +126,48 @@ service cloud.firestore {
           && request.resource.data.size() <= 3;
         allow delete: if isSupervisor();
       }
+    }
+
+    // ───────── Inventory differences ─────────
+
+    // inv/current is the summary of the most recent SAP inventory difference export (who, when, how
+    // many parts). inv/current/chunks/{version}_{n} hold the difference lines as JSON text.
+    // Anyone with a role reads; supervisors and admins load.
+    match /inv/{docId} {
+      allow read: if isViewer();
+      allow write: if isSupervisor()
+        && request.resource.data.by == request.auth.uid
+        && request.resource.data.chunks is int
+        && request.resource.data.chunks <= 40
+        && request.resource.data.size() <= 14;
+
+      match /chunks/{chunkId} {
+        allow read: if isViewer();
+        allow create, update: if isSupervisor()
+          && request.resource.data.rows is string
+          && request.resource.data.rows.size() < 1000000
+          && request.resource.data.size() <= 3;
+        allow delete: if isSupervisor();
+      }
+    }
+
+    // invact/{product|bin|batch} is the action on one difference: status, owner and notes.
+    // It stays when a newer export is loaded. Supervisors and admins work them.
+    match /invact/{actId} {
+      allow read: if isViewer();
+      allow create, update: if isSupervisor()
+        && request.resource.data.by == request.auth.uid
+        && request.resource.data.status in ['new', 'recount', 'research', 'post', 'closed']
+        && request.resource.data.owner is string && request.resource.data.owner.size() <= 40
+        && request.resource.data.note is string && request.resource.data.note.size() <= 500
+        && request.resource.data.size() <= 12;
+      allow delete: if isAdmin();
+    }
+
+    // invcfg/settings holds the priority thresholds (quantity and value limits for P1 and P2).
+    match /invcfg/{docId} {
+      allow read: if isViewer();
+      allow write: if isAdmin() && request.resource.data.size() <= 10;
     }
 
     // ───────── Shared ─────────
