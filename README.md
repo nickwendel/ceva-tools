@@ -6,7 +6,7 @@ Operational tools for CEVA sites, served with GitHub Pages.
 |---|---|---|
 | Receiving dock board | [`dock-board/`](dock-board/) | Floor TV display of trailers in the drop and today's appointments, with priority, door, pathway owner and status. Supervisors update it from a phone. |
 | NCI/Grief inbound exceptions | [`nci-inbound/`](nci-inbound/) | Shared log of error shipments (shortages, overages, damage, missing ASN…) worked by CEVA and NCI/Grief together. Either company raises an issue, posts updates, hands it to the other side and resolves it. A board shows what is open and who it is waiting on. |
-| Inventory differences | [`inventory-differences/`](inventory-differences/) | Collates the SAP inventory difference export by product, bin and storage type, ranks what to chase first, and tracks status, owner and notes on each difference. Exports an action list for the Inventory Action Tracker. |
+| Inventory differences | [`inventory-differences/`](inventory-differences/) | Pulls the lines with a quantity difference (short and over picks) out of the SAP warehouse task export, keeps them as a running list by bin, product and associate, and tracks status, owner and notes on each one. Exports an action list for the Inventory Action Tracker. |
 | Access and people | [`access/`](access/) | One page to sign in, request access, see what your role opens in each tool and change your password. Admins approve requests and manage the people list for every tool here. |
 | Warehouse transactions | [`transactions/`](transactions/) | Dashboard of SAP EWM warehouse tasks: completed work by hour, activity, process type and associate, open task aging, and trends over time. A supervisor loads the SAP export and everyone signed in sees it. |
 
@@ -177,19 +177,19 @@ Loading a file is one write per day in it. A screen reads one document per day i
 
 **Live page:** `https://nickwendel.github.io/ceva-tools/inventory-differences/`
 
-Takes the SAP inventory difference export and turns it into a shared list of differences to work.
+Pulls the differences out of the SAP warehouse task export (the same layout used for every SAP pull, and the same file the transactions dashboard loads) and keeps them as a running list to work.
 
-- **Load:** a supervisor or admin selects **Load SAP export** (or drags the file onto the page). Excel and CSV both work. The newest export replaces the previous one for everyone.
-- **Action list:** one row per product, bin and batch, with book, counted and difference quantity, value when the export has it, count date and priority. Search, filter by priority and status, sort by any heading.
-- **Working a difference:** select a row to set its status (New, Recount, Researching, Ready to post, Closed), an owner and notes. These stay with that product, bin and batch when a newer export is loaded.
-- **By product:** gains, losses, net and gross per product. "Likely wrong bin" marks a product whose gains and losses in different bins cancel out to within a quarter.
-- **By storage type:** counts, gains and losses per storage type, and open differences by age of count.
+- **What a difference is:** a task line whose `Diff. Qty in Alt.Un` is not zero. Positive is a **short pick** (less confirmed than the task asked for), negative an **over pick** (more confirmed than asked).
+- **Load:** a supervisor or admin selects **Load SAP export** (or drags the file onto the page). The page reads the tab with the task lines and adds its differences to the list. Nothing already on the list is removed, and loading the same days again does not double up: a difference is kept once, by warehouse task, product and bin, on its confirmation date.
+- **Action list:** date, product, bin, asked and confirmed quantity, difference, associate, document and priority. Search, filter by priority, short or over and status, sort by any heading, and switch between the last 7 days, 30 days and everything.
+- **Working a difference:** select a row to set its status (New, Recount, Researching, Ready to post, Closed), an owner and notes.
+- **By bin, By product, By associate, By day:** counts and units short and over. Bins and products with three or more differences are marked **Repeat**; those are the likeliest to need a count.
 - **Export action list:** downloads the filtered list as Excel. Columns A to I follow the Inventory Action Tracker (category, action item, details, owner, priority, status, notes).
 
-**Columns.** The page finds columns by header name, so the order does not matter. It needs a product (or material) column and either a difference quantity or both book and counted quantity. It also uses, when present: description, storage bin, storage type, batch, unit, difference value or unit price, count date, counter, PI document and reason. The note at the bottom of the page shows which header was used for each.
+**Columns used:** `Warehouse Task`, `Product`, `Source Storage Bin`, `Confirmation Date`, `Confirmation Time`, `Confirmed By`, `Diff. Qty in Alt.Un` (or `Diff. Qty in BUoM`), `Src Trgt Qty AUoM`, `Act Dest Qty Alt UoM`, plus `Warehouse Order`, `Document`, `Wave`, `Pull header ID`, `Whse Process Type`, `Whse Process Category Desc.` and `Activity Area` for the detail view. Columns are found by name, so their order does not matter.
 
-**Priority.** P1 from 50 units or $500, P2 from 10 units or $100, otherwise P3. Admins change these under **Thresholds**.
+**Priority.** P1 from 500 units, P2 from 50 units, otherwise P3. Admins change these under **Thresholds**.
 
 **Roles.** Viewers see everything. Supervisors and admins load exports and work differences. Admins set thresholds.
 
-**Data.** `inv/current` and `inv/current/chunks` hold the latest export's differences, `invact/{product|bin|batch}` the action on each one, `invcfg/settings` the thresholds. Publish [`firestore.rules`](firestore.rules) after merging, or loading and saving will be refused.
+**Data.** `invdays/{YYYY-MM-DD}` holds the differences confirmed on each date, `invact/{task|product|bin}` the action on each one, `invcfg/settings` the thresholds. Publish [`firestore.rules`](firestore.rules) after merging, or loading and saving will be refused.
