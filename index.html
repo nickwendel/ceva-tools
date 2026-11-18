@@ -7,36 +7,111 @@
 <title>CEVA Tools</title>
 <link rel="icon" href="assets/ceva-logo.svg" type="image/svg+xml">
 <style>
-  :root{--bg:#0a1626;--card:#122A47;--line:#1f3d61;--line-light:#2a4a73;--fg:#e7eef7;--muted:#93a8c4;--faint:#5f7796;--accent:#e2231a;--info:#3d9fe8;--radius:10px;color-scheme:dark}
+  :root{--bg:#0a1626;--card:#122A47;--line:#1f3d61;--line-light:#2a4a73;--fg:#e7eef7;--muted:#93a8c4;--faint:#5f7796;--accent:#e2231a;--info:#3d9fe8;--good:#2fbf71;--radius:10px;color-scheme:dark}
   *{box-sizing:border-box}
+  [hidden]{display:none!important}
   body{margin:0;min-height:100vh;color:var(--fg);font:13.5px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:radial-gradient(1200px 600px at 10% -10%,#123156 0%,var(--bg) 55%) fixed,var(--bg)}
-  .wrap{max-width:860px;margin:0 auto;padding:24px max(16px,env(safe-area-inset-right,0px)) 64px max(16px,env(safe-area-inset-left,0px))}
-  header{display:flex;align-items:center;gap:14px;padding-bottom:20px;margin-bottom:24px;border-bottom:1px solid var(--line)}
+  .wrap{max-width:960px;margin:0 auto;padding:24px max(16px,env(safe-area-inset-right,0px)) 64px max(16px,env(safe-area-inset-left,0px))}
+  header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding-bottom:20px;margin-bottom:22px;border-bottom:1px solid var(--line)}
   header img{height:40px;width:auto;display:block}
   header h1{margin:0;font-size:19px;font-weight:700;letter-spacing:.2px}
   header .sub{color:var(--muted);font-size:12.5px;margin-top:3px}
-  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
-  a.tool{display:block;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px 16px;color:inherit;text-decoration:none;position:relative;overflow:hidden;transition:border-color .15s,box-shadow .15s}
-  a.tool::before{content:"";position:absolute;top:0;left:0;width:3px;height:100%;background:var(--accent)}
-  a.tool.alt::before{background:var(--info)}
+  header .grow{flex:1;min-width:180px}
+  .btn{display:inline-flex;align-items:center;gap:.45rem;min-height:2.5rem;padding:0 1rem;border-radius:8px;font:600 13px/1 inherit;font-family:inherit;text-decoration:none;white-space:nowrap;border:1px solid var(--line-light);background:var(--card);color:var(--fg);transition:border-color .15s,filter .15s}
+  .btn:hover,.btn:focus-visible{border-color:var(--info)}
+  .btn.primary{background:var(--accent);border-color:transparent;color:#fff}
+  .btn.primary:hover{filter:brightness(1.1)}
+  :focus-visible{outline:2px solid var(--info);outline-offset:2px}
+  .search{width:100%;min-height:2.6rem;background:var(--bg);color:var(--fg);border:1px solid var(--line-light);border-radius:8px;padding:.5rem .8rem;font:inherit;font-size:14px;outline:none;margin-bottom:6px}
+  .search:focus{border-color:var(--info)}
+  .search::placeholder{color:var(--faint)}
+  h2{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--faint);font-weight:700;margin:26px 0 10px}
+  h2 small{text-transform:none;letter-spacing:0;font-weight:500;color:var(--faint);margin-left:6px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+  .tool{display:flex;flex-direction:column;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px 16px;color:inherit;text-decoration:none;position:relative;overflow:hidden;transition:border-color .15s,box-shadow .15s}
+  .tool::before{content:"";position:absolute;top:0;left:0;width:3px;height:100%;background:var(--accent)}
+  .tool.alt::before{background:var(--info)}
+  .tool.access::before{background:var(--good)}
   a.tool:hover,a.tool:focus-visible{border-color:var(--info);box-shadow:0 0 0 1px var(--info),0 6px 18px rgba(0,0,0,.35)}
-  a.tool .k{font-size:9.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--faint);font-weight:600}
-  a.tool b{display:block;font-size:15px;font-weight:700;margin-top:6px}
-  a.tool span{display:block;color:var(--muted);font-size:12.5px;margin-top:6px;line-height:1.5}
-  a.tool .go{display:inline-block;margin-top:12px;font-size:12px;font-weight:600;color:var(--fg)}
-  footer{margin-top:22px;font-size:11.5px;color:var(--faint);border-top:1px solid var(--line);padding-top:16px}
+  .tool .k{font-size:9.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--faint);font-weight:600}
+  .tool b{display:block;font-size:15px;font-weight:700;margin-top:6px}
+  .tool span.d{display:block;color:var(--muted);font-size:12.5px;margin-top:6px;line-height:1.5;flex:1}
+  .tool .go{display:inline-block;margin-top:12px;font-size:12px;font-weight:600;color:var(--fg)}
+  .tool .files{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+  .tool .files a{font-size:12px;font-weight:600;color:var(--fg);text-decoration:none;border:1px solid var(--line-light);border-radius:6px;padding:5px 9px}
+  .tool .files a:hover,.tool .files a:focus-visible{border-color:var(--info)}
+  .tool.private{background:transparent;border-style:dashed}
+  .tool.private::before{background:var(--line-light)}
+  .tool.private .go{color:var(--faint);font-weight:500}
+  .empty{color:var(--muted);padding:14px 0}
+  footer{margin-top:28px;font-size:11.5px;color:var(--faint);border-top:1px solid var(--line);padding-top:16px}
+  footer a{color:var(--muted)}
+  @media (max-width:520px){header .btn{width:100%;justify-content:center}}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <header><img src="assets/ceva-logo-whitered.png" alt="CEVA Logistics"><div><h1>Site tools</h1><div class="sub">Operational tools, one sign-in for all of them</div></div></header>
-  <div class="grid">
-    <a class="tool alt" href="dock-board/"><div class="k">Receiving</div><b>Receiving dock board</b><span>Floor TV display of the drop and today's appointments, updated by supervisors from a phone.</span><span class="go">Open →</span></a>
-    <a class="tool" href="nci-inbound/"><div class="k">Inbound · NCI / Grief</div><b>Inbound exceptions</b><span>Shared log of error shipments worked by CEVA and NCI/Grief: raise, update, hand off and resolve, with an open-items board and alerts.</span><span class="go">Open →</span></a>
-    <a class="tool alt" href="transactions/"><div class="k">Operations · SAP EWM</div><b>Warehouse transactions</b><span>Daily view of confirmed warehouse tasks by hour, activity and associate, with open task aging. Today, week, month and all-time views with trends. A supervisor loads the SAP export and everyone sees it.</span><span class="go">Open →</span></a>
-    <a class="tool" href="inventory-differences/"><div class="k">Inventory · SAP EWM</div><b>Inventory differences</b><span>Collates the SAP inventory difference export by product, bin and storage type, ranks what to chase first, and tracks the status, owner and notes on each one. Exports an action list for the Inventory Action Tracker.</span><span class="go">Open →</span></a>
-  </div>
-  <footer>Sign in with the same account on every tool. New here? Use “Request access” on the sign-in screen.</footer>
+  <header>
+    <img src="assets/ceva-logo-whitered.png" alt="CEVA Logistics">
+    <div class="grow"><h1>Site tools</h1><div class="sub">Every CEVA tool in one place. One sign-in for all the web tools.</div></div>
+    <a class="btn primary" href="access/">Sign in or request access</a>
+  </header>
+
+  <input class="search" id="q" type="search" placeholder="Find a tool (dock, 8D, transactions, staff meeting…)" aria-label="Find a tool" autocomplete="off">
+
+  <section data-sec>
+    <h2>Web tools <small>open in the browser, sign in once</small></h2>
+    <div class="grid">
+      <a class="tool alt" href="dock-board/" data-tags="receiving dock board tv trucks appointments drop"><div class="k">Receiving</div><b>Receiving dock board</b><span class="d">Floor TV display of the drop and today's appointments, updated by supervisors from a phone.</span><span class="go">Open →</span></a>
+      <a class="tool" href="nci-inbound/" data-tags="inbound nci grief exceptions shortage overage damage asn issues"><div class="k">Inbound · NCI / Grief</div><b>Inbound exceptions</b><span class="d">Shared log of error shipments worked by CEVA and NCI/Grief: raise, update, hand off and resolve, with an open-items board and alerts.</span><span class="go">Open →</span></a>
+      <a class="tool alt" href="transactions/" data-tags="transactions sap ewm warehouse tasks productivity open tasks trends powerpoint"><div class="k">Operations · SAP EWM</div><b>Warehouse transactions</b><span class="d">Confirmed warehouse tasks by hour, activity and associate, open task aging and trends. A supervisor loads the SAP export and everyone sees it.</span><span class="go">Open →</span></a>
+      <a class="tool" href="inventory-differences/" data-tags="inventory differences sap ewm count cycle count physical inventory bin variance gain loss action"><div class="k">Inventory · SAP EWM</div><b>Inventory differences</b><span class="d">Collates the SAP inventory difference export by product, bin and storage type, ranks what to chase first, and tracks status, owner and notes on each one.</span><span class="go">Open →</span></a>
+      <a class="tool access" href="access/" data-tags="access sign in login request approve people roles password admin"><div class="k">Access</div><b>Access and people</b><span class="d">Sign in, request access, see which tools your role opens and change your password. Admins approve requests and manage people here.</span><span class="go">Open →</span></a>
+    </div>
+  </section>
+
+  <section data-sec>
+    <h2>Templates <small>download, fill in, save your own copy</small></h2>
+    <div class="grid">
+      <div class="tool" data-tags="8d problem solving corrective action root cause quality report word excel"><div class="k">Quality · Problem solving</div><b>8D report</b><span class="d">D0 to D8 corrective action report for logistics and inventory problems, with a worksheet version in Excel.</span>
+        <div class="files"><a href="templates/CEVA_8D_Report_Template.docx" download>Word</a><a href="templates/CEVA_8D_Report_Template.xlsx" download>Excel</a></div></div>
+      <div class="tool alt" data-tags="action plan objective milestones risks raci word"><div class="k">Planning</div><b>Action plan</b><span class="d">Standard CEVA action plan: background, objective, success measures, team, milestones, risks and the action log.</span>
+        <div class="files"><a href="templates/CEVA_Action_Plan_Template.docx" download>Word</a></div></div>
+      <div class="tool" data-tags="staff meeting 4 block weekly powerpoint deck kpi safety people"><div class="k">Meetings</div><b>Weekly staff meeting, 4 Block</b><span class="d">45 minute weekly meeting deck: the standard, agenda, action review, one 4 Block per area and wrap-up.</span>
+        <div class="files"><a href="templates/CEVA_Weekly_Staff_Meeting_4_Block.pptx" download>PowerPoint</a></div></div>
+    </div>
+  </section>
+
+  <section data-sec>
+    <h2>Site workbooks <small>kept private because they hold site data</small></h2>
+    <div class="grid">
+      <div class="tool private" data-tags="headcount head count tracker fte contract sow lenovo excel"><div class="k">People</div><b>Head count tracker</b><span class="d">Contractual baseline by role and shift, roster, open reqs and weekly trend.</span><span class="go">Ask your site lead for the current copy</span></div>
+      <div class="tool private" data-tags="inventory action tracker excel"><div class="k">Inventory</div><b>Inventory action tracker</b><span class="d">Inventory improvement actions with owner, priority, due date, status and an update log.</span><span class="go">Ask your site lead for the current copy</span></div>
+      <div class="tool private" data-tags="transaction report sap ewm excel associates"><div class="k">Operations · SAP EWM</div><b>Transaction report workbook</b><span class="d">Excel version of the warehouse transactions view, built from a task export.</span><span class="go">Ask your site lead for the current copy</span></div>
+      <div class="tool private" data-tags="a2 move analysis bin moves sap ewm excel"><div class="k">Inventory · SAP EWM</div><b>A2 move analysis</b><span class="d">Who moved stock in and out of A2 bins, and when, from a task export.</span><span class="go">Ask your site lead for the current copy</span></div>
+    </div>
+  </section>
+
+  <p class="empty" id="none" hidden>No tool matches that. Try another word.</p>
+
+  <footer>Use the same email and password on every web tool. New here? Open <a href="access/">Access and people</a> and tap “Request access”; an admin approves it and every tool your role allows opens for you.</footer>
 </div>
+<script>
+(function(){
+  var q = document.getElementById('q'), none = document.getElementById('none');
+  q.addEventListener('input', function(){
+    var t = q.value.trim().toLowerCase(), any = false;
+    document.querySelectorAll('[data-sec]').forEach(function(sec){
+      var shown = 0;
+      sec.querySelectorAll('.tool').forEach(function(c){
+        var hit = !t || (c.textContent + ' ' + (c.dataset.tags || '')).toLowerCase().indexOf(t) >= 0;
+        c.hidden = !hit; if(hit) shown++;
+      });
+      sec.hidden = !shown; if(shown) any = true;
+    });
+    none.hidden = any;
+  });
+})();
+</script>
 </body>
 </html>

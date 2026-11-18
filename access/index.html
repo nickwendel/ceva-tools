@@ -1,0 +1,509 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>CEVA Tools Access</title>
+<link rel="icon" href="../assets/ceva-logo.svg" type="image/svg+xml">
+<style>
+:root{
+  --bg:#0a1626; --bg-alt:#0e1d33; --card:#122A47; --line:#1f3d61; --line-light:#2a4a73;
+  --fg:#e7eef7; --muted:#93a8c4; --faint:#5f7796;
+  --accent:#e2231a; --good:#2fbf71; --warn:#e8a33d; --bad:#e2231a; --info:#3d9fe8; --amber:#ffb700; --purple:#a78bfa;
+  --radius:10px; --f:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{min-height:100%}
+body{margin:0;color:var(--fg);font-family:var(--f);font-size:13.5px;line-height:1.5;-webkit-font-smoothing:antialiased;
+  background:radial-gradient(1200px 600px at 10% -10%,#123156 0%,var(--bg) 55%) fixed,var(--bg)}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--info);outline-offset:2px}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+a{color:var(--fg)}
+.wrap{max-width:860px;margin:0 auto;padding:24px max(16px,env(safe-area-inset-right,0px)) 64px max(16px,env(safe-area-inset-left,0px))}
+.btn{background:var(--card);color:var(--fg);border:1px solid var(--line-light);border-radius:8px;min-height:2.6rem;padding:0 .95rem;font:600 13px/1 var(--f);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:.45rem;white-space:nowrap;text-decoration:none;transition:filter .15s,border-color .15s}
+.btn:hover{border-color:var(--info)}
+.btn:disabled{opacity:.55;cursor:default}
+.btn.primary{background:var(--accent);border-color:transparent;color:#fff}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.go{background:var(--good);border-color:transparent;color:#06301a}
+.btn.danger{background:transparent;color:var(--bad);border-color:rgba(226,35,26,.5)}
+.btn.danger.armed{background:var(--bad);color:#fff;border-color:transparent}
+.btn.ghost{background:transparent;color:var(--muted)}
+.btn.ghost:hover{color:var(--fg)}
+.inp{width:100%;min-height:2.6rem;background:var(--bg);color:var(--fg);border:1px solid var(--line-light);border-radius:8px;padding:.5rem .75rem;font-size:14px;outline:none;transition:border-color .2s}
+.inp::placeholder{color:var(--faint)}
+.inp:focus{border-color:var(--accent)}
+select.inp{background:var(--card)}
+.fld{display:flex;flex-direction:column;gap:.35rem;min-width:0}
+.fld>label,.fld>.lab{font:600 10.5px/1 var(--f);letter-spacing:.5px;text-transform:uppercase;color:var(--faint)}
+.segm{display:flex;background:var(--card);border:1px solid var(--line-light);border-radius:8px;padding:3px;gap:2px}
+.segm label{flex:1;display:flex}
+.segm input{position:absolute;opacity:0;pointer-events:none}
+.segm span{flex:1;display:flex;align-items:center;justify-content:center;min-height:2.3rem;padding:0 .6rem;border-radius:6px;font:600 13px/1.2 var(--f);color:var(--muted);cursor:pointer;text-align:center}
+.segm input:checked+span{background:var(--accent);color:#fff}
+.segm input:focus-visible+span{outline:2px solid var(--info);outline-offset:-2px}
+.err{color:#f97066;font-weight:600;font-size:12px}
+
+/* sign-in card */
+.gate{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:2rem 16px}
+.gate-card{width:100%;max-width:400px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:2.2rem 2.2rem 2rem;box-shadow:0 8px 40px rgba(0,0,0,.55)}
+@media (max-width:420px){.gate-card{padding:1.6rem 1.2rem}}
+.gate-head{display:flex;flex-direction:column;align-items:center;text-align:center;gap:.5rem;margin-bottom:1.4rem}
+.gate-head img{height:2.3rem;width:auto;display:block}
+.gate-site{font-size:12px;color:var(--faint)}
+.gate-body{display:flex;flex-direction:column;gap:.9rem}
+.gate-title{margin:0;font:700 20px/1.2 var(--f)}
+.gate-p{margin:0;color:var(--muted);font-size:12.5px}
+.gate-p b{color:var(--fg)}
+.gate form{display:flex;flex-direction:column;gap:.85rem}
+.gate .btn{width:100%;min-height:2.75rem;font-size:14px}
+.gate .btn.ghost{min-height:2.4rem;font-size:12.5px}
+.gate-alt{border-top:1px solid var(--line);padding-top:.85rem;display:flex;flex-direction:column;gap:.5rem}
+.uid{display:flex;gap:.5rem;align-items:center;background:var(--bg);border:1px solid var(--line-light);border-radius:8px;padding:.4rem .4rem .4rem .7rem}
+.uid code{flex:1;min-width:0;overflow-wrap:anywhere;font-size:12px;user-select:all}
+.uid .btn{width:auto;min-height:2.2rem;font-size:12px}
+details summary{font-size:12px;color:var(--faint);cursor:pointer}
+
+/* signed-in page */
+header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding-bottom:20px;margin-bottom:22px;border-bottom:1px solid var(--line)}
+header img{height:40px;width:auto;display:block}
+header h1{margin:0;font-size:19px;font-weight:700}
+header .sub{color:var(--muted);font-size:12.5px;margin-top:3px}
+header .grow{flex:1;min-width:180px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;margin-bottom:14px}
+.panel h2{margin:0 0 4px;font-size:15px}
+.panel>p{margin:0 0 12px;color:var(--muted);font-size:12.5px}
+.me{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.me .who{flex:1;min-width:12rem}
+.me .who b{display:block;font-size:16px}
+.me .who span{color:var(--muted);font-size:12.5px;overflow-wrap:anywhere}
+.chip{display:inline-block;font:600 11px/1 var(--f);padding:.35rem .55rem;border-radius:999px;background:rgba(61,159,232,.14);color:var(--info);white-space:nowrap}
+.chip.admin{background:rgba(255,183,0,.12);color:var(--amber)}
+.chip.partner{background:rgba(167,139,250,.14);color:var(--purple)}
+.chip.count{background:var(--accent);color:#fff;margin-left:6px}
+.tools{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
+.tl{display:block;text-decoration:none;color:inherit;background:var(--bg-alt);border:1px solid var(--line-light);border-radius:8px;padding:12px 14px}
+.tl:hover,.tl:focus-visible{border-color:var(--info)}
+.tl b{display:block;font-size:13.5px}
+.tl span{display:block;font-size:12px;color:var(--muted);margin-top:3px}
+.tl .lvl{color:var(--good);font-weight:600}
+.tl.off{opacity:.55}
+.tl.off .lvl{color:var(--faint)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:.7rem}
+@media (max-width:560px){.grid2{grid-template-columns:1fr}}
+.row-btns{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin-top:.7rem}
+.people{display:flex;flex-direction:column;border:1px solid var(--line-light);border-radius:8px;overflow:hidden;background:var(--bg-alt)}
+.person{display:flex;align-items:center;gap:.6rem;padding:.65rem .8rem;border-top:1px solid rgba(255,255,255,.05);flex-wrap:wrap}
+.person:first-child{border-top:0}
+.person .who{flex:1;min-width:11rem}
+.person .who b{display:block;font-weight:600}
+.person .who span{font-size:11.5px;color:var(--faint);overflow-wrap:anywhere}
+.person .btn{min-height:2.2rem;padding:0 .7rem;font-size:12px}
+.person select.inp{width:auto;min-height:2.2rem;padding-block:.25rem;font-size:12.5px}
+.filter{margin-bottom:.6rem}
+.legend{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:12px;color:var(--muted);margin-top:12px}
+.legend b{color:var(--fg);font-weight:600}
+.toast{position:fixed;left:50%;bottom:calc(1.2rem + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:30;background:var(--card);color:var(--fg);border:1px solid var(--line-light);padding:.75rem 1.1rem;border-radius:8px;font:600 13px/1.35 var(--f);box-shadow:0 8px 24px rgba(0,0,0,.45);max-width:calc(100% - 32px)}
+</style>
+</head>
+<body>
+<noscript><p style="padding:1rem">This page needs JavaScript turned on.</p></noscript>
+
+<!-- SIGN-IN GATE -->
+<section id="gate" class="gate" aria-label="Sign in">
+  <div class="gate-card">
+    <div class="gate-head"><img src="../assets/ceva-logo-whitered.png" alt="CEVA Logistics"><div class="gate-site">Site tools · Access</div></div>
+    <div class="gate-body">
+      <h1 class="gate-title" id="gTitle">Sign in</h1>
+      <p class="gate-p" id="gateWait">Connecting…</p>
+      <form id="gateLogin" novalidate hidden>
+        <p class="gate-p">One account opens every CEVA web tool your role allows.</p>
+        <div class="fld"><label for="lEmail">Email</label><input class="inp" id="lEmail" type="email" autocomplete="username" inputmode="email"></div>
+        <div class="fld"><label for="lPass">Password</label><input class="inp" id="lPass" type="password" autocomplete="current-password"></div>
+        <div class="err" id="lErr" role="alert" hidden></div>
+        <button class="btn primary" type="submit" id="lGo">Sign in</button>
+        <button class="btn ghost" type="button" id="lForgot">Forgot password? Email me a reset link</button>
+        <div class="gate-alt"><button class="btn" type="button" id="lRequest">New here? Request access</button></div>
+      </form>
+      <form id="gateRequest" novalidate hidden>
+        <p class="gate-p">Tell us who you are and create a password. An admin approves requests, and this page shows your tools as soon as you’re approved.</p>
+        <div class="fld"><label for="qName">Your name</label><input class="inp" id="qName" maxlength="40" autocomplete="name" placeholder="A. Ortiz"></div>
+        <div class="fld"><label for="qEmail">Work email</label><input class="inp" id="qEmail" type="email" autocomplete="username" inputmode="email"></div>
+        <div class="fld"><label for="qPass">Create a password (8+ characters)</label><input class="inp" id="qPass" type="password" autocomplete="new-password" minlength="8"></div>
+        <div class="fld"><span class="lab" id="lblQCo">Company</span>
+          <div class="segm" role="radiogroup" aria-labelledby="lblQCo">
+            <label><input type="radio" name="qCo" value="ceva" checked><span>CEVA</span></label>
+            <label><input type="radio" name="qCo" value="partner"><span>NCI/Grief</span></label>
+          </div>
+        </div>
+        <div class="fld"><label for="qNote">Role or what you need (optional)</label><input class="inp" id="qNote" maxlength="120" autocomplete="off" placeholder="Inventory supervisor, nights"></div>
+        <div class="err" id="qErr" role="alert" hidden></div>
+        <button class="btn primary" type="submit" id="qGo">Send request</button>
+        <button class="btn ghost" type="button" id="qBack">Back to sign in</button>
+      </form>
+      <div id="gateDenied" hidden>
+        <div id="dPending" hidden>
+          <p class="gate-p"><b>Request sent.</b> Signed in as <b id="dEmailP"></b>, waiting for an admin to approve. Keep this page open or come back later; it updates on its own once you’re approved.</p>
+        </div>
+        <form id="dRequest" novalidate hidden style="margin-top:.2rem">
+          <p class="gate-p">Signed in as <b id="dEmail"></b>, but this account doesn’t have access yet. Send a request and an admin will approve it.</p>
+          <div class="fld"><label for="dName">Your name</label><input class="inp" id="dName" maxlength="40" autocomplete="name"></div>
+          <div class="fld"><span class="lab" id="lblDCo">Company</span>
+            <div class="segm" role="radiogroup" aria-labelledby="lblDCo">
+              <label><input type="radio" name="dCo" value="ceva" checked><span>CEVA</span></label>
+              <label><input type="radio" name="dCo" value="partner"><span>NCI/Grief</span></label>
+            </div>
+          </div>
+          <div class="fld"><label for="dNote">Role or what you need (optional)</label><input class="inp" id="dNote" maxlength="120" autocomplete="off"></div>
+          <div class="err" id="dReqErr" role="alert" hidden></div>
+          <button class="btn primary" type="submit" id="dReqGo">Request access</button>
+        </form>
+        <details style="margin-top:.9rem"><summary>Your user ID (for admins)</summary>
+          <div class="uid" style="margin-top:.5rem"><code id="dUid"></code><button type="button" class="btn" id="dCopy">Copy</button></div></details>
+        <div class="gate-alt" style="margin-top:.9rem"><button type="button" class="btn ghost" id="dOut">Sign out</button></div>
+      </div>
+      <div class="gate-alt"><a class="btn ghost" href="../">← All tools</a></div>
+    </div>
+  </div>
+</section>
+
+<!-- SIGNED IN -->
+<div class="wrap" id="main" hidden>
+  <header>
+    <img src="../assets/ceva-logo-whitered.png" alt="CEVA Logistics">
+    <div class="grow"><h1>Access and people</h1><div class="sub">One sign-in for every CEVA web tool</div></div>
+    <a class="btn" href="../">← All tools</a>
+  </header>
+
+  <div class="panel">
+    <div class="me">
+      <div class="who"><b id="meName"></b><span id="meEmail"></span></div>
+      <span class="chip" id="meRole"></span><span class="chip" id="meCo"></span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Your tools</h2>
+    <p>What your role can do in each tool. Templates are on the <a href="../">tools page</a> and need no sign-in.</p>
+    <div class="tools" id="myTools"></div>
+  </div>
+
+  <div class="panel" id="pReq" hidden>
+    <h2>Access requests <span class="chip count" id="reqCount"></span></h2>
+    <p>People who tapped “Request access” on any tool. Pick a role and approve; they’re let in right away, even if they left the page open. Decline removes the request.</p>
+    <div class="people" id="reqList"></div>
+  </div>
+
+  <div class="panel" id="pPeople" hidden>
+    <h2>People</h2>
+    <p>Everyone with access. Change a role or company and it takes effect on every tool at once.</p>
+    <input class="inp filter" id="pFilter" type="search" placeholder="Find a person" aria-label="Find a person" autocomplete="off">
+    <div class="people" id="peopleList"></div>
+    <details style="margin-top:12px"><summary>Add someone by hand (TV screens, shared logins)</summary>
+      <p class="gate-p" style="margin:.6rem 0">Create the login in the Firebase console under Authentication → Users → Add user, copy its User UID, then add it here.</p>
+      <div class="grid2">
+        <div class="fld"><label for="aUid">User UID</label><input class="inp" id="aUid" maxlength="128" autocomplete="off" spellcheck="false"></div>
+        <div class="fld"><label for="aName">Name</label><input class="inp" id="aName" maxlength="40" autocomplete="off" placeholder="Dock TV 1"></div>
+        <div class="fld"><label for="aRole">Role</label><select class="inp" id="aRole"></select></div>
+        <div class="fld"><label for="aCo">Company</label><select class="inp" id="aCo"><option value="ceva">CEVA</option><option value="partner">NCI/Grief</option></select></div>
+      </div>
+      <div class="err" id="aErr" role="alert" hidden style="margin-top:.6rem"></div>
+      <div class="row-btns"><button type="button" class="btn primary" id="aSave">Add person</button></div>
+    </details>
+    <div class="legend" id="legend"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Account</h2>
+    <p>Change the password you use on every tool.</p>
+    <div class="grid2">
+      <div class="fld"><label for="cPass">New password</label><input class="inp" id="cPass" type="password" autocomplete="new-password"></div>
+      <div class="fld"><label for="cPass2">Type it again</label><input class="inp" id="cPass2" type="password" autocomplete="new-password"></div>
+    </div>
+    <div class="err" id="cErr" role="alert" hidden style="margin-top:.6rem"></div>
+    <div class="row-btns"><button type="button" class="btn primary" id="cSave">Change password</button><button type="button" class="btn ghost" id="mOut">Sign out</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script src="firebase-config.js"></script>
+<script type="module">
+(() => {
+const FB = 'https://www.gstatic.com/firebasejs/10.14.1/';
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const str = (v, n) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, n);
+const ROLES = ['viewer', 'user', 'supervisor', 'admin'];
+const ROLE_LABEL = {viewer:'Viewer', user:'User', supervisor:'Supervisor', admin:'Admin'};
+const ROLE_HELP = {
+  viewer:'Sees every tool. Use for TVs and people who only need to look.',
+  user:'Works inbound issues (raise, update, hand off, resolve). Sees the dock board and transactions.',
+  supervisor:'Also updates trucks on the dock board and loads SAP exports into transactions.',
+  admin:'Everything, plus tool settings and this people list.'
+};
+const CO_LABEL = {ceva:'CEVA', partner:'NCI/Grief'};
+/* What each role can do in each tool. Keep in step with firestore.rules. */
+const TOOLS = [
+  {href:'../dock-board/', name:'Receiving dock board', can:{viewer:'View the board', user:'View the board', supervisor:'Update trucks and notices', admin:'Update, settings and people'}},
+  {href:'../nci-inbound/', name:'Inbound exceptions', can:{viewer:'Read issues and the board', user:'Raise and work issues', supervisor:'Raise and work issues', admin:'Work issues, settings and people'}},
+  {href:'../transactions/', name:'Warehouse transactions', can:{viewer:'View the dashboard', user:'View the dashboard', supervisor:'View and load SAP exports', admin:'View, load exports, remove days'}},
+  {href:'../inventory-differences/', name:'Inventory differences', can:{viewer:'View the differences', user:'View the differences', supervisor:'Load SAP exports and work differences', admin:'Load, work differences, set thresholds'}}
+];
+const S = {fb:null, user:null, role:null, me:{}, myReq:undefined, people:[], requests:[], unsubs:[], roleUnsub:null, reqUnsub:null, pendingReq:null, gate:'wait'};
+
+let toastT;
+function toast(t){ const el = $('#toast'); el.textContent = t; el.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { el.hidden = true; }, 3000); }
+function showErr(id, t){ const e = $(id); e.textContent = t || ''; e.hidden = !t; }
+function writeErr(e){
+  return (e && e.code) === 'permission-denied' ? 'Not allowed. Only admins can change access.' : 'Couldn’t save. Check the connection and try again.';
+}
+function commit(p){ if(p && typeof p.catch === 'function') p.catch(e => toast(writeErr(e))); return true; }
+function roleOpts(sel){ return ROLES.map(r => '<option value="' + r + '"' + (r === sel ? ' selected' : '') + '>' + ROLE_LABEL[r] + '</option>').join(''); }
+function coOpts(sel){ return Object.keys(CO_LABEL).map(c => '<option value="' + c + '"' + (c === sel ? ' selected' : '') + '>' + CO_LABEL[c] + '</option>').join(''); }
+
+/* ---------- gate ---------- */
+function showGate(state, msg){
+  S.gate = state;
+  const ready = state === 'ready';
+  $('#gate').hidden = ready; $('#main').hidden = !ready;
+  $('#gateWait').hidden = state !== 'wait';
+  if(state === 'wait') $('#gateWait').textContent = msg || 'Connecting…';
+  $('#gateLogin').hidden = state !== 'login';
+  $('#gateRequest').hidden = state !== 'request';
+  $('#gateDenied').hidden = state !== 'denied';
+  $('#gTitle').textContent = state === 'request' ? 'Request access' : state === 'denied' ? 'Waiting for access' : 'Sign in';
+  if(state === 'denied'){
+    const em = (S.user && S.user.email) || 'this account';
+    $('#dEmail').textContent = em; $('#dEmailP').textContent = em; $('#dUid').textContent = (S.user && S.user.uid) || '';
+    $('#dPending').hidden = !S.myReq; $('#dRequest').hidden = !!S.myReq || S.myReq === undefined;
+  }
+  if(ready) render();
+}
+
+/* ---------- signed-in view ---------- */
+function render(){
+  const me = S.me || {}, role = S.role, co = me.company === 'partner' ? 'partner' : 'ceva';
+  $('#meName').textContent = str(me.name, 40) || 'Signed in';
+  $('#meEmail').textContent = (S.user && S.user.email) || '';
+  $('#meRole').textContent = ROLE_LABEL[role] || role; $('#meRole').className = 'chip' + (role === 'admin' ? ' admin' : '');
+  $('#meCo').textContent = CO_LABEL[co]; $('#meCo').className = 'chip' + (co === 'partner' ? ' partner' : '');
+  $('#myTools').innerHTML = TOOLS.map(t => {
+    const can = t.can[role];
+    return '<a class="tl' + (can ? '' : ' off') + '" href="' + t.href + '"><b>' + esc(t.name) + '</b><span class="lvl">' + esc(can || 'No access') + '</span><span>Open →</span></a>';
+  }).join('');
+  const admin = role === 'admin';
+  $('#pPeople').hidden = !admin;
+  $('#pReq').hidden = !(admin && S.requests.length);
+  if(admin){ renderRequests(); renderPeople(); }
+}
+function when(ms){ return ms ? new Date(ms).toLocaleString(undefined, {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}) : ''; }
+function renderRequests(){
+  $('#reqCount').textContent = S.requests.length;
+  $('#reqList').innerHTML = S.requests.slice().sort((a,b) => (a.at||0) - (b.at||0)).map(r => {
+    const co = r.company === 'partner' ? 'partner' : 'ceva';
+    return '<div class="person"><div class="who"><b>' + esc(str(r.name,40) || 'No name') + '</b><span>' + esc(str(r.email,80)) + ' · ' + CO_LABEL[co] + (r.note ? ' · ' + esc(str(r.note,120)) : '') + (r.at ? ' · ' + esc(when(r.at)) : '') + '</span></div>' +
+      '<select class="inp" data-reqrole="' + esc(r.id) + '" aria-label="Role">' + roleOpts(co === 'partner' ? 'user' : 'supervisor') + '</select>' +
+      '<select class="inp" data-reqco="' + esc(r.id) + '" aria-label="Company">' + coOpts(co) + '</select>' +
+      '<button type="button" class="btn go" data-approve="' + esc(r.id) + '">Approve</button>' +
+      '<button type="button" class="btn danger" data-decline="' + esc(r.id) + '">Decline</button></div>';
+  }).join('');
+}
+function renderPeople(){
+  const el = $('#peopleList'), me = S.user && S.user.uid, f = $('#pFilter').value.trim().toLowerCase();
+  const rank = p => ({admin:0, supervisor:1, user:2, viewer:3}[p.role] ?? 4);
+  const list = S.people.filter(p => !f || (str(p.name,40) + ' ' + str(p.email,80) + ' ' + p.id + ' ' + (ROLE_LABEL[p.role]||'')).toLowerCase().includes(f))
+    .sort((a,b) => rank(a) - rank(b) || String(a.name||'').localeCompare(String(b.name||'')));
+  if(!list.length){ el.innerHTML = '<div class="person"><div class="who"><span>' + (S.people.length ? 'Nobody matches.' : 'Nobody added yet.') + '</span></div></div>'; }
+  else el.innerHTML = list.map(p => {
+    const self = p.id === me;
+    return '<div class="person"><div class="who"><b>' + esc(str(p.name,40) || 'Unnamed') + (self ? ' (you)' : '') + '</b><span>' + esc(str(p.email,80) || p.id) + '</span></div>' +
+      '<select class="inp" data-prole="' + esc(p.id) + '" aria-label="Role"' + (self ? ' disabled title="Ask another admin to change your own role"' : '') + '>' + roleOpts(p.role) + '</select>' +
+      '<select class="inp" data-pco="' + esc(p.id) + '" aria-label="Company">' + coOpts(p.company === 'partner' ? 'partner' : 'ceva') + '</select>' +
+      (self ? '' : '<button type="button" class="btn danger" data-pdel="' + esc(p.id) + '">Remove</button>') + '</div>';
+  }).join('');
+  $('#legend').innerHTML = ROLES.map(r => '<b>' + ROLE_LABEL[r] + '</b><span>' + esc(ROLE_HELP[r]) + '</span>').join('');
+}
+$('#aRole').innerHTML = roleOpts('viewer');
+$('#pFilter').addEventListener('input', renderPeople);
+
+function approve(id){
+  const r = S.requests.find(x => x.id === id); if(!r || !S.fb) return;
+  const role = (document.querySelector('[data-reqrole="' + CSS.escape(id) + '"]') || {}).value;
+  const company = (document.querySelector('[data-reqco="' + CSS.escape(id) + '"]') || {}).value === 'partner' ? 'partner' : 'ceva';
+  if(!ROLE_LABEL[role]) return;
+  const {Fs, fs} = S.fb, b = Fs.writeBatch(fs);
+  b.set(Fs.doc(fs, 'roles', id), {role, company, name:str(r.name,40), email:str(r.email,80), updatedAt:Date.now()});
+  b.delete(Fs.doc(fs, 'requests', id));
+  commit(b.commit()); toast((str(r.name,40) || r.email || 'Person') + ' approved as ' + ROLE_LABEL[role] + ' · ' + CO_LABEL[company]);
+}
+function patchPerson(id, patch){
+  const {Fs, fs} = S.fb;
+  commit(Fs.setDoc(Fs.doc(fs, 'roles', id), Object.assign({}, patch, {updatedAt:Date.now()}), {merge:true}));
+}
+function arm(btn, again){
+  if(btn.dataset.armed) return true;
+  btn.dataset.armed = '1'; btn.classList.add('armed'); btn.textContent = 'Tap again';
+  setTimeout(again, 4000); return false;
+}
+$('#main').addEventListener('click', e => {
+  const t = e.target.closest('[data-approve],[data-decline],[data-pdel]'); if(!t || !S.fb) return;
+  const {Fs, fs} = S.fb;
+  if(t.dataset.approve) return approve(t.dataset.approve);
+  if(t.dataset.decline){ if(!arm(t, renderRequests)) return; commit(Fs.deleteDoc(Fs.doc(fs, 'requests', t.dataset.decline))); toast('Request declined'); return; }
+  if(t.dataset.pdel){ if(!arm(t, renderPeople)) return; commit(Fs.deleteDoc(Fs.doc(fs, 'roles', t.dataset.pdel))); toast('Access removed from every tool'); }
+});
+$('#main').addEventListener('change', e => {
+  const t = e.target; if(!S.fb) return;
+  if(t.dataset.prole && ROLE_LABEL[t.value]){ patchPerson(t.dataset.prole, {role:t.value}); toast('Role changed to ' + ROLE_LABEL[t.value]); }
+  if(t.dataset.pco){ patchPerson(t.dataset.pco, {company:t.value === 'partner' ? 'partner' : 'ceva'}); toast('Company changed to ' + CO_LABEL[t.value]); }
+});
+$('#aSave').addEventListener('click', () => {
+  const uid = $('#aUid').value.trim(), name = str($('#aName').value, 40), role = $('#aRole').value, company = $('#aCo').value === 'partner' ? 'partner' : 'ceva';
+  if(!/^[A-Za-z0-9_-]{6,128}$/.test(uid)) return showErr('#aErr', 'Paste the User UID from Firebase: Authentication → Users, UID column.');
+  if(S.user && uid === S.user.uid) return showErr('#aErr', 'That’s your own account. Ask another admin to change it.');
+  if(!ROLE_LABEL[role]) return;
+  showErr('#aErr', '');
+  const {Fs, fs} = S.fb;
+  commit(Fs.setDoc(Fs.doc(fs, 'roles', uid), {role, company, name, updatedAt:Date.now()}));
+  $('#aUid').value = ''; $('#aName').value = '';
+  toast((name || 'Person') + ' added as ' + ROLE_LABEL[role]);
+});
+
+/* ---------- sign in, request, password ---------- */
+$('#gateLogin').addEventListener('submit', async e => {
+  e.preventDefault();
+  const email = $('#lEmail').value.trim(), pass = $('#lPass').value;
+  showErr('#lErr', '');
+  if(!email || !pass) return showErr('#lErr', 'Enter your email and password.');
+  if(!S.fb) return;
+  $('#lGo').disabled = true;
+  try{ await S.fb.F.signInWithEmailAndPassword(S.fb.auth, email, pass); $('#lPass').value = ''; }
+  catch(x){
+    const c = x && x.code;
+    showErr('#lErr', c === 'auth/too-many-requests' ? 'Too many tries. Wait a few minutes, then try again.'
+      : c === 'auth/network-request-failed' ? 'No connection. Check the network and try again.'
+      : 'That email and password don’t match an account.');
+  }finally{ $('#lGo').disabled = false; }
+});
+$('#lForgot').addEventListener('click', async () => {
+  const email = $('#lEmail').value.trim();
+  showErr('#lErr', '');
+  if(!email){ showErr('#lErr', 'Type your email above first, then tap this again.'); $('#lEmail').focus(); return; }
+  if(!S.fb) return;
+  try{ await S.fb.F.sendPasswordResetEmail(S.fb.auth, email); toast('Reset link sent to ' + email + '. Check spam too.'); }
+  catch(x){
+    const c = x && x.code;
+    showErr('#lErr', c === 'auth/user-not-found' || c === 'auth/invalid-email' ? 'No login exists for that email. Use Request access instead.'
+      : c === 'auth/too-many-requests' ? 'Too many requests. Wait a few minutes, then try again.'
+      : 'Couldn’t send the reset link. Check the connection and try again.');
+  }
+});
+function reqErrMsg(c){
+  return c === 'auth/email-already-in-use' ? 'That email already has a login. Go back and sign in, or use Forgot password.'
+    : c === 'auth/invalid-email' ? 'That doesn’t look like an email address.'
+    : c === 'auth/weak-password' ? 'Use a password of at least 8 characters.'
+    : c === 'auth/network-request-failed' ? 'No connection. Check the network and try again.'
+    : 'Couldn’t send the request. Try again in a moment.';
+}
+function fileRequest(user, name, company, note){
+  const {Fs, fs} = S.fb;
+  return Fs.setDoc(Fs.doc(fs, 'requests', user.uid), {name:str(name,40), email:str(user.email || '',80), company:company === 'partner' ? 'partner' : 'ceva', note:str(note,120), at:Date.now()});
+}
+$('#lRequest').addEventListener('click', () => { $('#qEmail').value = $('#lEmail').value; showGate('request'); setTimeout(() => $('#qName').focus(), 30); });
+$('#qBack').addEventListener('click', () => showGate('login'));
+$('#gateRequest').addEventListener('submit', async e => {
+  e.preventDefault();
+  const name = str($('#qName').value,40), email = $('#qEmail').value.trim(), pass = $('#qPass').value, note = str($('#qNote').value,120);
+  const company = document.querySelector('input[name="qCo"]:checked').value;
+  const bad = !name ? 'Enter your name so the admin knows who is asking.' : !email ? 'Enter your work email.' : pass.length < 8 ? 'Use a password of at least 8 characters.' : '';
+  showErr('#qErr', bad); if(bad || !S.fb) return;
+  $('#qGo').disabled = true;
+  S.pendingReq = {name, company, note};
+  try{ await S.fb.F.createUserWithEmailAndPassword(S.fb.auth, email, pass); $('#qPass').value = ''; }
+  catch(x){ S.pendingReq = null; showErr('#qErr', reqErrMsg(x && x.code)); }
+  finally{ $('#qGo').disabled = false; }
+});
+$('#dRequest').addEventListener('submit', async e => {
+  e.preventDefault();
+  const name = str($('#dName').value,40), note = str($('#dNote').value,120), company = document.querySelector('input[name="dCo"]:checked').value;
+  showErr('#dReqErr', name ? '' : 'Enter your name so the admin knows who is asking.');
+  if(!name || !S.fb || !S.user) return;
+  $('#dReqGo').disabled = true;
+  try{ await fileRequest(S.user, name, company, note); toast('Request sent'); }
+  catch(x){ showErr('#dReqErr', reqErrMsg(x && x.code)); }
+  finally{ $('#dReqGo').disabled = false; }
+});
+$('#dCopy').addEventListener('click', () => {
+  const uid = $('#dUid').textContent;
+  try{ navigator.clipboard.writeText(uid).then(() => toast('User ID copied')); }catch(_){}
+});
+const signOut = () => { if(S.fb) S.fb.F.signOut(S.fb.auth); };
+$('#dOut').addEventListener('click', signOut);
+$('#mOut').addEventListener('click', signOut);
+$('#cSave').addEventListener('click', async () => {
+  const p1 = $('#cPass').value, p2 = $('#cPass2').value;
+  const bad = p1.length < 8 ? 'Use at least 8 characters.' : p1 !== p2 ? 'The two passwords don’t match.' : '';
+  showErr('#cErr', bad); if(bad || !S.fb || !S.fb.auth.currentUser) return;
+  try{ await S.fb.F.updatePassword(S.fb.auth.currentUser, p1); $('#cPass').value = ''; $('#cPass2').value = ''; toast('Password changed for every tool'); }
+  catch(x){ showErr('#cErr', (x && x.code) === 'auth/requires-recent-login' ? 'For safety, sign out and sign in again, then change the password within a few minutes.' : 'Couldn’t change the password. Check the connection and try again.'); }
+});
+
+/* ---------- Firebase ---------- */
+function stopData(){ S.unsubs.forEach(u => { try{ u(); }catch(_){} }); S.unsubs = []; S.people = []; S.requests = []; }
+function startAdminData(){
+  const {Fs, fs} = S.fb;
+  stopData();
+  S.unsubs.push(Fs.onSnapshot(Fs.collection(fs, 'roles'), snap => {
+    S.people = snap.docs.map(d => Object.assign({}, d.data(), {id:d.id})); if(S.gate === 'ready') render();
+  }, () => {}));
+  S.unsubs.push(Fs.onSnapshot(Fs.collection(fs, 'requests'), snap => {
+    S.requests = snap.docs.map(d => Object.assign({}, d.data(), {id:d.id})); if(S.gate === 'ready') render();
+  }, () => {}));
+}
+function watchMyRequest(user){
+  if(S.reqUnsub){ S.reqUnsub(); S.reqUnsub = null; }
+  S.myReq = undefined;
+  if(!user) return;
+  const {Fs, fs} = S.fb;
+  S.reqUnsub = Fs.onSnapshot(Fs.doc(fs, 'requests', user.uid), snap => {
+    S.myReq = snap.exists() ? (snap.data() || {}) : null;
+    if(S.gate === 'denied') showGate('denied');
+  }, () => { S.myReq = null; if(S.gate === 'denied') showGate('denied'); });
+}
+(async function connect(){
+  const cfg = window.FIREBASE_CONFIG;
+  if(!cfg || !cfg.apiKey){ showGate('wait', 'This page isn’t connected to its database yet.'); return; }
+  let A, F, Fs;
+  try{ [A, F, Fs] = await Promise.all([import(FB + 'firebase-app.js'), import(FB + 'firebase-auth.js'), import(FB + 'firebase-firestore.js')]); }
+  catch(_){ showGate('wait', 'Can’t reach Firebase from this network. Ask IT to allow gstatic.com, googleapis.com and firebaseapp.com, then reload.'); return; }
+  const app = A.initializeApp(cfg), auth = F.getAuth(app), fs = Fs.getFirestore(app);
+  S.fb = {auth, F, Fs, fs};
+  if(location.hash === '#request') showGate('request'); // deep link from other pages
+  F.onAuthStateChanged(auth, user => {
+    if(S.roleUnsub){ S.roleUnsub(); S.roleUnsub = null; }
+    stopData();
+    S.user = user; S.role = null; S.me = {};
+    watchMyRequest(user);
+    if(!user){ if(S.gate !== 'request') showGate('login'); return; }
+    if(S.pendingReq){ const q = S.pendingReq; S.pendingReq = null; fileRequest(user, q.name, q.company, q.note).then(() => toast('Request sent. An admin will approve it.'), () => toast('Signed up, but the request didn’t send. Fill in the form below.')); }
+    showGate('wait', 'Checking access…');
+    S.roleUnsub = Fs.onSnapshot(Fs.doc(fs, 'roles', user.uid), snap => {
+      const d = snap.exists() ? (snap.data() || {}) : null;
+      if(!d || !ROLE_LABEL[d.role]){ S.role = null; stopData(); showGate('denied'); return; }
+      const wasAdmin = S.role === 'admin';
+      S.role = d.role; S.me = d;
+      if(d.role === 'admin' && !wasAdmin) startAdminData();
+      if(d.role !== 'admin' && wasAdmin) stopData();
+      showGate('ready');
+    }, () => { S.role = null; stopData(); showGate('denied'); });
+  });
+})();
+})();
+</script>
+</body>
+</html>
