@@ -9,7 +9,8 @@ Operational tools for CEVA sites, served with GitHub Pages.
 | Inventory action tracker | [`action-tracker/`](action-tracker/) | The Inventory Action Tracker workbook as a shared page: actions with category, owner, frequency, priority, dates, status and percent complete, plus the update log. Exports to the original Excel workbook layout and imports that workbook back. |
 | Inventory differences | [`inventory-differences/`](inventory-differences/) | Pulls the lines with a quantity difference (short and over picks) out of the SAP warehouse task export, keeps them as a running list by bin, product and associate, and tracks status, owner and notes on each one. Exports an action list for the Inventory Action Tracker. |
 | Putaway audit | [`putaway-audit/`](putaway-audit/) | Lists every putaway out of the GR-ZONE from the SAP warehouse task export, prints an audit sheet, takes the audit results and tracks the errors by associate. |
-| Data upload | [`data/`](data/) | One place to load the SAP warehouse task export. The file is read once and every tool that uses it (warehouse transactions, inventory differences, putaway audit) is updated together. Shows what each tool holds now. |
+| Picking audit | [`picking-audit/`](picking-audit/) | Lists every pick out of a storage bin from the SAP warehouse task export, prints an audit sheet, takes the audit results and tracks the errors by associate. |
+| Data upload | [`data/`](data/) | One place to load the SAP warehouse task export. The file is read once and every tool that uses it (warehouse transactions, inventory differences, putaway audit, picking audit) is updated together. Shows what each tool holds now. |
 | Access and people | [`access/`](access/) | One page to sign in, request access, see what your role opens in each tool and change your password. Admins approve requests and manage the people list for every tool here. |
 | Warehouse transactions | [`transactions/`](transactions/) | Dashboard of SAP EWM warehouse tasks: completed work by hour, activity, process type and associate, open task aging, and trends over time. A supervisor loads the SAP export and everyone signed in sees it. |
 
@@ -250,3 +251,24 @@ Lists the putaways from the SAP warehouse task export so they can be audited on 
 **Roles.** Viewers see everything. Supervisors and admins load exports and enter audit results.
 
 **Data.** `putdays/{YYYY-MM-DD}` holds the putaways confirmed on each date, `putaud/{task|product}` the audit result on each one. Loading adds to the list and never removes a line. Publish [`firestore.rules`](firestore.rules) after merging, or loading and saving will be refused.
+
+---
+
+## Picking audit
+
+**Live page:** `https://nickwendel.github.io/ceva-tools/picking-audit/`
+
+Lists the picks from the SAP warehouse task export so the pick locations can be audited on the floor, and tracks the errors found by associate. It works the same way as the Putaway audit and is fed by the same load: load the export on the Data upload page or inside any tool and this list updates.
+
+- **What a pick is:** a confirmed stock removal task out of a storage bin, with the bin it was picked from and the associate who confirmed it. The drop into the goods issue zone (a second task with no source bin), the goods issue posting and open tasks are left out. When the quantity confirmed differs from the quantity asked, the quantity asked is shown beside it.
+- **Pick list:** date and time, associate, bin picked from, product, quantity, warehouse order and task. Show the latest day, one chosen day, 7 days, 30 days or everything; search; filter by associate and audit result; sort by any heading (sort by **Picked from** to walk the bins in order).
+- **Print audit sheet:** prints the list as filtered and sorted (landscape, CEVA document style) with an OK box, an Error box and room to write what was found.
+- **Entering results:** select a line and mark it Correct or Error. An error needs a type (wrong bin, wrong quantity, wrong product, bin count off, label or handling unit, damaged, other) and can carry notes. **Save and next** moves down the list.
+- **Errors by associate:** picks, audited, correct, errors and error rate (errors out of picks audited) for each associate, plus errors by type. Select an associate to see their lines.
+- **Export to Excel:** the filtered list with audit results, and a By associate tab.
+
+**Columns used:** `Warehouse Task`, `Warehouse Order`, `Product`, `Source Storage Bin`, `Destination Bin`, `Confirmation Date`, `Confirmation Time`, `Confirmed By`, `Warehouse Task Status`, the quantity columns, `Whse Process Type`, `Wave` and `Whse Process Category Desc.` or `Activity`.
+
+**Roles.** Viewers see everything. Supervisors and admins load exports and enter audit results.
+
+**Data.** `pickdays/{YYYY-MM-DD}` holds the picks confirmed on each date, `pickaud/{task|bin}` the audit result on each one. Loading adds to the list and never removes a line. Publish [`firestore.rules`](firestore.rules) after merging, or loading and saving will be refused.
