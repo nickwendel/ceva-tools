@@ -3,6 +3,7 @@
      Warehouse transactions   wtdays/{YYYY-MM-DD} (one summary per confirmation date), wt/open (+chunks) for open tasks
      Inventory differences    invdays/{YYYY-MM-DD} (the task lines with a difference, added to what is already there)
      Putaway audit            putdays/{YYYY-MM-DD} (the putaways out of the goods receipt zone, added to what is already there)
+     Picking audit            pickdays/{YYYY-MM-DD} (the picks out of a storage bin, added to what is already there)
    So loading the export on any page, or on the Data upload page, updates all of them.
    To feed a new tool from the export, add its parse and save step here and one entry to loadAll's result.
    Needs SheetJS (window.XLSX) loaded first. */
@@ -163,17 +164,47 @@ async function savePutaways(ctx,d,say){
     if(dates.length>3)say("Saving putaways, day "+(++i)+" of "+dates.length+"…")}
   return {found:d.rows.length,added,days:dates.length,minDay:d.minDay,maxDay:d.maxDay}}
 
+/* ---------- Picking audit ----------
+   A pick is a confirmed stock removal task out of a storage bin: the line that holds the bin the stock was picked from. SAP lists the
+   drop into the goods issue zone as a second task in the same warehouse order with no source bin, and the goods issue posting as a
+   third; neither is a pick location, so they are left out. A pick that confirmed a different quantity than the task asked for keeps the
+   quantity asked (tg), so short and over picks stand out. Takes the result of parseTasks. */
+const isGI=b=>/(^|[-_ ])GI-ZONE$/i.test(String(b||"").trim());
+const pickKey=r=>r.t+"|"+r.s;
+function parsePicks(d){
+  const out=new Map();let minDay=Infinity,maxDay=-1;
+  for(const r of d.rows){
+    if(r[12]!=="C"||typ(r)!=="Pick"||!r[8]||isGI(r[8])||isGR(r[8])||r[17]<0)continue;
+    const dt=Math.floor(r[17]/86400),q=Math.round(r[4]*1000)/1000,tg=Math.round((r[16]||0)*1000)/1000;
+    const row={t:r[11],p:r[6],d:r[7]||"",q,s:r[8],b:r[9]||"",by:r[1],dt,tm:r[17]-dt*86400,pt:r[3],wo:r[10]||""};
+    if(tg&&tg!==q)row.tg=tg;if(r[19])row.wv=r[19];
+    if(dt<minDay)minDay=dt;if(dt>maxDay)maxDay=dt;
+    out.set(pickKey(row),row)}
+  return {file:d.file,rows:[...out.values()],minDay,maxDay}}
+/* Loading adds to a day and refreshes the picks it already holds. Nothing is removed, so audit results keep their line. */
+async function savePicks(ctx,d,say){
+  const {Fs,fs}=ctx,m=new Map();for(const r of d.rows){const k=iso(r.dt);(m.get(k)||m.set(k,[]).get(k)).push(r)}
+  const dates=[...m.keys()].sort();let added=0,i=0;
+  for(const date of dates){
+    const snap=await Fs.getDoc(Fs.doc(fs,"pickdays",date));let old=[];if(snap.exists()){try{old=JSON.parse(snap.data().rows||"[]")}catch(_){}}
+    const all=new Map(old.map(r=>[pickKey(r),r]));for(const r of m.get(date)){const k=pickKey(r);if(!all.has(k))added++;all.set(k,r)}
+    const rows=JSON.stringify([...all.values()]);if(rows.length>900000)throw new Error("too-big");
+    await Fs.setDoc(Fs.doc(fs,"pickdays",date),{date,n:all.size,rows,file:d.file,by:ctx.uid,byName:ctx.byName,at:Date.now()});
+    if(dates.length>3)say("Saving picks, day "+(++i)+" of "+dates.length+"…")}
+  return {found:d.rows.length,added,days:dates.length,minDay:d.minDay,maxDay:d.maxDay}}
+
 /* ---------- one load for every tool ----------
    ctx: {Fs, fs, uid, byName}. buf: the file as a Uint8Array. say: called with short progress text.
    Throws when the file is not a warehouse task export. Otherwise returns
-     {file, tasks, diffs, putaways}  each one the saved result, {skipped:"why"} or {error:"what went wrong"}. */
+     {file, tasks, diffs, putaways, picks}  each one the saved result, {skipped:"why"} or {error:"what went wrong"}. */
 function failText(e,what){
   if(e&&e.message==="too-big")return what==="tasks"?"One day in this file has too many task lines to save. Split the export into smaller date ranges and load them one at a time."
     :what==="putaways"?"One day in this file has too many putaways to save. Tell the tool owner."
+    :what==="picks"?"One day in this file has too many picks to save. Tell the tool owner."
     :"One day in this file has too many differences to save. Tell the tool owner.";
   return "The file could not be saved"+(e&&e.code==="permission-denied"?" because Firebase refused it. Either your account is not a supervisor or admin, or the latest security rules have not been published yet.":". Check the connection and load it again.")}
 async function loadAll(ctx,buf,name,say){
-  say=say||(()=>{});const sheets=readSheets(buf),d=parseTasks(sheets,name),out={file:d.file,tasks:null,diffs:null,putaways:null};let x=null;
+  say=say||(()=>{});const sheets=readSheets(buf),d=parseTasks(sheets,name),out={file:d.file,tasks:null,diffs:null,putaways:null,picks:null};let x=null;
   try{x=parseDiffs(sheets,name)}catch(_){out.diffs={skipped:"This layout of the export has no difference quantity column, so no differences were read from it."}}
   say("Saving "+nf(d.rows.length)+" task lines…");
   try{out.tasks=await saveTasks(ctx,d,say)}catch(e){out.tasks={error:failText(e,"tasks")}}
@@ -183,10 +214,13 @@ async function loadAll(ctx,buf,name,say){
   const pw=parsePutaways(d);
   if(!pw.rows.length)out.putaways={found:0,added:0,days:0};
   else{say("Saving "+nf(pw.rows.length)+" putaways…");try{out.putaways=await savePutaways(ctx,pw,say)}catch(e){out.putaways={error:failText(e,"putaways")}}}
+  const pk=parsePicks(d);
+  if(!pk.rows.length)out.picks={found:0,added:0,days:0};
+  else{say("Saving "+nf(pk.rows.length)+" picks…");try{out.picks=await savePicks(ctx,pk,say)}catch(e){out.picks={error:failText(e,"picks")}}}
   return out}
 /* What happened, in words, one entry per tool: [{tool, ok, text}]. */
 function describe(r){
-  const out=[],t=r.tasks,x=r.diffs,w=r.putaways;
+  const out=[],t=r.tasks,x=r.diffs,w=r.putaways,k=r.picks;
   if(t.error)out.push({tool:"Warehouse transactions",ok:false,text:t.error});
   else{const dup=t.dup.same+t.dup.legs;
     out.push({tool:"Warehouse transactions",ok:true,text:(t.dates.length?"Loaded "+(t.dates.length===1?mdy(t.dates[0]):t.dates.length+" days, "+mdy(t.dates[0])+" to "+mdy(t.dates[t.dates.length-1]))
@@ -200,8 +234,11 @@ function describe(r){
   if(w){if(w.error)out.push({tool:"Putaway audit",ok:false,text:w.error});
     else out.push({tool:"Putaway audit",ok:true,text:w.found?"Found "+nf(w.found)+" "+(w.found===1?"putaway":"putaways")+" out of the GR-ZONE. "+(w.added?nf(w.added)+(w.added===1?" is":" are")+" new to the list.":"All of them were already on the list.")
       :"This file has no confirmed putaways out of the GR-ZONE, so nothing was added."})}
+  if(k){if(k.error)out.push({tool:"Picking audit",ok:false,text:k.error});
+    else out.push({tool:"Picking audit",ok:true,text:k.found?"Found "+nf(k.found)+" "+(k.found===1?"pick":"picks")+" out of storage bins. "+(k.added?nf(k.added)+(k.added===1?" is":" are")+" new to the list.":"All of them were already on the list.")
+      :"This file has no confirmed picks out of a storage bin, so nothing was added."})}
   return out}
 const summary=r=>describe(r).map(x=>x.tool+": "+x.text).join(" ");
 
-window.SapExport={loadAll,describe,summary,typ,readSheets,parseTasks,parseDiffs,parsePutaways,mdyDay};
+window.SapExport={loadAll,describe,summary,typ,readSheets,parseTasks,parseDiffs,parsePutaways,parsePicks,mdyDay};
 })();
