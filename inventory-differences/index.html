@@ -294,6 +294,7 @@ dialog::backdrop{background:rgba(5,12,24,.7)}
 
 <script src="firebase-config.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="../assets/sap-export.js"></script>
 <script type="module">
 const FB='https://www.gstatic.com/firebasejs/10.14.1/';
 const ROLE_LABEL={viewer:'Viewer',supervisor:'Supervisor',user:'User',admin:'Admin'};
@@ -318,51 +319,12 @@ const keyOf=r=>[r.t,r.p,r.b].join("|");
 const docId=k=>encodeURIComponent(k).slice(0,1400)||"_";
 const kindOf=r=>r.df>0?"Short pick":"Over pick";
 
-/* ---------- reading the SAP export ----------
-   Every SAP pull uses the same warehouse task layout. A difference is a task line whose difference quantity is not zero:
-   positive when less was confirmed than the task asked for (short pick), negative when more was confirmed (over pick). */
-function toDayNum(v){if(v==null||v==="")return -1;if(typeof v==="number")return v>20000&&v<80000?Math.floor(v-25569):-1;
-  const d=new Date(v);return isNaN(d)?-1:Math.floor((d.getTime()/1000-d.getTimezoneOffset()*60)/86400)}
-function toSec(v){if(v==null||v==="")return -1;if(typeof v==="number")return Math.round((v%1)*86400);const m=String(v).match(/(\d+):(\d+)(?::(\d+))?/);return m?+m[1]*3600+ +m[2]*60+ +(m[3]||0):-1}
-function parse(buf,name){
-  const wb=XLSX.read(buf,{type:"array"});let a=null,h=null,firstH=null;
-  const pick=(hh,...n)=>n.find(x=>hh.includes(x))||"";
-  for(const sn of wb.SheetNames){const x=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,raw:true,defval:""}),hh=(x[0]||[]).map(v=>String(v).trim());
-    if(!firstH)firstH=hh;if(hh.includes("Warehouse Task")&&pick(hh,"Diff. Qty in Alt.Un","Diff. Qty in BUoM")){a=x;h=hh;break}}
-  if(!a){h=firstH||[];
-    const miss=["Warehouse Task","Product","Source Storage Bin","Confirmation Date"].filter(n=>!h.includes(n));if(!pick(h,"Diff. Qty in Alt.Un","Diff. Qty in BUoM"))miss.push("Diff. Qty in Alt.Un");
-    throw new Error("This file is missing these columns: "+miss.join(", ")+". Load the SAP warehouse task export.")}
-  const dC=pick(h,"Diff. Qty in Alt.Un","Diff. Qty in BUoM"),tC=pick(h,"Src Trgt Qty AUoM","Src Trgt Qty BUoM"),qC=pick(h,"Act Dest Qty Alt UoM","Act. Qty Dest. BUoM");
-  const miss=["Product","Source Storage Bin","Confirmation Date"].filter(n=>!h.includes(n));
-  if(miss.length)throw new Error("This file is missing these columns: "+miss.join(", ")+". Load the SAP warehouse task export.");
-  const c=n=>h.indexOf(n),v=(r,n)=>n&&c(n)>=0?r[c(n)]:"",g=(r,n)=>String(v(r,n)??"").trim();
-  const by=new Map();let lines=0,minDay=Infinity,maxDay=-1;
-  for(let i=1;i<a.length;i++){const r=a[i];if(g(r,"Warehouse Task")==="")continue;lines++;
-    let dt=toDayNum(v(r,"Confirmation Date"));const conf=dt>=0;if(!conf)dt=toDayNum(v(r,"Created On"));
-    if(dt>=0){if(dt<minDay)minDay=dt;if(dt>maxDay)maxDay=dt}
-    const df=+v(r,dC)||0;if(!df||dt<0)continue;
-    const row={t:g(r,"Warehouse Task"),p:g(r,"Product"),b:g(r,"Source Storage Bin")||g(r,"Destination Bin"),tg:+v(r,tC)||0,ac:+v(r,qC)||0,df:Math.round(df*1000)/1000,
-      by:g(r,"Confirmed By")||g(r,"Created By"),dt,tm:toSec(v(r,conf?"Confirmation Time":"Created At")),pt:g(r,"Whse Process Type"),cat:g(r,"Whse Process Category Desc.")||g(r,"Activity"),
-      aa:g(r,"Activity Area"),wo:g(r,"Warehouse Order"),doc:g(r,"Document"),wv:g(r,"Wave"),ph:g(r,"Pull header ID")};
-    const k=keyOf(row);if(!by.has(k))by.set(k,row)}
-  if(!lines)throw new Error("No warehouse task lines were found in this file.");
-  return {file:str(name.replace(/\.[^.]+$/,""),80),rows:[...by.values()],lines,minDay,maxDay}}
-
 /* ---------- shared data ----------
+   The SAP export is read and saved by ../assets/sap-export.js, the loader every tool shares, so one load updates all of them.
    invdays/{YYYY-MM-DD}             the differences confirmed on that date, as JSON text. Loading an export adds to a day, it never removes
                                     a difference that is already there, so the list builds up over time.
    invact/{task|product|bin}        the action on one difference (status, owner, notes)
    invcfg/settings                  priority thresholds (admins) */
-async function publish(d){
-  const {Fs,fs}=S.fb,m=new Map();for(const r of d.rows){const k=iso(r.dt);(m.get(k)||m.set(k,[]).get(k)).push(r)}
-  const dates=[...m.keys()].sort();let added=0,i=0;
-  for(const date of dates){
-    const snap=await Fs.getDoc(Fs.doc(fs,"invdays",date));let old=[];if(snap.exists()){try{old=JSON.parse(snap.data().rows||"[]")}catch(_){}}
-    const all=new Map(old.map(r=>[keyOf(r),r]));for(const r of m.get(date)){const k=keyOf(r);if(!all.has(k))added++;all.set(k,r)}
-    const rows=JSON.stringify([...all.values()]);if(rows.length>900000)throw new Error("too-big");
-    await Fs.setDoc(Fs.doc(fs,"invdays",date),{date,n:all.size,rows,file:d.file,by:S.authUser.uid,byName:S.myName||S.authUser.email||"",at:Date.now()});
-    if(dates.length>3)toast("Saving day "+(++i)+" of "+dates.length+"…",true)}
-  return {added,days:dates.length}}
 function startData(){
   const {Fs,fs}=S.fb;
   S.unsubs.push(Fs.onSnapshot(Fs.collection(fs,"invdays"),snap=>{
@@ -378,16 +340,12 @@ function load(f){
   if(!S.canLoad){toast("Only supervisors and admins can load an export.");return}
   if(S.busy)return;
   const rd=new FileReader();rd.onload=async()=>{
-    let d;try{d=parse(new Uint8Array(rd.result),f.name)}catch(e){$("msg").textContent=e.message;$("msg").hidden=false;return}
-    $("msg").hidden=true;
-    if(!d.rows.length){toast("Read "+nf(d.lines,0)+" task lines. None of them has a difference, so nothing was added.",10000);return}
-    S.busy=true;$("loadBtn").classList.add("busy");toast("Saving "+nf(d.rows.length,0)+" differences…",true);
-    try{const r=await publish(d);S.q="";$("q").value="";S.view="list";if(S.range!=="all"&&d.minDay<dayNow()-(+S.range-1))S.range="all";
-      toast("Read "+nf(d.lines,0)+" task lines from "+mdyDay(d.minDay)+" to "+mdyDay(d.maxDay)+" and found "+nf(d.rows.length,0)+" with a difference. "
-        +(r.added?nf(r.added,0)+(r.added===1?" is":" are")+" new to the list":"All of them were already on the list")+".",12000);render()}
-    catch(e){$("msg").textContent=e&&e.message==="too-big"?"One day in this file has too many differences to save. Tell the tool owner."
-      :"The file could not be saved"+(e&&e.code==="permission-denied"?" because Firebase refused it. Either your account is not a supervisor or admin, or the latest security rules have not been published yet.":". Check the connection and load it again.");
-      $("msg").hidden=false;$("toast").hidden=true}
+    S.busy=true;$("loadBtn").classList.add("busy");$("msg").hidden=true;toast("Reading the export…",true);
+    try{const r=await SapExport.loadAll({Fs:S.fb.Fs,fs:S.fb.fs,uid:S.authUser.uid,byName:S.myName||S.authUser.email||""},new Uint8Array(rd.result),f.name,t=>toast(t,true)),x=r.diffs;
+      if(x.error||x.skipped){$("msg").textContent=x.error||x.skipped;$("msg").hidden=false;$("toast").hidden=true;return}
+      if(x.found){S.q="";$("q").value="";S.view="list";if(S.range!=="all"&&x.minDay<dayNow()-(+S.range-1))S.range="all"}
+      toast(SapExport.summary(r),15000);render()}
+    catch(e){$("msg").textContent=e.message;$("msg").hidden=false;$("toast").hidden=true}
     finally{S.busy=false;$("loadBtn").classList.remove("busy")}
   };rd.readAsArrayBuffer(f)}
 $("file").addEventListener("change",e=>{load(e.target.files[0]);e.target.value=""});

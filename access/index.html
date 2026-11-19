@@ -252,7 +252,10 @@ const TOOLS = [
   {href:'../dock-board/', name:'Receiving dock board', can:{viewer:'View the board', user:'View the board', supervisor:'Update trucks and notices', admin:'Update, settings and people'}},
   {href:'../nci-inbound/', name:'Inbound exceptions', can:{viewer:'Read issues and the board', user:'Raise and work issues', supervisor:'Raise and work issues', admin:'Work issues, settings and people'}},
   {href:'../transactions/', name:'Warehouse transactions', can:{viewer:'View the dashboard', user:'View the dashboard', supervisor:'View and load SAP exports', admin:'View, load exports, remove days'}},
-  {href:'../inventory-differences/', name:'Inventory differences', can:{viewer:'View the differences', user:'View the differences', supervisor:'Load SAP exports and work differences', admin:'Load, work differences, set thresholds'}}
+  {href:'../inventory-differences/', name:'Inventory differences', can:{viewer:'View the differences', user:'View the differences', supervisor:'Load SAP exports and work differences', admin:'Load, work differences, set thresholds'}},
+  {href:'../putaway-audit/', name:'Putaway audit', can:{viewer:'View putaways and errors', user:'View putaways and errors', supervisor:'Load SAP exports, print and enter audit results', admin:'Load SAP exports, print and enter audit results'}},
+  {href:'../action-tracker/', name:'Inventory action tracker', can:{viewer:'View actions and export Excel', user:'View actions and export Excel', supervisor:'Add and update actions, import Excel', admin:'Update, import, delete, set the site name'}},
+  {href:'../data/', name:'Data upload', can:{viewer:'See what is loaded', user:'See what is loaded', supervisor:'Load the SAP export for every tool', admin:'Load the SAP export for every tool'}}
 ];
 const S = {fb:null, user:null, role:null, me:{}, myReq:undefined, people:[], requests:[], unsubs:[], roleUnsub:null, reqUnsub:null, pendingReq:null, gate:'wait'};
 

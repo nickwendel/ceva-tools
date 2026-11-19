@@ -6,13 +6,16 @@ Operational tools for CEVA sites, served with GitHub Pages.
 |---|---|---|
 | Receiving dock board | [`dock-board/`](dock-board/) | Floor TV display of trailers in the drop and today's appointments, with priority, door, pathway owner and status. Supervisors update it from a phone. |
 | NCI/Grief inbound exceptions | [`nci-inbound/`](nci-inbound/) | Shared log of error shipments (shortages, overages, damage, missing ASN…) worked by CEVA and NCI/Grief together. Either company raises an issue, posts updates, hands it to the other side and resolves it. A board shows what is open and who it is waiting on. |
+| Inventory action tracker | [`action-tracker/`](action-tracker/) | The Inventory Action Tracker workbook as a shared page: actions with category, owner, frequency, priority, dates, status and percent complete, plus the update log. Exports to the original Excel workbook layout and imports that workbook back. |
 | Inventory differences | [`inventory-differences/`](inventory-differences/) | Pulls the lines with a quantity difference (short and over picks) out of the SAP warehouse task export, keeps them as a running list by bin, product and associate, and tracks status, owner and notes on each one. Exports an action list for the Inventory Action Tracker. |
+| Putaway audit | [`putaway-audit/`](putaway-audit/) | Lists every putaway out of the GR-ZONE from the SAP warehouse task export, prints an audit sheet, takes the audit results and tracks the errors by associate. |
+| Data upload | [`data/`](data/) | One place to load the SAP warehouse task export. The file is read once and every tool that uses it (warehouse transactions, inventory differences, putaway audit) is updated together. Shows what each tool holds now. |
 | Access and people | [`access/`](access/) | One page to sign in, request access, see what your role opens in each tool and change your password. Admins approve requests and manage the people list for every tool here. |
 | Warehouse transactions | [`transactions/`](transactions/) | Dashboard of SAP EWM warehouse tasks: completed work by hour, activity, process type and associate, open task aging, and trends over time. A supervisor loads the SAP export and everyone signed in sees it. |
 
-The home page ([`index.html`](index.html), live at `https://nickwendel.github.io/ceva-tools/`) is the launcher: a card for every web tool, download cards for the templates in [`templates/`](templates/) (8D report in Word and Excel, action plan in Word, weekly staff meeting 4 Block deck in PowerPoint), and a list of the site workbooks that are not published here because they hold site data. A search box filters the cards. To add a tool, copy a card in `index.html` and give it `data-tags` words for the search. Only blank templates belong in `templates/`; this repository is public.
+The home page ([`index.html`](index.html), live at `https://nickwendel.github.io/ceva-tools/`) is the launcher: a card for every web tool, download cards for the templates in [`templates/`](templates/) (8D report in Word and Excel, action plan in Word, weekly staff meeting 4 Block deck in PowerPoint; the blank Inventory Action Tracker workbook there is what the action tracker's Excel export is built from), and a list of the site workbooks that are not published here because they hold site data. A search box filters the cards. To add a tool, copy a card in `index.html` and give it `data-tags` words for the search. Only blank templates belong in `templates/`; this repository is public.
 
-Shared files live in [`assets/`](assets/): `ceva-logo-whitered.png` is the white-and-red logo used on the dark headers and sign-in cards; `ceva-logo.svg` (navy and red) is only the browser-tab icon. Every page shares one look, matched to the Whitsett KPI dashboard: dark navy, card panels, CEVA red accent.
+Shared files live in [`assets/`](assets/): `sap-export.js` is the one loader for the SAP warehouse task export (see [Data upload](#data-upload)); `ceva-logo-whitered.png` is the white-and-red logo used on the dark headers and sign-in cards; `ceva-logo.svg` (navy and red) is only the browser-tab icon. Every page shares one look, matched to the Whitsett KPI dashboard: dark navy, card panels, CEVA red accent.
 
 ## Firebase (shared by all tools)
 
@@ -173,6 +176,39 @@ Loading a file is one write per day in it. A screen reads one document per day i
 
 ---
 
+## Data upload
+
+**Live page:** `https://nickwendel.github.io/ceva-tools/data/`
+
+Every SAP pull is the same warehouse task export, so it is loaded once for all tools.
+
+- **Load:** a supervisor or admin selects **Load SAP export** on the Data upload page (or drags the file onto it). The page lists what each tool received from that file, and a table shows what each tool holds now, who loaded it and when.
+- **Same result from inside a tool:** the load buttons in Warehouse transactions and Inventory differences run the same loader, so a file loaded anywhere updates every tool.
+- **What is saved:** warehouse transactions gets one summary per confirmation date and the open task list; inventory differences gets the lines with a quantity difference, added to its running list. Loading the same days again refreshes them and does not double anything.
+- **How it is built:** [`assets/sap-export.js`](assets/sap-export.js) reads the workbook once and holds each tool's parse and save step. `SapExport.loadAll(...)` runs them all and reports per tool. To feed another tool from the export, add its step there and to `loadAll`; no page needs its own upload code. It writes the same Firestore documents as before, so no rules change is needed.
+- An older export layout without a difference quantity column still loads into warehouse transactions; the page says inventory differences was not updated.
+
+---
+
+## Inventory action tracker
+
+**Live page:** `https://nickwendel.github.io/ceva-tools/action-tracker/`
+
+The Inventory Action Tracker workbook as a shared page, so everyone works from one list instead of passing a file around. The Excel workbook is kept: the page exports to it and imports from it.
+
+- **Actions:** number, category, action item, details, owner, frequency, priority, start and due date, status, percent complete, days left and notes, the same columns as the workbook's Action Tracker sheet. Search, filter by status, category and owner, and sort by any heading. Overdue dates are red.
+- **Totals:** total actions, not started, in progress, complete, on hold or blocked, overdue and overall percent complete, counted the same way as the workbook's summary row.
+- **Updating:** a supervisor or admin selects an action to change it, or **New action** to add one. A line can be added to the update log while saving.
+- **Update log:** date, action number, update and who made it, the workbook's Update Log sheet. **Add update** adds a line; select a line to correct it.
+- **Export Excel:** downloads the tracker in the original workbook layout: logo, summary row with its formulas, colour rules, dropdowns, frozen panes and print setup, with the Action Tracker and Update Log sheets filled in. The export is built in the browser from the blank copy in [`templates/CEVA_Inventory_Action_Tracker.xlsx`](templates/CEVA_Inventory_Action_Tracker.xlsx), so to change the workbook's look, change that file. The sheets grow when there are more than 22 actions or 50 log lines.
+- **Import Excel:** reads the workbook (or an export) back in. Actions are matched on their number: a number already in the tracker is overwritten with the workbook's row, new numbers are added, and nothing is removed. Log lines already present are skipped. The page shows what it found before anything is saved.
+
+**Roles.** Viewers see everything and can export. Supervisors and admins add and update actions and log lines and import. Admins delete and set the site name.
+
+**Data.** `atrk/{id}` holds one action, `atrklog/{id}` one log line, `atrkcfg/settings` the site name. Publish [`firestore.rules`](firestore.rules) after merging, or saving and importing will be refused.
+
+---
+
 ## Inventory differences
 
 **Live page:** `https://nickwendel.github.io/ceva-tools/inventory-differences/`
@@ -193,3 +229,24 @@ Pulls the differences out of the SAP warehouse task export (the same layout used
 **Roles.** Viewers see everything. Supervisors and admins load exports and work differences. Admins set thresholds.
 
 **Data.** `invdays/{YYYY-MM-DD}` holds the differences confirmed on each date, `invact/{task|product|bin}` the action on each one, `invcfg/settings` the thresholds. Publish [`firestore.rules`](firestore.rules) after merging, or loading and saving will be refused.
+
+---
+
+## Putaway audit
+
+**Live page:** `https://nickwendel.github.io/ceva-tools/putaway-audit/`
+
+Lists the putaways from the SAP warehouse task export so they can be audited on the floor, and tracks the errors found by associate. It is fed by the same load as the other tools: load the export on the Data upload page or inside any tool and this list updates.
+
+- **What a putaway is:** confirmed stock that left the goods receipt zone (a source bin ending in `GR-ZONE`, such as `9010-GR-ZONE`) for another bin. SAP often lists the pick-up from the zone and the drop into the bin as two tasks in one warehouse order; they are joined on warehouse order, product and quantity into one line with the final bin. The associate is the person who confirmed the drop. Moves that stay inside the GR-ZONE, posting changes and open tasks are left out.
+- **Putaway list:** date and time, associate, product, quantity, bin, warehouse order and task. Show the latest day, one chosen day, 7 days, 30 days or everything; search; filter by associate and audit result; sort by any heading.
+- **Print audit sheet:** prints the list as filtered and sorted (landscape, CEVA document style) with an OK box, an Error box and room to write what was found.
+- **Entering results:** select a line and mark it Correct or Error. An error needs a type (wrong bin, wrong quantity, wrong product, not found in bin, label or handling unit, damaged, other) and can carry notes. **Save and next** moves down the list.
+- **Errors by associate:** putaways, audited, correct, errors and error rate (errors out of putaways audited) for each associate, plus errors by type. Select an associate to see their lines.
+- **Export to Excel:** the filtered list with audit results, and a By associate tab.
+
+**Columns used:** `Warehouse Task`, `Warehouse Order`, `Product`, `Source Storage Bin`, `Destination Bin`, `Confirmation Date`, `Confirmation Time`, `Confirmed By`, `Warehouse Task Status`, the quantity column, `Whse Process Type` and `Whse Process Category Desc.` or `Activity`.
+
+**Roles.** Viewers see everything. Supervisors and admins load exports and enter audit results.
+
+**Data.** `putdays/{YYYY-MM-DD}` holds the putaways confirmed on each date, `putaud/{task|product}` the audit result on each one. Loading adds to the list and never removes a line. Publish [`firestore.rules`](firestore.rules) after merging, or loading and saving will be refused.

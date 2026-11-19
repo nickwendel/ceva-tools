@@ -2,7 +2,8 @@ rules_version = '2';
 
 // CEVA tools — Firestore security rules for the shared Firebase project (ceva-tools).
 // Covers every tool: the receiving dock board, the NCI/Grief inbound exceptions tool, the
-// warehouse transactions dashboard and the inventory differences tool.
+// warehouse transactions dashboard, the inventory differences tool, the putaway audit tool and the
+// inventory action tracker.
 // Deployed with `firebase deploy --only firestore:rules`, or paste into
 // Firebase console → Firestore Database → Rules → Publish.
 //
@@ -161,6 +162,75 @@ service cloud.firestore {
     match /invcfg/{docId} {
       allow read: if isViewer();
       allow write: if isAdmin() && request.resource.data.size() <= 10;
+    }
+
+    // ───────── Putaway audit ─────────
+
+    // putdays/{YYYY-MM-DD} holds the putaways out of the goods receipt zone confirmed on that date,
+    // as JSON text. Loading an export adds to a day. Anyone with a role reads; supervisors and
+    // admins load; admins can remove a day.
+    match /putdays/{day} {
+      allow read: if isViewer();
+      allow create, update: if isSupervisor()
+        && request.resource.data.date == day
+        && request.resource.data.by == request.auth.uid
+        && request.resource.data.rows is string
+        && request.resource.data.rows.size() < 1000000
+        && request.resource.data.size() <= 10;
+      allow delete: if isAdmin();
+    }
+
+    // putaud/{task|product} is the audit result on one putaway: correct or error, what was wrong,
+    // notes and the associate it belongs to. Supervisors and admins enter them.
+    match /putaud/{audId} {
+      allow read: if isViewer();
+      allow create, update: if isSupervisor()
+        && request.resource.data.by == request.auth.uid
+        && request.resource.data.res in ['none', 'ok', 'error']
+        && request.resource.data.type in ['', 'bin', 'qty', 'prod', 'missing', 'label', 'damage', 'other']
+        && request.resource.data.who is string && request.resource.data.who.size() <= 40
+        && request.resource.data.note is string && request.resource.data.note.size() <= 500
+        && request.resource.data.size() <= 14;
+      allow delete: if isAdmin();
+    }
+
+    // ───────── Inventory action tracker ─────────
+
+    // atrk/{id} is one action of the Inventory Action Tracker: number, category, action item, details,
+    // owner, frequency, priority, start and due date, status, percent complete and notes.
+    // Anyone with a role reads; supervisors and admins add and update; admins can delete.
+    match /atrk/{actId} {
+      allow read: if isViewer();
+      allow create, update: if isSupervisor()
+        && request.resource.data.by == request.auth.uid
+        && request.resource.data.n is int && request.resource.data.n > 0
+        && request.resource.data.item is string && request.resource.data.item.size() > 0 && request.resource.data.item.size() <= 200
+        && request.resource.data.det is string && request.resource.data.det.size() <= 2000
+        && request.resource.data.notes is string && request.resource.data.notes.size() <= 2000
+        && request.resource.data.own is string && request.resource.data.own.size() <= 300
+        && request.resource.data.status in ['Not Started', 'In Progress', 'Complete', 'On Hold', 'Blocked', 'Cancelled']
+        && request.resource.data.pri in ['', 'High', 'Medium', 'Low']
+        && request.resource.data.freq in ['', 'One-time', 'Daily', 'Weekly', 'Monthly', 'Ongoing']
+        && request.resource.data.pct is int && request.resource.data.pct >= 0 && request.resource.data.pct <= 100
+        && request.resource.data.size() <= 16;
+      allow delete: if isAdmin();
+    }
+
+    // atrklog/{id} is one line of the tracker's update log: date, action number, update, updated by.
+    match /atrklog/{logId} {
+      allow read: if isViewer();
+      allow create, update: if isSupervisor()
+        && request.resource.data.by == request.auth.uid
+        && request.resource.data.date is string && request.resource.data.date.size() == 10
+        && request.resource.data.text is string && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 1000
+        && request.resource.data.size() <= 8;
+      allow delete: if isAdmin();
+    }
+
+    // atrkcfg/settings holds the site name shown on the tracker and in its Excel export.
+    match /atrkcfg/{docId} {
+      allow read: if isViewer();
+      allow write: if isAdmin() && request.resource.data.size() <= 6;
     }
 
     // ───────── Shared ─────────
