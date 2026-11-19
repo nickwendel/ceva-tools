@@ -2,7 +2,7 @@ rules_version = '2';
 
 // CEVA tools — Firestore security rules for the shared Firebase project (ceva-tools).
 // Covers every tool: the receiving dock board, the NCI/Grief inbound exceptions tool, the
-// warehouse transactions dashboard and the inventory differences tool.
+// warehouse transactions dashboard, the inventory differences tool and the putaway audit tool.
 // Deployed with `firebase deploy --only firestore:rules`, or paste into
 // Firebase console → Firestore Database → Rules → Publish.
 //
@@ -161,6 +161,36 @@ service cloud.firestore {
     match /invcfg/{docId} {
       allow read: if isViewer();
       allow write: if isAdmin() && request.resource.data.size() <= 10;
+    }
+
+    // ───────── Putaway audit ─────────
+
+    // putdays/{YYYY-MM-DD} holds the putaways out of the goods receipt zone confirmed on that date,
+    // as JSON text. Loading an export adds to a day. Anyone with a role reads; supervisors and
+    // admins load; admins can remove a day.
+    match /putdays/{day} {
+      allow read: if isViewer();
+      allow create, update: if isSupervisor()
+        && request.resource.data.date == day
+        && request.resource.data.by == request.auth.uid
+        && request.resource.data.rows is string
+        && request.resource.data.rows.size() < 1000000
+        && request.resource.data.size() <= 10;
+      allow delete: if isAdmin();
+    }
+
+    // putaud/{task|product} is the audit result on one putaway: correct or error, what was wrong,
+    // notes and the associate it belongs to. Supervisors and admins enter them.
+    match /putaud/{audId} {
+      allow read: if isViewer();
+      allow create, update: if isSupervisor()
+        && request.resource.data.by == request.auth.uid
+        && request.resource.data.res in ['none', 'ok', 'error']
+        && request.resource.data.type in ['', 'bin', 'qty', 'prod', 'missing', 'label', 'damage', 'other']
+        && request.resource.data.who is string && request.resource.data.who.size() <= 40
+        && request.resource.data.note is string && request.resource.data.note.size() <= 500
+        && request.resource.data.size() <= 14;
+      allow delete: if isAdmin();
     }
 
     // ───────── Shared ─────────

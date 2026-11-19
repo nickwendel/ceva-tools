@@ -263,7 +263,7 @@ a.btn{text-decoration:none}
     <section class="b-panel"><header class="p-head"><h2>What each tool has now</h2><span class="p-page">Updates on its own</span></header>
       <div class="p-body scroll"><table id="tHas"></table></div></section>
   </div>
-  <div class="note">The SAP warehouse task export uses the same layout for every pull. Loading it here, or with the load button inside Warehouse transactions or Inventory differences, does the same thing: the file is read once and every tool that uses it is updated. Days already loaded are refreshed, not doubled, and the inventory differences list only grows. The receiving dock board and inbound exceptions are entered by hand and do not use the export.</div>
+  <div class="note">The SAP warehouse task export uses the same layout for every pull. Loading it here, or with the load button inside Warehouse transactions, Inventory differences or Putaway audit, does the same thing: the file is read once and every tool that uses it is updated. Days already loaded are refreshed, not doubled, and the inventory differences and putaway lists only grow. The receiving dock board and inbound exceptions are entered by hand and do not use the export.</div>
 </div>
 <div class="toast" id="toast" role="status" hidden></div>
 
@@ -287,10 +287,10 @@ let toastT;function toast(t,keep){const e=$("toast");e.textContent=t;e.hidden=fa
 function startData(){
   const {Fs,fs}=S.fb,newest=(col,set)=>S.unsubs.push(Fs.onSnapshot(Fs.query(Fs.collection(fs,col),Fs.orderBy("date","desc"),Fs.limit(1)),
     snap=>{set(snap.docs.length?snap.docs[0].data()||{}:null);render()},()=>{set(null);render()}));
-  newest("wtdays",x=>S.wt=x);newest("invdays",x=>S.inv=x);
+  newest("wtdays",x=>S.wt=x);newest("invdays",x=>S.inv=x);newest("putdays",x=>S.put=x);
   S.unsubs.push(Fs.onSnapshot(Fs.doc(fs,"wt","open"),snap=>{S.open=snap.exists()?snap.data():null;render()},()=>{S.open=null;render()}));
 }
-function stopData(){S.unsubs.forEach(u=>{try{u()}catch(_){}});S.unsubs=[];S.wt=S.open=S.inv=undefined;S.last=null}
+function stopData(){S.unsubs.forEach(u=>{try{u()}catch(_){}});S.unsubs=[];S.wt=S.open=S.inv=S.put=undefined;S.last=null}
 function load(f){
   if(!f)return;
   if(!S.canLoad){toast("Only supervisors and admins can load an export.");return}
@@ -312,7 +312,7 @@ function render(){
   if(!S.role)return;
   $("status").innerHTML=`<span>Signed in as <b>${esc(S.myName||S.authUser.email||"")}</b></span><span>${ROLE_LABEL[S.role]}</span>`;
   $("loadBtn").hidden=!S.canLoad;
-  $("dzText").textContent=S.canLoad?"Choose the SAP warehouse task export (.xlsx) or drag it onto this page. It is read once and saved for Warehouse transactions and Inventory differences together."
+  $("dzText").textContent=S.canLoad?"Choose the SAP warehouse task export (.xlsx) or drag it onto this page. It is read once and saved for Warehouse transactions, Inventory differences and Putaway audit together."
     :"A supervisor or admin loads the SAP warehouse task export here. Every tool updates on its own when they do.";
   $("pRes").hidden=!S.last;
   if(S.last){$("resFile").textContent=S.last.file;
@@ -322,7 +322,8 @@ function render(){
   $("tHas").innerHTML=`<thead><tr><th class="t">Tool</th><th class="t">Data through</th><th class="t">Last loaded</th><th class="t">Loaded by</th><th class="t">From file</th></tr></thead><tbody>`
     +`<tr><td><a href="../transactions/">Warehouse transactions</a>, completed work</td>${cells(S.wt,S.wt?mdy(S.wt.date)+", "+nf(S.wt.n)+" lines that day":"")}</tr>`
     +`<tr><td><a href="../transactions/">Warehouse transactions</a>, open tasks</td>${cells(S.open,S.open?nf(S.open.count)+" open as of "+asOfFmt(+S.open.asOf):"")}</tr>`
-    +`<tr><td><a href="../inventory-differences/">Inventory differences</a></td>${cells(S.inv,S.inv?mdy(S.inv.date)+", "+nf(S.inv.n)+(+S.inv.n===1?" difference":" differences")+" that day":"")}</tr></tbody>`;
+    +`<tr><td><a href="../inventory-differences/">Inventory differences</a></td>${cells(S.inv,S.inv?mdy(S.inv.date)+", "+nf(S.inv.n)+(+S.inv.n===1?" difference":" differences")+" that day":"")}</tr>`
+    +`<tr><td><a href="../putaway-audit/">Putaway audit</a></td>${cells(S.put,S.put?mdy(S.put.date)+", "+nf(S.put.n)+(+S.put.n===1?" putaway":" putaways")+" that day":"")}</tr></tbody>`;
 }
 
 /* ---------- sign-in gate (same accounts, roles and access requests as the other CEVA tools) ---------- */

@@ -7,7 +7,8 @@ Operational tools for CEVA sites, served with GitHub Pages.
 | Receiving dock board | [`dock-board/`](dock-board/) | Floor TV display of trailers in the drop and today's appointments, with priority, door, pathway owner and status. Supervisors update it from a phone. |
 | NCI/Grief inbound exceptions | [`nci-inbound/`](nci-inbound/) | Shared log of error shipments (shortages, overages, damage, missing ASN…) worked by CEVA and NCI/Grief together. Either company raises an issue, posts updates, hands it to the other side and resolves it. A board shows what is open and who it is waiting on. |
 | Inventory differences | [`inventory-differences/`](inventory-differences/) | Pulls the lines with a quantity difference (short and over picks) out of the SAP warehouse task export, keeps them as a running list by bin, product and associate, and tracks status, owner and notes on each one. Exports an action list for the Inventory Action Tracker. |
-| Data upload | [`data/`](data/) | One place to load the SAP warehouse task export. The file is read once and every tool that uses it (warehouse transactions, inventory differences) is updated together. Shows what each tool holds now. |
+| Putaway audit | [`putaway-audit/`](putaway-audit/) | Lists every putaway out of the GR-ZONE from the SAP warehouse task export, prints an audit sheet, takes the audit results and tracks the errors by associate. |
+| Data upload | [`data/`](data/) | One place to load the SAP warehouse task export. The file is read once and every tool that uses it (warehouse transactions, inventory differences, putaway audit) is updated together. Shows what each tool holds now. |
 | Access and people | [`access/`](access/) | One page to sign in, request access, see what your role opens in each tool and change your password. Admins approve requests and manage the people list for every tool here. |
 | Warehouse transactions | [`transactions/`](transactions/) | Dashboard of SAP EWM warehouse tasks: completed work by hour, activity, process type and associate, open task aging, and trends over time. A supervisor loads the SAP export and everyone signed in sees it. |
 
@@ -208,3 +209,24 @@ Pulls the differences out of the SAP warehouse task export (the same layout used
 **Roles.** Viewers see everything. Supervisors and admins load exports and work differences. Admins set thresholds.
 
 **Data.** `invdays/{YYYY-MM-DD}` holds the differences confirmed on each date, `invact/{task|product|bin}` the action on each one, `invcfg/settings` the thresholds. Publish [`firestore.rules`](firestore.rules) after merging, or loading and saving will be refused.
+
+---
+
+## Putaway audit
+
+**Live page:** `https://nickwendel.github.io/ceva-tools/putaway-audit/`
+
+Lists the putaways from the SAP warehouse task export so they can be audited on the floor, and tracks the errors found by associate. It is fed by the same load as the other tools: load the export on the Data upload page or inside any tool and this list updates.
+
+- **What a putaway is:** confirmed stock that left the goods receipt zone (a source bin ending in `GR-ZONE`, such as `9010-GR-ZONE`) for another bin. SAP often lists the pick-up from the zone and the drop into the bin as two tasks in one warehouse order; they are joined on warehouse order, product and quantity into one line with the final bin. The associate is the person who confirmed the drop. Moves that stay inside the GR-ZONE, posting changes and open tasks are left out.
+- **Putaway list:** date and time, associate, product, quantity, bin, warehouse order and task. Show the latest day, one chosen day, 7 days, 30 days or everything; search; filter by associate and audit result; sort by any heading.
+- **Print audit sheet:** prints the list as filtered and sorted (landscape, CEVA document style) with an OK box, an Error box and room to write what was found.
+- **Entering results:** select a line and mark it Correct or Error. An error needs a type (wrong bin, wrong quantity, wrong product, not found in bin, label or handling unit, damaged, other) and can carry notes. **Save and next** moves down the list.
+- **Errors by associate:** putaways, audited, correct, errors and error rate (errors out of putaways audited) for each associate, plus errors by type. Select an associate to see their lines.
+- **Export to Excel:** the filtered list with audit results, and a By associate tab.
+
+**Columns used:** `Warehouse Task`, `Warehouse Order`, `Product`, `Source Storage Bin`, `Destination Bin`, `Confirmation Date`, `Confirmation Time`, `Confirmed By`, `Warehouse Task Status`, the quantity column, `Whse Process Type` and `Whse Process Category Desc.` or `Activity`.
+
+**Roles.** Viewers see everything. Supervisors and admins load exports and enter audit results.
+
+**Data.** `putdays/{YYYY-MM-DD}` holds the putaways confirmed on each date, `putaud/{task|product}` the audit result on each one. Loading adds to the list and never removes a line. Publish [`firestore.rules`](firestore.rules) after merging, or loading and saving will be refused.
