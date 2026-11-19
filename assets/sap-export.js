@@ -2,6 +2,7 @@
    A page calls SapExport.loadAll(...) with the file. The file is read once and every tool's data is saved from it:
      Warehouse transactions   wtdays/{YYYY-MM-DD} (one summary per confirmation date), wt/open (+chunks) for open tasks
      Inventory differences    invdays/{YYYY-MM-DD} (the task lines with a difference, added to what is already there)
+     Putaway audit            putdays/{YYYY-MM-DD} (the putaways out of the goods receipt zone, added to what is already there)
    So loading the export on any page, or on the Data upload page, updates all of them.
    To feed a new tool from the export, add its parse and save step here and one entry to loadAll's result.
    Needs SheetJS (window.XLSX) loaded first. */
@@ -128,26 +129,64 @@ async function saveDiffs(ctx,d,say){
     if(dates.length>3)say("Saving differences, day "+(++i)+" of "+dates.length+"…")}
   return {lines:d.lines,found:d.rows.length,added,days:dates.length,minDay:d.minDay,maxDay:d.maxDay}}
 
+/* ---------- Putaway audit ----------
+   A putaway is confirmed stock that left the goods receipt zone (source bin ending in GR-ZONE, such as 9010-GR-ZONE) for another bin.
+   SAP often splits one putaway into two tasks in the same warehouse order: a pick-up from the zone with no destination, and a drop into
+   the bin with no source. The two are joined so each putaway is one line with its final bin and the associate who confirmed the drop.
+   Moves that stay inside the zone, posting changes and open tasks are left out. Takes the result of parseTasks. */
+const isGR=b=>/(^|[-_ ])GR-ZONE$/i.test(String(b||"").trim());
+const putKey=r=>r.t+"|"+r.p;
+function parsePutaways(d){
+  const byWO=new Map(),used=new Set(),out=new Map();let minDay=Infinity,maxDay=-1,zone=0;
+  for(const r of d.rows)if(r[10]&&!r[8]&&r[9]&&r[12]==="C")(byWO.get(r[10])||byWO.set(r[10],[]).get(r[10])).push(r);
+  for(const r of d.rows){
+    if(r[12]!=="C"||!isGR(r[8])||typ(r)==="Posting change")continue;zone++;
+    let drop=null;
+    if(!r[9]&&r[10]){const c=(byWO.get(r[10])||[]).filter(x=>!used.has(x)&&x[6]===r[6]&&x[4]===r[4]);
+      drop=c.filter(x=>x[17]>=r[17]).sort((a,b)=>a[17]-b[17])[0]||c[0]||null;if(drop)used.add(drop)}
+    const dest=drop?drop[9]:r[9];if(dest&&isGR(dest))continue;
+    const e=drop||r,cf=e[17]>=0?e[17]:r[17];if(cf<0)continue;const dt=Math.floor(cf/86400);
+    const row={t:r[11],p:r[6],d:r[7]||"",q:Math.round((e[4]||r[4])*1000)/1000,s:r[8],b:dest||"",by:e[1],dt,tm:cf-dt*86400,pt:e[3]||r[3],cat:typ(r),wo:r[10]||""};
+    if(drop){row.t2=drop[11];if(r[1]!==e[1])row.by0=r[1]}
+    if(dt<minDay)minDay=dt;if(dt>maxDay)maxDay=dt;
+    out.set(putKey(row),row)}
+  return {file:d.file,rows:[...out.values()],zone,minDay,maxDay}}
+/* Loading adds to a day and refreshes the putaways it already holds. Nothing is removed, so audit results keep their line. */
+async function savePutaways(ctx,d,say){
+  const {Fs,fs}=ctx,m=new Map();for(const r of d.rows){const k=iso(r.dt);(m.get(k)||m.set(k,[]).get(k)).push(r)}
+  const dates=[...m.keys()].sort();let added=0,i=0;
+  for(const date of dates){
+    const snap=await Fs.getDoc(Fs.doc(fs,"putdays",date));let old=[];if(snap.exists()){try{old=JSON.parse(snap.data().rows||"[]")}catch(_){}}
+    const all=new Map(old.map(r=>[putKey(r),r]));for(const r of m.get(date)){const k=putKey(r);if(!all.has(k))added++;all.set(k,r)}
+    const rows=JSON.stringify([...all.values()]);if(rows.length>900000)throw new Error("too-big");
+    await Fs.setDoc(Fs.doc(fs,"putdays",date),{date,n:all.size,rows,file:d.file,by:ctx.uid,byName:ctx.byName,at:Date.now()});
+    if(dates.length>3)say("Saving putaways, day "+(++i)+" of "+dates.length+"…")}
+  return {found:d.rows.length,added,days:dates.length,minDay:d.minDay,maxDay:d.maxDay}}
+
 /* ---------- one load for every tool ----------
    ctx: {Fs, fs, uid, byName}. buf: the file as a Uint8Array. say: called with short progress text.
    Throws when the file is not a warehouse task export. Otherwise returns
-     {file, tasks, diffs}  each one the saved result, {skipped:"why"} or {error:"what went wrong"}. */
+     {file, tasks, diffs, putaways}  each one the saved result, {skipped:"why"} or {error:"what went wrong"}. */
 function failText(e,what){
   if(e&&e.message==="too-big")return what==="tasks"?"One day in this file has too many task lines to save. Split the export into smaller date ranges and load them one at a time."
+    :what==="putaways"?"One day in this file has too many putaways to save. Tell the tool owner."
     :"One day in this file has too many differences to save. Tell the tool owner.";
   return "The file could not be saved"+(e&&e.code==="permission-denied"?" because Firebase refused it. Either your account is not a supervisor or admin, or the latest security rules have not been published yet.":". Check the connection and load it again.")}
 async function loadAll(ctx,buf,name,say){
-  say=say||(()=>{});const sheets=readSheets(buf),d=parseTasks(sheets,name),out={file:d.file,tasks:null,diffs:null};let x=null;
+  say=say||(()=>{});const sheets=readSheets(buf),d=parseTasks(sheets,name),out={file:d.file,tasks:null,diffs:null,putaways:null};let x=null;
   try{x=parseDiffs(sheets,name)}catch(_){out.diffs={skipped:"This layout of the export has no difference quantity column, so no differences were read from it."}}
   say("Saving "+nf(d.rows.length)+" task lines…");
   try{out.tasks=await saveTasks(ctx,d,say)}catch(e){out.tasks={error:failText(e,"tasks")}}
   if(x){
     if(!x.rows.length)out.diffs={lines:x.lines,found:0,added:0,days:0,minDay:x.minDay,maxDay:x.maxDay};
     else{say("Saving "+nf(x.rows.length)+" differences…");try{out.diffs=await saveDiffs(ctx,x,say)}catch(e){out.diffs={error:failText(e,"diffs")}}}}
+  const pw=parsePutaways(d);
+  if(!pw.rows.length)out.putaways={found:0,added:0,days:0};
+  else{say("Saving "+nf(pw.rows.length)+" putaways…");try{out.putaways=await savePutaways(ctx,pw,say)}catch(e){out.putaways={error:failText(e,"putaways")}}}
   return out}
 /* What happened, in words, one entry per tool: [{tool, ok, text}]. */
 function describe(r){
-  const out=[],t=r.tasks,x=r.diffs;
+  const out=[],t=r.tasks,x=r.diffs,w=r.putaways;
   if(t.error)out.push({tool:"Warehouse transactions",ok:false,text:t.error});
   else{const dup=t.dup.same+t.dup.legs;
     out.push({tool:"Warehouse transactions",ok:true,text:(t.dates.length?"Loaded "+(t.dates.length===1?mdy(t.dates[0]):t.dates.length+" days, "+mdy(t.dates[0])+" to "+mdy(t.dates[t.dates.length-1]))
@@ -158,8 +197,11 @@ function describe(r){
   else if(x.skipped)out.push({tool:"Inventory differences",ok:true,skipped:true,text:x.skipped});
   else out.push({tool:"Inventory differences",ok:true,text:x.found?"Found "+nf(x.found)+" task "+(x.found===1?"line":"lines")+" with a difference. "+(x.added?nf(x.added)+(x.added===1?" is":" are")+" new to the list.":"All of them were already on the list.")
       :"None of the "+nf(x.lines)+" task lines has a difference, so nothing was added."});
+  if(w){if(w.error)out.push({tool:"Putaway audit",ok:false,text:w.error});
+    else out.push({tool:"Putaway audit",ok:true,text:w.found?"Found "+nf(w.found)+" "+(w.found===1?"putaway":"putaways")+" out of the GR-ZONE. "+(w.added?nf(w.added)+(w.added===1?" is":" are")+" new to the list.":"All of them were already on the list.")
+      :"This file has no confirmed putaways out of the GR-ZONE, so nothing was added."})}
   return out}
 const summary=r=>describe(r).map(x=>x.tool+": "+x.text).join(" ");
 
-window.SapExport={loadAll,describe,summary,typ,readSheets,parseTasks,parseDiffs,mdyDay};
+window.SapExport={loadAll,describe,summary,typ,readSheets,parseTasks,parseDiffs,parsePutaways,mdyDay};
 })();
