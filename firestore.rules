@@ -2,19 +2,28 @@ rules_version = '2';
 
 // CEVA tools — Firestore security rules for the shared Firebase project (ceva-tools).
 // Covers every tool: the receiving dock board, the NCI/Grief inbound exceptions tool, the
-// warehouse transactions dashboard, the inventory differences tool, the putaway audit tool, the picking audit tool, the HU consolidation tool, the
-// inventory action tracker and the training documents library.
+// warehouse transactions dashboard, the inventory differences tool, the putaway audit tool, the
+// picking audit tool, the HU consolidation tool, the inventory action tracker and the training
+// documents library.
 // Deployed with `firebase deploy --only firestore:rules`, or paste into
 // Firebase console → Firestore Database → Rules → Publish.
 //
-// One people list for both tools, stored at roles/{uid}:
-//   role    viewer     → see the dock board; see inbound issues; see the transactions dashboard
-//           supervisor → also update trucks on the dock board; also work inbound issues; also load
-//                        a new SAP export into the transactions dashboard
-//           user       → work inbound issues (no dock board changes)
-//           admin      → everything, plus settings and people
-//   company ceva | partner (NCI/Grief) → which side of the inbound tool the person is on
+// Access is set by user group. Each account is one document at roles/{uid}:
+//   group    the user group the account is in. 'admin' is built in: full access to every tool, and
+//            the only group that changes people and groups. Any other value is a groups/{id}
+//            document, which holds a level for each tool:
+//              none  cannot open the tool
+//              view  see it
+//              edit  also change things in it
+//              full  also delete, and change the tool's settings
+//   company  ceva | partner (NCI/Grief) → which side of the inbound tool the person is on
+//   role     the old way (viewer, user, supervisor, admin). It only counts while the account has no
+//            group, so people keep their access until an admin places them in a group.
+// Tool keys: dock, inbound, transactions, differences, putaway, picking, consolidation, tracker,
+// training, data. Loading a SAP export writes data for several tools at once, so it follows the
+// level on 'data' (the Data upload page), not the level on each tool.
 // Anyone who signs in without a roles document sees nothing.
+// Keep in step with assets/access.js, which the pages use to show the same levels.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -23,31 +32,47 @@ service cloud.firestore {
       return /databases/$(database)/documents/roles/$(request.auth.uid);
     }
     function me() { return get(roleDoc()).data; }
-    function hasRole(roles) {
-      return request.auth != null && exists(roleDoc()) && me().role in roles;
+    function known() { return request.auth != null && exists(roleDoc()); }
+    function grp() { return me().get('group', ''); }
+    function groupLevel(tool) {
+      return grp() == 'admin' ? 'full'
+        : get(/databases/$(database)/documents/groups/$(grp())).data.tools.get(tool, 'none');
     }
-    function isViewer()     { return hasRole(['viewer', 'supervisor', 'user', 'admin']); }
-    function isSupervisor() { return hasRole(['supervisor', 'admin']); }
-    function isUser()       { return hasRole(['user', 'supervisor', 'admin']); }
-    function isAdmin()      { return hasRole(['admin']); }
+    // Accounts with no group yet: the old role, applied to every tool. Partner accounts never saw
+    // the training documents.
+    function roleLevel(tool) {
+      return (tool == 'training' && me().get('company', 'ceva') == 'partner') ? 'none'
+        : me().get('role', '') == 'admin' ? 'full'
+        : me().get('role', '') == 'supervisor' ? 'edit'
+        : me().get('role', '') == 'user' ? (tool == 'inbound' ? 'edit' : 'view')
+        : me().get('role', '') == 'viewer' ? 'view'
+        : 'none';
+    }
+    function level(tool) { return grp() != '' ? groupLevel(tool) : roleLevel(tool); }
+    function canView(tool) { return known() && level(tool) in ['view', 'edit', 'full']; }
+    function canEdit(tool) { return known() && level(tool) in ['edit', 'full']; }
+    function canFull(tool) { return known() && level(tool) == 'full'; }
+    function isAdmin() {
+      return known() && (grp() == 'admin' || (grp() == '' && me().get('role', '') == 'admin'));
+    }
 
     // ───────── Receiving dock board ─────────
 
     // Trucks on the board
     match /loads/{loadId} {
-      allow read: if isViewer();
-      allow create, update: if isSupervisor()
+      allow read: if canView('dock');
+      allow create, update: if canEdit('dock')
         && request.resource.data.kind in ['drop', 'appt']
         && request.resource.data.status in ['scheduled', 'arrived', 'door', 'unloading', 'received']
         && request.resource.data.priority in [1, 2, 3]
         && request.resource.data.size() <= 20;
-      allow delete: if isSupervisor();
+      allow delete: if canEdit('dock');
     }
 
     // Notice, owner names, clock format
     match /board/{docId} {
-      allow read: if isViewer();
-      allow write: if isSupervisor() && request.resource.data.size() <= 20;
+      allow read: if canView('dock');
+      allow write: if canEdit('dock') && request.resource.data.size() <= 20;
     }
 
     // ───────── NCI/Grief inbound exceptions ─────────
@@ -64,31 +89,31 @@ service cloud.firestore {
 
     // One document per error shipment
     match /issues/{issueId} {
-      allow read: if isViewer();
-      allow create: if isUser()
+      allow read: if canView('inbound');
+      allow create: if canEdit('inbound')
         && validIssue(request.resource.data)
         && request.resource.data.openedBy.uid == request.auth.uid;
-      allow update: if isUser()
+      allow update: if canEdit('inbound')
         && validIssue(request.resource.data)
         && request.resource.data.openedBy == resource.data.openedBy
         && request.resource.data.openedAt == resource.data.openedAt;
-      allow delete: if isAdmin();
+      allow delete: if canFull('inbound');
 
       // Update thread. Entries are written once and never edited.
       match /updates/{updateId} {
-        allow read: if isViewer();
-        allow create: if isUser()
+        allow read: if canView('inbound');
+        allow create: if canEdit('inbound')
           && request.resource.data.by == request.auth.uid
           && request.resource.data.company in ['ceva', 'partner']
           && request.resource.data.size() <= 12;
         allow update: if false;
-        allow delete: if isAdmin();
+        allow delete: if canFull('inbound');
       }
     }
 
     // Outgoing notification emails, picked up by the optional "Trigger Email" extension.
     match /mail/{mailId} {
-      allow create: if isUser() && request.resource.data.size() <= 6;
+      allow create: if canEdit('inbound') && request.resource.data.size() <= 6;
       allow read, update, delete: if false;
     }
 
@@ -96,36 +121,36 @@ service cloud.firestore {
 
     // wtdays/{YYYY-MM-DD} is one summary per confirmation date: counts per associate, activity,
     // process type and hour, kept as JSON text. History builds up as exports are loaded.
-    // Anyone with a role reads; supervisors and admins load; admins can remove a day.
+    // Groups with view on the tool read; groups with edit on Data upload load; full access removes a day.
     match /wtdays/{day} {
-      allow read: if isViewer();
-      allow create, update: if isSupervisor()
+      allow read: if canView('transactions') || canEdit('data');
+      allow create, update: if canEdit('data')
         && request.resource.data.date == day
         && request.resource.data.by == request.auth.uid
         && request.resource.data.cube is string
         && request.resource.data.cube.size() < 1000000
         && request.resource.data.size() <= 14;
-      allow delete: if isAdmin();
+      allow delete: if canFull('transactions');
     }
 
     // wt/open is the summary of the open task list from the most recent export (who, when, how
     // many parts). wt/open/chunks/{version}_{n} hold those task lines as JSON text, split to stay
     // under Firestore's 1 MiB document limit.
     match /wt/{docId} {
-      allow read: if isViewer();
-      allow write: if isSupervisor()
+      allow read: if canView('transactions') || canEdit('data');
+      allow write: if canEdit('data')
         && request.resource.data.by == request.auth.uid
         && request.resource.data.chunks is int
         && request.resource.data.chunks <= 40
         && request.resource.data.size() <= 12;
 
       match /chunks/{chunkId} {
-        allow read: if isViewer();
-        allow create, update: if isSupervisor()
+        allow read: if canView('transactions') || canEdit('data');
+        allow create, update: if canEdit('data')
           && request.resource.data.rows is string
           && request.resource.data.rows.size() < 1000000
           && request.resource.data.size() <= 3;
-        allow delete: if isSupervisor();
+        allow delete: if canEdit('data');
       }
     }
 
@@ -133,35 +158,35 @@ service cloud.firestore {
 
     // invdays/{YYYY-MM-DD} holds the differences confirmed on that date (warehouse task lines whose
     // difference quantity is not zero), as JSON text. Loading an export adds to a day, so the list
-    // builds up. Anyone with a role reads; supervisors and admins load; admins can remove a day.
+    // builds up. Groups with view on the tool read; groups with edit on Data upload load; full access removes a day.
     match /invdays/{day} {
-      allow read: if isViewer();
-      allow create, update: if isSupervisor()
+      allow read: if canView('differences') || canEdit('data');
+      allow create, update: if canEdit('data')
         && request.resource.data.date == day
         && request.resource.data.by == request.auth.uid
         && request.resource.data.rows is string
         && request.resource.data.rows.size() < 1000000
         && request.resource.data.size() <= 10;
-      allow delete: if isAdmin();
+      allow delete: if canFull('differences');
     }
 
     // invact/{task|product|bin} is the action on one difference: status, owner and notes.
-    // Supervisors and admins work them.
+    // Groups with edit work them.
     match /invact/{actId} {
-      allow read: if isViewer();
-      allow create, update: if isSupervisor()
+      allow read: if canView('differences');
+      allow create, update: if canEdit('differences')
         && request.resource.data.by == request.auth.uid
         && request.resource.data.status in ['new', 'recount', 'research', 'post', 'closed']
         && request.resource.data.owner is string && request.resource.data.owner.size() <= 40
         && request.resource.data.note is string && request.resource.data.note.size() <= 500
         && request.resource.data.size() <= 12;
-      allow delete: if isAdmin();
+      allow delete: if canFull('differences');
     }
 
     // invcfg/settings holds the priority thresholds (quantity limits for P1 and P2).
     match /invcfg/{docId} {
-      allow read: if isViewer();
-      allow write: if isAdmin() && request.resource.data.size() <= 10;
+      allow read: if canView('differences');
+      allow write: if canFull('differences') && request.resource.data.size() <= 10;
     }
 
     // ───────── Putaway audit ─────────
@@ -170,28 +195,28 @@ service cloud.firestore {
     // as JSON text. Loading an export adds to a day. Anyone with a role reads; supervisors and
     // admins load; admins can remove a day.
     match /putdays/{day} {
-      allow read: if isViewer();
-      allow create, update: if isSupervisor()
+      allow read: if canView('putaway') || canEdit('data');
+      allow create, update: if canEdit('data')
         && request.resource.data.date == day
         && request.resource.data.by == request.auth.uid
         && request.resource.data.rows is string
         && request.resource.data.rows.size() < 1000000
         && request.resource.data.size() <= 10;
-      allow delete: if isAdmin();
+      allow delete: if canFull('putaway');
     }
 
     // putaud/{task|product} is the audit result on one putaway: correct or error, what was wrong,
-    // notes and the associate it belongs to. Supervisors and admins enter them.
+    // notes and the associate it belongs to. Groups with edit enter them.
     match /putaud/{audId} {
-      allow read: if isViewer();
-      allow create, update: if isSupervisor()
+      allow read: if canView('putaway');
+      allow create, update: if canEdit('putaway')
         && request.resource.data.by == request.auth.uid
         && request.resource.data.res in ['none', 'ok', 'error']
         && request.resource.data.type in ['', 'bin', 'qty', 'prod', 'missing', 'label', 'damage', 'other']
         && request.resource.data.who is string && request.resource.data.who.size() <= 40
         && request.resource.data.note is string && request.resource.data.note.size() <= 500
         && request.resource.data.size() <= 14;
-      allow delete: if isAdmin();
+      allow delete: if canFull('putaway');
     }
 
     // ───────── Picking audit ─────────
@@ -200,28 +225,28 @@ service cloud.firestore {
     // text. Loading an export adds to a day. Anyone with a role reads; supervisors and admins
     // load; admins can remove a day.
     match /pickdays/{day} {
-      allow read: if isViewer();
-      allow create, update: if isSupervisor()
+      allow read: if canView('picking') || canEdit('data');
+      allow create, update: if canEdit('data')
         && request.resource.data.date == day
         && request.resource.data.by == request.auth.uid
         && request.resource.data.rows is string
         && request.resource.data.rows.size() < 1000000
         && request.resource.data.size() <= 10;
-      allow delete: if isAdmin();
+      allow delete: if canFull('picking');
     }
 
     // pickaud/{task|bin} is the audit result on one pick: correct or error, what was wrong, notes
     // and the associate it belongs to. Supervisors and admins enter them.
     match /pickaud/{audId} {
-      allow read: if isViewer();
-      allow create, update: if isSupervisor()
+      allow read: if canView('picking');
+      allow create, update: if canEdit('picking')
         && request.resource.data.by == request.auth.uid
         && request.resource.data.res in ['none', 'ok', 'error']
         && request.resource.data.type in ['', 'bin', 'qty', 'prod', 'missing', 'label', 'damage', 'other']
         && request.resource.data.who is string && request.resource.data.who.size() <= 40
         && request.resource.data.note is string && request.resource.data.note.size() <= 500
         && request.resource.data.size() <= 14;
-      allow delete: if isAdmin();
+      allow delete: if canFull('picking');
     }
 
     // ───────── HU consolidation ─────────
@@ -230,27 +255,27 @@ service cloud.firestore {
     // than one handling unit, as JSON text. Each load replaces it. Anyone with a role reads;
     // supervisors and admins load.
     match /hucons/{docId} {
-      allow read: if isViewer();
-      allow create, update: if isSupervisor()
+      allow read: if canView('consolidation') || canEdit('data');
+      allow create, update: if canEdit('data')
         && docId == 'current'
         && request.resource.data.by == request.auth.uid
         && request.resource.data.rows is string
         && request.resource.data.rows.size() < 1000000
         && request.resource.data.size() <= 12;
-      allow delete: if isAdmin();
+      allow delete: if canFull('consolidation');
     }
 
     // huconsst/{bin} is the status of one location: open, consolidated (done) or leave as is,
     // with notes and the handling units it held when it was set. Supervisors and admins set it.
     match /huconsst/{binId} {
-      allow read: if isViewer();
-      allow create, update: if isSupervisor()
+      allow read: if canView('consolidation');
+      allow create, update: if canEdit('consolidation')
         && request.resource.data.by == request.auth.uid
         && request.resource.data.st in ['open', 'done', 'leave']
         && request.resource.data.sig is string && request.resource.data.sig.size() <= 40
         && request.resource.data.note is string && request.resource.data.note.size() <= 500
         && request.resource.data.size() <= 10;
-      allow delete: if isAdmin();
+      allow delete: if canFull('consolidation');
     }
 
     // ───────── Inventory action tracker ─────────
@@ -259,8 +284,8 @@ service cloud.firestore {
     // owner, frequency, priority, start and due date, status, percent complete and notes.
     // Anyone with a role reads; supervisors and admins add and update; admins can delete.
     match /atrk/{actId} {
-      allow read: if isViewer();
-      allow create, update: if isSupervisor()
+      allow read: if canView('tracker');
+      allow create, update: if canEdit('tracker')
         && request.resource.data.by == request.auth.uid
         && request.resource.data.n is int && request.resource.data.n > 0
         && request.resource.data.item is string && request.resource.data.item.size() > 0 && request.resource.data.item.size() <= 200
@@ -272,30 +297,28 @@ service cloud.firestore {
         && request.resource.data.freq in ['', 'One-time', 'Daily', 'Weekly', 'Monthly', 'Ongoing']
         && request.resource.data.pct is int && request.resource.data.pct >= 0 && request.resource.data.pct <= 100
         && request.resource.data.size() <= 16;
-      allow delete: if isAdmin();
+      allow delete: if canFull('tracker');
     }
 
     // atrklog/{id} is one line of the tracker's update log: date, action number, update, updated by.
     match /atrklog/{logId} {
-      allow read: if isViewer();
-      allow create, update: if isSupervisor()
+      allow read: if canView('tracker');
+      allow create, update: if canEdit('tracker')
         && request.resource.data.by == request.auth.uid
         && request.resource.data.date is string && request.resource.data.date.size() == 10
         && request.resource.data.text is string && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 1000
         && request.resource.data.size() <= 8;
-      allow delete: if isAdmin();
+      allow delete: if canFull('tracker');
     }
 
     // atrkcfg/settings holds the site name shown on the tracker and in its Excel export.
     match /atrkcfg/{docId} {
-      allow read: if isViewer();
-      allow write: if isAdmin() && request.resource.data.size() <= 6;
+      allow read: if canView('tracker');
+      allow write: if canFull('tracker') && request.resource.data.size() <= 6;
     }
 
     // ───────── Training documents ─────────
 
-    // Training documents are internal to CEVA: partner (NCI/Grief) accounts cannot read them.
-    function isCeva() { return me().get('company', 'ceva') != 'partner'; }
     function validTdoc(d) {
       return d.by == request.auth.uid
         && d.title is string && d.title.size() > 0 && d.title.size() <= 150
@@ -319,23 +342,23 @@ service cloud.firestore {
     // add documents, edit details and add versions (the version number can only go up); only admins
     // archive, restore and delete.
     match /tdocs/{docId} {
-      allow read: if isViewer() && isCeva();
-      allow create: if isSupervisor() && isCeva()
+      allow read: if canView('training');
+      allow create: if canEdit('training')
         && validTdoc(request.resource.data)
         && request.resource.data.status == 'active'
         && request.resource.data.cur == 1;
-      allow update: if isSupervisor() && isCeva()
+      allow update: if canEdit('training')
         && validTdoc(request.resource.data)
         && request.resource.data.cur >= resource.data.cur
         && request.resource.data.cur <= resource.data.cur + 1
-        && (isAdmin() || request.resource.data.status == resource.data.status);
-      allow delete: if isAdmin();
+        && (canFull('training') || request.resource.data.status == resource.data.status);
+      allow delete: if canFull('training');
 
       // One version of the document. Written once and never edited, so the history can be trusted.
       // A link must be an https address.
       match /vers/{verId} {
-        allow read: if isViewer() && isCeva();
-        allow create: if isSupervisor() && isCeva()
+        allow read: if canView('training');
+        allow create: if canEdit('training')
           && request.resource.data.by == request.auth.uid
           && request.resource.data.v is int && request.resource.data.v >= 1
           && request.resource.data.kind in ['file', 'link']
@@ -346,43 +369,59 @@ service cloud.firestore {
           && request.resource.data.note is string && request.resource.data.note.size() <= 500
           && request.resource.data.n is int && request.resource.data.n >= 0 && request.resource.data.n <= 30
           && request.resource.data.size() <= 12;
-        allow delete: if isAdmin();
+        allow delete: if canFull('training');
 
         // The file itself, in pieces of up to 720 KB (a Firestore document holds at most 1 MiB).
         match /chunks/{chunkId} {
-          allow read: if isViewer() && isCeva();
-          allow create: if isSupervisor() && isCeva()
+          allow read: if canView('training');
+          allow create: if canEdit('training')
             && request.resource.data.i is int && request.resource.data.i >= 0 && request.resource.data.i < 30
             && request.resource.data.d is bytes && request.resource.data.d.size() <= 800000
             && request.resource.data.size() == 2;
-          allow delete: if isAdmin();
+          allow delete: if canFull('training');
         }
       }
     }
 
     // tdoccfg/settings holds the category list for the training documents.
     match /tdoccfg/{docId} {
-      allow read: if isViewer() && isCeva();
-      allow write: if isAdmin() && request.resource.data.cats is list && request.resource.data.cats.size() <= 40
+      allow read: if canView('training');
+      allow write: if canFull('training') && request.resource.data.cats is list && request.resource.data.cats.size() <= 40
         && request.resource.data.size() <= 4;
     }
 
     // ───────── Shared ─────────
-
     // admin/brand (dock board site name and TV colors), admin/settings (inbound company names, emails, SLA)
     match /admin/{docId} {
-      allow read: if isViewer();
-      allow write: if isAdmin() && request.resource.data.size() <= 20;
+      allow read: if known();
+      allow write: if (isAdmin() || (docId == 'brand' && canFull('dock')) || (docId == 'settings' && canFull('inbound')))
+        && request.resource.data.size() <= 20;
     }
 
-    // Who can use the tools. Each person can read their own role.
+    // Who can use the tools. Each person can read their own document. `group` places the account in a
+    // user group; `role` is the old way and only counts while `group` is empty.
     match /roles/{uid} {
       allow read: if request.auth != null && (request.auth.uid == uid || isAdmin());
       allow create, update: if isAdmin()
         && request.resource.data.role in ['viewer', 'supervisor', 'user', 'admin']
+        && (!('group' in request.resource.data) || (request.resource.data.group is string && request.resource.data.group.size() <= 40))
         && (!('company' in request.resource.data) || request.resource.data.company in ['ceva', 'partner'])
         && request.resource.data.size() <= 10;
       allow delete: if isAdmin() && request.auth.uid != uid;
+    }
+
+    // User groups. groups/{id} holds the group's name and a level for each tool (none, view, edit, full).
+    // Anyone with an account reads them; only the Admin group changes them. "admin" is built in (full
+    // access to everything) and has no document.
+    match /groups/{groupId} {
+      allow read: if known();
+      allow create, update: if isAdmin()
+        && groupId != 'admin' && groupId.matches('[a-z0-9-]{2,40}')
+        && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 40
+        && request.resource.data.tools is map && request.resource.data.tools.size() <= 30
+        && request.resource.data.tools.values().hasOnly(['none', 'view', 'edit', 'full'])
+        && request.resource.data.size() <= 6;
+      allow delete: if isAdmin();
     }
 
     // Access requests. Anyone who signs up can file one request for themselves; admins approve

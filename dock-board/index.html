@@ -457,6 +457,10 @@ textarea.inp{min-height:5.2rem;resize:vertical;line-height:1.45}
           <div class="err" id="cErr" role="alert" hidden></div>
           <div class="row-btns"><button type="button" class="btn primary" id="cSave">Change password</button><button type="button" class="btn ghost" id="acctOut">Sign out</button></div>
         </div>
+        <div class="set" id="setAccess" hidden>
+          <h3>People and access</h3>
+          <p>People, user groups and access requests for every tool are managed on the <a href="../access/">Access page</a>.</p>
+        </div>
         <div class="set" id="setRequests" hidden>
           <h3>Access requests</h3>
           <p>People who tapped “Request access” on the sign-in screen. Approving creates their role right away; they’re let in on their next refresh. Declining removes the request.</p>
@@ -567,6 +571,7 @@ textarea.inp{min-height:5.2rem;resize:vertical;line-height:1.45}
 </div>
 
 <script src="firebase-config.js"></script>
+<script src="../assets/access.js"></script>
 <script type="module">
 (function(){
 'use strict';
@@ -873,14 +878,12 @@ function fillSettings(force){
   const admin = S.canAdmin && S.conn !== 'none';
   $('#setAdmin').hidden = !admin;
   $('#setClear').hidden = readOnly() || S.conn === 'none';
-  $('#setPeople').hidden = !admin;
-  $('#setRequests').hidden = !(admin && S.requests.length);
+  $('#setPeople').hidden = true; $('#setRequests').hidden = true; // people are managed on the Access page
+  $('#setAccess').hidden = !S.isAdmin;
   if(admin){
-    renderRequests();
     setVal($('#sSite'), str(S.brand.siteName, 60), force);
-    renderPeople();
   }
-  $('#acctLine').textContent = S.authUser ? 'Signed in as ' + (S.authUser.email || 'this device') + ' · ' + (ROLE_LABEL[S.role] || 'no role') : '';
+  $('#acctLine').textContent = S.authUser ? 'Signed in as ' + (S.authUser.email || 'this device') + ' · ' + (S.who || ROLE_LABEL[S.role] || 'no role') : '';
   const clr = $('#sClear');
   if(!clr.dataset.armed) clr.textContent = 'Clear received trucks (' + S.loads.filter(l => l.status === 'received').length + ')';
   document.querySelectorAll('#setPanel input,#setPanel textarea,#setPanel button').forEach(x => { if(!['sDemo','acctOut','cPass','cPass2','cSave'].includes(x.id)) x.disabled = readOnly() || S.conn === 'none'; });
@@ -1312,7 +1315,7 @@ function startData(){
   }, err => { S.conn = 'error'; render(); }));
   S.unsubs.push(Fs.onSnapshot(Fs.doc(fs, 'board', 'settings'), s => { S.settings = s.exists() ? (s.data() || {}) : {}; render(); }, () => {}));
   S.unsubs.push(Fs.onSnapshot(Fs.doc(fs, 'admin', 'brand'), s => { S.brand = s.exists() ? (s.data() || {}) : {}; applyTheme(); render(); }, () => {}));
-  if(S.role === 'admin'){
+  if(false){ // people are managed on the Access page
     S.unsubs.push(Fs.onSnapshot(Fs.collection(fs, 'roles'), snap => {
       S.people = snap.docs.map(d => Object.assign({}, d.data(), {id:d.id}));
       if(S.view === 'edit' && S.tab === 'settings') renderPeople();
@@ -1344,14 +1347,15 @@ function startData(){
     if(!user){ showGate('login'); return; }
     if(S.pendingReq){ const q = S.pendingReq; S.pendingReq = null; fileRequest(user, q.name, q.note).then(() => toast('Request sent. An admin will approve it.'), () => toast('Signed up, but the request didn’t send. Fill in the form below.')); }
     showGate('wait', 'Checking access…');
-    S.roleUnsub = Fs.onSnapshot(Fs.doc(fs, 'roles', user.uid), {includeMetadataChanges:true}, snap => {
-      const role = snap.exists() ? (snap.data() || {}).role : null;
+    S.roleUnsub = CevaAccess.watch(Fs, fs, user.uid, 'dock', snap => {
+      const d = snap.exists() ? (snap.data() || {}) : {}, role = d.role;
+      if(d.noAccess){ S.role = null; S.ready = false; stopData(); showGate('wait', CevaAccess.NO_ACCESS); return; }
       if(!ROLE_LABEL[role]){
         if(snap.metadata.fromCache){ showGate('wait', 'Waiting for the network…'); return; }
         S.role = null; S.ready = false; stopData(); showGate('denied'); return;
       }
       const changed = !S.ready || role !== S.role;
-      S.role = role; S.canWrite = role === 'supervisor' || role === 'admin'; S.canAdmin = role === 'admin'; S.writeDenied = false;
+      S.role = role; S.canWrite = role === 'supervisor' || role === 'admin'; S.canAdmin = role === 'admin'; S.isAdmin = !!d.isAdmin; S.who = d.groupName + ' · ' + CevaAccess.LEVEL_LABEL[d.level]; S.writeDenied = false;
       if(changed){ S.ready = true; startData(); showGate('ready'); }
       render();
     }, () => { S.ready = false; stopData(); showGate('denied'); });
