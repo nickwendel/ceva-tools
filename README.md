@@ -269,12 +269,13 @@ Lists the putaways from the SAP warehouse task export so they can be audited on 
 - **Putaway list:** date and time, associate, product, quantity, bin, warehouse order and task. Show the latest day, one chosen day, 7 days, 30 days or everything; search; filter by associate and audit result; sort by any heading.
 - **Print audit sheet:** prints the list as filtered and sorted (landscape, CEVA document style) with an OK box, an Error box and room to write what was found.
 - **Entering results:** select a line and mark it Correct or Error. An error needs a type (wrong bin, wrong quantity, wrong product, not found in bin, label or handling unit, damaged, other) and can carry notes. **Save and next** moves down the list.
+- **Close out:** once the errors from the audit sheets are entered, the Close out tab shows the errors entered for the chosen dates and how many putaways still have no result. **Close out** marks all of those as Correct in one step. A dialog first asks to confirm that every error has been entered, and the button stays off until the box is ticked. Lines that already have a result are not changed.
 - **Errors by associate:** putaways, audited, correct, errors and error rate (errors out of putaways audited) for each associate, plus errors by type. Select an associate to see their lines.
 - **Export to Excel:** the filtered list with audit results, and a By associate tab.
 
 **Columns used:** `Warehouse Task`, `Warehouse Order`, `Product`, `Source Storage Bin`, `Destination Bin`, `Confirmation Date`, `Confirmation Time`, `Confirmed By`, `Warehouse Task Status`, the quantity column, `Whse Process Type` and `Whse Process Category Desc.` or `Activity`.
 
-**Roles.** Viewers see everything. Supervisors and admins load exports and enter audit results.
+**Roles.** Viewers see everything. Groups with Edit on the tool enter audit results and close out an audit; loading an export follows the Data upload level.
 
 **Data.** `putdays/{YYYY-MM-DD}` holds the putaways confirmed on each date, `putaud/{task|product}` the audit result on each one. Loading adds to the list and never removes a line. Publish [`firestore.rules`](firestore.rules) after merging, or loading and saving will be refused.
 
@@ -290,12 +291,13 @@ Lists the picks from the SAP warehouse task export so the pick locations can be 
 - **Pick list:** date and time, associate, bin picked from, product, quantity, warehouse order and task. Show the latest day, one chosen day, 7 days, 30 days or everything; search; filter by associate and audit result; sort by any heading (sort by **Picked from** to walk the bins in order).
 - **Print audit sheet:** prints the list as filtered and sorted (landscape, CEVA document style) with an OK box, an Error box and room to write what was found.
 - **Entering results:** select a line and mark it Correct or Error. An error needs a type (wrong bin, wrong quantity, wrong product, bin count off, label or handling unit, damaged, other) and can carry notes. **Save and next** moves down the list.
+- **Close out:** once the errors from the audit sheets are entered, the Close out tab shows the errors entered for the chosen dates and how many picks still have no result. **Close out** marks all of those as Correct in one step. A dialog first asks to confirm that every error has been entered, and the button stays off until the box is ticked. Lines that already have a result are not changed.
 - **Errors by associate:** picks, audited, correct, errors and error rate (errors out of picks audited) for each associate, plus errors by type. Select an associate to see their lines.
 - **Export to Excel:** the filtered list with audit results, and a By associate tab.
 
 **Columns used:** `Warehouse Task`, `Warehouse Order`, `Product`, `Source Storage Bin`, `Destination Bin`, `Confirmation Date`, `Confirmation Time`, `Confirmed By`, `Warehouse Task Status`, the quantity columns, `Whse Process Type`, `Wave` and `Whse Process Category Desc.` or `Activity`.
 
-**Roles.** Viewers see everything. Supervisors and admins load exports and enter audit results.
+**Roles.** Viewers see everything. Groups with Edit on the tool enter audit results and close out an audit; loading an export follows the Data upload level.
 
 **Data.** `pickdays/{YYYY-MM-DD}` holds the picks confirmed on each date, `pickaud/{task|bin}` the audit result on each one. Loading adds to the list and never removes a line. Publish [`firestore.rules`](firestore.rules) after merging, or loading and saving will be refused.
 
