@@ -177,6 +177,13 @@ dialog::backdrop{background:rgba(5,12,24,.7)}
 /* picking audit */
 select.sel{max-width:15rem;min-height:2.4rem;padding:.3rem .6rem;font-size:13.5px}
 .dlg .segm button[disabled]{cursor:default;opacity:.6}
+/* close out */
+.co-bar{display:flex;flex-wrap:wrap;gap:.8em 1.2em;align-items:center;justify-content:space-between;margin-top:.2em}
+.co-bar p{margin:0;color:var(--muted);line-height:1.5;max-width:80ch}.co-bar p b{color:var(--fg)}
+.co-done{color:var(--good);font-weight:600}
+.dlg p{margin:0;color:var(--muted);line-height:1.55}.dlg p b{color:var(--fg)}
+.chk{display:flex;gap:.7em;align-items:flex-start;background:var(--row);border:1px solid var(--line-light);border-radius:8px;padding:.8em .9em;cursor:pointer;font-weight:600;line-height:1.4}
+.chk input{width:1.25em;height:1.25em;margin:.05em 0 0;flex:none;accent-color:var(--accent)}
 /* printed audit sheet: CEVA document style on white (Arial, title in CEVA Red, red and blue band, logo top right) */
 #sheet{display:none}
 @page{size:letter landscape;margin:9mm}
@@ -290,6 +297,15 @@ select.sel{max-width:15rem;min-height:2.4rem;padding:.3rem .6rem;font-size:13.5p
       <div class="p-body scroll"><table id="tType"></table></div></section>
   </div>
 
+  <!-- Close out -->
+  <div class="panels" id="vClose" style="margin-top:1em" hidden>
+    <section class="b-panel"><header class="p-head"><h2>Close out the audit</h2><span class="p-count" id="cClose"></span><span class="p-page">Uses the dates chosen above</span></header>
+      <div class="p-body"><div class="ag" id="coTiles"></div>
+        <div class="co-bar"><p id="coText"></p><button type="button" class="btn primary" id="coBtn" hidden></button></div></div></section>
+    <section class="b-panel"><header class="p-head"><h2>Errors entered</h2><span class="p-count" id="cCoErr"></span><span class="p-page">Check these against the audit sheets before closing out</span></header>
+      <div class="p-body scroll"><table id="tCoErr"></table></div></section>
+  </div>
+
   <div class="note" id="note"></div>
 </div>
 
@@ -308,6 +324,13 @@ select.sel{max-width:15rem;min-height:2.4rem;padding:.3rem .6rem;font-size:13.5p
   <div class="err" id="dErr" role="alert" hidden></div>
   <div class="row"><button class="btn ghost" value="cancel" type="submit" formnovalidate>Close</button><button class="btn" type="button" id="dNext">Save and next</button><button class="btn primary" type="button" id="dSave">Save</button></div>
 </form></dialog>
+<dialog id="cDlg" aria-labelledby="cTitle"><form method="dialog" class="dlg">
+  <h2 id="cTitle">Have all errors been entered?</h2>
+  <p id="cText"></p>
+  <label class="chk" for="cOk"><input type="checkbox" id="cOk"><span>Yes, every error found on this audit has been entered.</span></label>
+  <div class="err" id="cErr" role="alert" hidden></div>
+  <div class="row"><button class="btn ghost" value="cancel" type="submit" formnovalidate>Not yet, go back</button><button class="btn primary" type="button" id="cGo" disabled></button></div>
+</form></dialog>
 <div class="toast" id="toast" role="status" hidden></div>
 
 <script src="firebase-config.js"></script>
@@ -322,7 +345,7 @@ const TYPES=[["bin","Wrong bin"],["qty","Wrong quantity"],["prod","Wrong product
 const RES=[["none","Not audited"],["ok","Correct"],["error","Error"]],RL=Object.fromEntries(RES);
 const RANGES=[["day","One day"],["7","7 days"],["30","30 days"],["all","All"]];
 const S={rows:null,days:new Map(),auds:new Map(),view:"list",range:"day",day:null,q:"",who:"",res:"all",sort:"dt",dir:1,show:PAGE,usort:"err",udir:-1,
-  fb:null,authUser:null,role:null,myName:"",canLoad:false,canEdit:false,isAdmin:false,busy:false,pendingReq:null,unsubs:[],cur:null,dRes:"none",dType:""};
+  fb:null,authUser:null,role:null,myName:"",canLoad:false,canEdit:false,isAdmin:false,busy:false,pendingReq:null,unsubs:[],cur:null,dRes:"none",dType:"",coKeys:[],closing:false};
 const $=id=>document.getElementById(id),p2=n=>String(n).padStart(2,"0");
 const nf=(n,d)=>(+n||0).toLocaleString("en-US",{maximumFractionDigits:d==null?2:d});
 const pct=(a,b)=>b?(a/b*100).toFixed(1)+"%":"";
@@ -396,10 +419,10 @@ function render(){
   $("loadBtn").hidden=!S.canLoad;
   let newest=null;for(const d of S.days.values())if(!newest||d.at>newest.at)newest=d;
   const live=S.rows===null?"Loading…":newest?`${nf(S.rows.length,0)} picks kept over ${S.days.size} ${S.days.size===1?"day":"days"} · last load <b>${esc(newest.file)}</b> ${esc(stamp(newest.at))}${newest.byName?" by "+esc(newest.byName):""}`:"No export loaded yet";
-  $("status").innerHTML=`<span><span class="dot ok"></span>${esc(S.myName||"")}${S.myName?" · ":""}${(S.who||ROLE_LABEL[S.role])}</span><span>${live}</span>`;
+  $("status").innerHTML=`<span><span class="dot ok"></span>${esc(S.myName||"")}${S.myName?" · ":""}${esc(S.grp||ROLE_LABEL[S.role])}</span><span>${live}</span>`;
   $("noData").hidden=has||S.rows===null;
   if(!has){$("noData").innerHTML=S.rows===null?"":`<strong>No picks loaded</strong><span>${S.canLoad?"Load the SAP warehouse task export with <b>Load SAP export</b>, on the <a href=\"../data/\" style=\"color:var(--info)\">Data upload</a> page, or drag the file onto this page. The page pulls out the picks from storage bins and keeps them.":"A supervisor loads the SAP warehouse task export. Once it is loaded, everyone signed in sees the picks."}</span>`;
-    ["vList","vUser"].forEach(id=>$(id).hidden=true);$("stats").innerHTML="";$("views").innerHTML="";$("rangeBtns").innerHTML="";$("dayIn").hidden=true;renderNote();return}
+    ["vList","vUser","vClose"].forEach(id=>$(id).hidden=true);$("stats").innerHTML="";$("views").innerHTML="";$("rangeBtns").innerHTML="";$("dayIn").hidden=true;renderNote();return}
   const R=CUR=inRange();enrich(R);
   let ok=0,er=0,units=0;const users=new Set();for(const r of R){if(r._s==="ok")ok++;else if(r._s==="error")er++;units+=r.q;users.add(r.by)}
   const aud=ok+er;
@@ -407,13 +430,13 @@ function render(){
     .map(t=>`<div class="${t[2]}"><dt>${t[0]}</dt><dd>${t[1]}</dd></div>`).join("");
   $("rangeBtns").innerHTML=RANGES.map(r=>`<button type="button" data-r="${r[0]}" aria-pressed="${S.range===r[0]}">${r[0]==="day"?(S.day==null||S.day===latestDay()?"Latest day":"One day"):r[1]}</button>`).join("");
   $("dayIn").hidden=false;$("dayIn").value=S.range==="day"&&curDay()>=0?iso(curDay()):"";$("dayIn").classList.toggle("on",S.range==="day");
-  $("views").innerHTML=[["list","Pick list",R.length],["user","Errors by associate",er]]
+  $("views").innerHTML=[["list","Pick list",R.length],["user","Errors by associate",er],["close","Close out",R.length-aud]]
     .map(v=>`<button type="button" class="view" role="tab" data-v="${v[0]}" aria-selected="${S.view===v[0]}">${v[1]}<span class="n">${nf(v[2],0)}</span></button>`).join("");
-  $("vList").hidden=S.view!=="list";$("vUser").hidden=S.view!=="user";
-  if(S.view==="list")renderList(R);else renderUsers(R);
+  $("vList").hidden=S.view!=="list";$("vUser").hidden=S.view!=="user";$("vClose").hidden=S.view!=="close";
+  if(S.view==="list")renderList(R);else if(S.view==="close")renderClose(R);else renderUsers(R);
   renderNote()}
 function chip(val,label){return `<button type="button" class="tab" data-x="${val}" aria-pressed="${S.res===val}">${label}</button>`}
-function resPill(r){const a=r._a||{};return r._s==="error"?`<span class="pill p1">${esc(TL[a.type]||"Error")}</span>`:r._s==="ok"?'<span class="pill st-closed">Correct</span>':'<span class="pill p3">Not audited</span>'}
+function resPill(r){const a=r._a||{};return r._s==="error"?`<span class="pill p1">${esc(TL[a.type]||"Error")}</span>`:r._s==="ok"?`<span class="pill st-closed"${a.co?' title="Marked correct at close out"':""}>Correct</span>`:'<span class="pill p3">Not audited</span>'}
 function renderList(R){
   const c={none:0,ok:0,error:0},names=new Map();for(const r of R){names.set(r.by,(names.get(r.by)||0)+1);if(!S.who||r.by===S.who)c[r._s]++}
   if(S.who&&!names.has(S.who))names.set(S.who,0);
@@ -449,7 +472,7 @@ function renderUsers(R){
   $("tType").innerHTML=tl.length?'<thead><tr><th class="t">What was wrong</th><th class="t">Errors</th><th>Share</th></tr></thead><tbody>'+tl.map(([t,n])=>`<tr><td class="t n">${TL[t]}</td><td class="t"><span class="meter" style="width:${(n/mx*9).toFixed(2)}em"></span>${n}</td><td>${pct(n,te)}</td></tr>`).join("")+"</tbody>"
     :'<tbody><tr><td class="t" style="color:var(--muted)">No errors entered for these dates.</td></tr></tbody>'}
 function renderNote(){
-  $("note").innerHTML=`A pick here is a confirmed stock removal task out of a storage bin, shown with the bin it was picked from and the associate who confirmed it. The drop into the goods issue zone, the goods issue posting and open tasks are left out. When the quantity confirmed is not the quantity the task asked for, the quantity asked is shown beside it. Each pick is kept once on its confirmation date; loading another export adds to the list and never removes a line or its audit result. Error rate is errors out of the picks audited, not out of all picks. 7 days and 30 days include today.`}
+  $("note").innerHTML=`A pick here is a confirmed stock removal task out of a storage bin, shown with the bin it was picked from and the associate who confirmed it. The drop into the goods issue zone, the goods issue posting and open tasks are left out. When the quantity confirmed is not the quantity the task asked for, the quantity asked is shown beside it. Each pick is kept once on its confirmation date; loading another export adds to the list and never removes a line or its audit result. Error rate is errors out of the picks audited, not out of all picks. Close out marks every line for the chosen dates that has no result as correct, after asking to confirm that all errors are entered. 7 days and 30 days include today.`}
 
 /* ---------- entering an audit result ---------- */
 function openDlg(k){
@@ -474,12 +497,52 @@ async function saveDlg(next){
   if(S.dRes==="error"&&!S.dType){err.textContent="Choose what was wrong.";err.hidden=false;return}
   const i=LIST.findIndex(x=>keyOf(x)===k),nx=next&&i>=0?LIST[i+1]:null,nk=nx?keyOf(nx):null;
   $("dSave").disabled=$("dNext").disabled=true;
-  try{await Fs.setDoc(Fs.doc(fs,"pickaud",docId(k)),{k:k.slice(0,600),res:S.dRes,type:S.dRes==="error"?S.dType:"",note:str($("dNoteIn").value,500),who:String(r.by||"").slice(0,40),
-      p:String(r.p||"").slice(0,60),b:String(r.s||"").slice(0,60),dt:r.dt,by:S.authUser.uid,byName:S.myName||S.authUser.email||"",at:Date.now()});
+  try{await Fs.setDoc(Fs.doc(fs,"pickaud",docId(k)),audDoc(r,S.dRes,S.dRes==="error"?S.dType:"",str($("dNoteIn").value,500)));
     if(nk&&CUR.some(x=>keyOf(x)===nk)){toast("Saved");enrich(CUR);openDlg(nk)}else{$("dlg").close();toast(next?"Saved. That was the last line in the list.":"Saved")}}
   catch(e){err.textContent=e&&e.code==="permission-denied"?"Firebase refused the change. Your user group may be view only, or the latest security rules have not been published yet.":"Couldn’t save. Check the connection and try again.";err.hidden=false}
   finally{$("dSave").disabled=$("dNext").disabled=false}}
 $("dSave").addEventListener("click",()=>saveDlg(false));$("dNext").addEventListener("click",()=>saveDlg(true));
+
+/* ---------- close out: once the errors are entered, every line left without a result is marked correct in one step ---------- */
+function audDoc(r,res,type,note,co){const k=keyOf(r),o={k:k.slice(0,600),res,type,note,who:String(r.by||"").slice(0,40),
+  p:String(r.p||"").slice(0,60),b:String(r.s||"").slice(0,60),dt:r.dt,by:S.authUser.uid,byName:S.myName||S.authUser.email||"",at:Date.now()};if(co)o.co=true;return o}
+function renderClose(R){
+  const left=[],errs=[];let ok=0,co=0,last=null;
+  for(const r of R){if(r._s==="none")left.push(r);else if(r._s==="error")errs.push(r);else{ok++;const a=r._a;if(a.co){co++;if(!last||a.at>last.at)last=a}}}
+  const n=left.length,one=x=>x===1?"pick":"picks";
+  $("cClose").textContent=rangeText();
+  $("coTiles").innerHTML=[["Picks",R.length,""],["Errors entered",errs.length,errs.length?"p1":""],["Marked correct",ok,"ok"],["Not audited yet",n,n?"p2":""]]
+    .map(t=>`<div class="${t[2]}"><div class="k">${t[0]}</div><div class="v">${nf(t[1],0)}</div></div>`).join("");
+  const was=co?` ${nf(co,0)} ${co===1?"line was":"lines were"} marked correct at close out, last on ${esc(stamp(last.at))}${last.byName?" by "+esc(last.byName):""}.`:"";
+  $("coText").innerHTML=!n?`<span class="co-done">This audit is closed out.</span> Every ${one(1)} for ${esc(rangeText())} has a result.${was}`
+    :S.canEdit?`Enter every error from the audit sheets first. Closing out then marks the <b>${nf(n,0)}</b> ${one(n)} for <b>${esc(rangeText())}</b> that ${n===1?"has":"have"} no result as <b>Correct</b>. Lines that already have a result are not changed.${was}`
+    :`<b>${nf(n,0)}</b> ${one(n)} for ${esc(rangeText())} ${n===1?"has":"have"} no result yet. Someone in a group that can enter audit results closes out the audit.${was}`;
+  const b=$("coBtn");b.hidden=!S.canEdit||!n;b.textContent=`Close out: mark ${nf(n,0)} correct`;
+  errs.sort((a,b)=>cmp([a.by,a.dt,a.tm],[b.by,b.dt,b.tm]));$("cCoErr").textContent=nf(errs.length,0);
+  $("tCoErr").innerHTML=errs.length?'<thead><tr><th class="t">Associate</th><th class="t">Picked</th><th class="t">Product</th><th>Qty</th><th class="t">Bin</th><th class="t">What was wrong</th><th class="t">Notes</th><th class="t">Entered by</th></tr></thead><tbody>'
+    +errs.map(r=>{const a=r._a;return `<tr class="click hot" data-k="${esc(keyOf(r))}"><td class="t n">${esc(r.by)}</td><td class="t">${mdyDay(r.dt)} ${hm(r.tm)}</td><td class="t n">${esc(r.p||"(blank)")}</td><td>${nf(r.q)}</td><td class="t n">${esc(r.s||"")}</td><td class="t"><span class="pill p1">${esc(TL[a.type]||"Error")}</span></td><td class="t note" title="${esc(a.note||"")}">${esc(a.note||"")}</td><td class="t">${esc(a.byName||"")}</td></tr>`}).join("")+"</tbody>"
+    :'<tbody><tr><td class="t" style="color:var(--muted)">No errors are entered for these dates.</td></tr></tbody>'}
+function openClose(){
+  if(!S.canEdit)return;enrich(CUR);const left=CUR.filter(r=>r._s==="none"),n=left.length;if(!n)return;
+  let er=0;const days=new Set();for(const r of CUR){if(r._s==="error")er++}for(const r of left)days.add(r.dt);
+  S.coKeys=left.map(keyOf);
+  $("cText").innerHTML=`${er?`<b>${nf(er,0)}</b> ${er===1?"error is":"errors are"} entered`:"<b>No errors</b> are entered"} for ${esc(rangeText())}. Closing out marks the other <b>${nf(n,0)}</b> ${n===1?"pick":"picks"}${days.size>1?" across "+days.size+" days":""} as <b>Correct</b>. Any error not entered yet would be recorded as correct.`;
+  $("cOk").checked=false;$("cGo").disabled=true;$("cGo").textContent=`Mark ${nf(n,0)} correct`;$("cErr").hidden=true;$("cDlg").showModal()}
+$("coBtn").addEventListener("click",openClose);
+$("cOk").addEventListener("change",e=>{if(!S.closing)$("cGo").disabled=!e.target.checked});
+$("cDlg").addEventListener("cancel",e=>{if(S.closing)e.preventDefault()});
+$("cGo").addEventListener("click",async()=>{
+  if(!S.canEdit||S.closing||!$("cOk").checked)return;const {Fs,fs}=S.fb,err=$("cErr");err.hidden=true;
+  enrich(CUR);const want=new Set(S.coKeys),rows=CUR.filter(r=>r._s==="none"&&want.has(keyOf(r)));
+  if(!rows.length){$("cDlg").close();render();return}
+  S.closing=true;$("cGo").disabled=true;let done=0;
+  try{for(let i=0;i<rows.length;i+=400){const b=Fs.writeBatch(fs);for(const r of rows.slice(i,i+400))b.set(Fs.doc(fs,"pickaud",docId(keyOf(r))),audDoc(r,"ok","","",true));
+      $("cGo").textContent=`Saving ${nf(Math.min(i+400,rows.length),0)} of ${nf(rows.length,0)}…`;await b.commit();done=Math.min(i+400,rows.length)}
+    $("cDlg").close();toast(`Closed out. ${nf(done,0)} ${done===1?"pick":"picks"} marked correct.`,10000)}
+  catch(e){err.textContent=(done?nf(done,0)+" marked correct, then it stopped. ":"")+(e&&e.code==="permission-denied"?"Firebase refused the change. Your user group may be view only, or the latest security rules have not been published yet.":"Couldn’t save. Check the connection and try again.");err.hidden=false;
+    $("cGo").textContent="Try again";$("cGo").disabled=false}
+  finally{S.closing=false;render()}});
+$("tCoErr").addEventListener("click",e=>{const tr=e.target.closest("tr[data-k]");if(tr)openDlg(tr.dataset.k)});
 
 /* ---------- printed audit sheet: every line of the list as filtered and sorted, with room to mark the result by hand ---------- */
 function buildSheet(){
@@ -578,7 +641,7 @@ $("dOut").addEventListener("click",signOut);$("signOut").addEventListener("click
       const d=snap.exists()?(snap.data()||{}):{},role=d.role;
       if(d.noAccess){S.role=null;stopData();showGate("wait",CevaAccess.NO_ACCESS);return}
       if(!ROLE_LABEL[role]){if(snap.metadata.fromCache){showGate("wait","Waiting for the network…");return}S.role=null;stopData();showGate("denied");return}
-      const first=!S.role;S.role=role;S.myName=str(d.name,40);S.canLoad=!!d.canLoad;S.canEdit=role==="supervisor"||role==="admin";S.who=d.groupName+" · "+CevaAccess.LEVEL_LABEL[d.level];S.isAdmin=role==="admin";
+      const first=!S.role;S.role=role;S.myName=str(d.name,40);S.canLoad=!!d.canLoad;S.canEdit=role==="supervisor"||role==="admin";S.grp=d.groupName+" · "+CevaAccess.LEVEL_LABEL[d.level];S.isAdmin=role==="admin";
       if(first){startData();showGate("ready")}
       render();
     },()=>{S.role=null;stopData();showGate("denied")});
