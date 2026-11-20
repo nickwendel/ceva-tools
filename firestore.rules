@@ -2,7 +2,7 @@ rules_version = '2';
 
 // CEVA tools — Firestore security rules for the shared Firebase project (ceva-tools).
 // Covers every tool: the receiving dock board, the NCI/Grief inbound exceptions tool, the
-// warehouse transactions dashboard, the inventory differences tool, the putaway audit tool, the picking audit tool, the
+// warehouse transactions dashboard, the inventory differences tool, the putaway audit tool, the picking audit tool, the HU consolidation tool, the
 // inventory action tracker and the training documents library.
 // Deployed with `firebase deploy --only firestore:rules`, or paste into
 // Firebase console → Firestore Database → Rules → Publish.
@@ -221,6 +221,35 @@ service cloud.firestore {
         && request.resource.data.who is string && request.resource.data.who.size() <= 40
         && request.resource.data.note is string && request.resource.data.note.size() <= 500
         && request.resource.data.size() <= 14;
+      allow delete: if isAdmin();
+    }
+
+    // ───────── HU consolidation ─────────
+
+    // hucons/current holds the newest SAP stock export cut down to the locations that hold more
+    // than one handling unit, as JSON text. Each load replaces it. Anyone with a role reads;
+    // supervisors and admins load.
+    match /hucons/{docId} {
+      allow read: if isViewer();
+      allow create, update: if isSupervisor()
+        && docId == 'current'
+        && request.resource.data.by == request.auth.uid
+        && request.resource.data.rows is string
+        && request.resource.data.rows.size() < 1000000
+        && request.resource.data.size() <= 12;
+      allow delete: if isAdmin();
+    }
+
+    // huconsst/{bin} is the status of one location: open, consolidated (done) or leave as is,
+    // with notes and the handling units it held when it was set. Supervisors and admins set it.
+    match /huconsst/{binId} {
+      allow read: if isViewer();
+      allow create, update: if isSupervisor()
+        && request.resource.data.by == request.auth.uid
+        && request.resource.data.st in ['open', 'done', 'leave']
+        && request.resource.data.sig is string && request.resource.data.sig.size() <= 40
+        && request.resource.data.note is string && request.resource.data.note.size() <= 500
+        && request.resource.data.size() <= 10;
       allow delete: if isAdmin();
     }
 
