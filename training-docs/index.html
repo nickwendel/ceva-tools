@@ -182,6 +182,15 @@ a.btn{text-decoration:none}
 .ver .vi span{color:var(--muted);font-size:.92em;overflow-wrap:anywhere}
 .ver .vi .vnote{color:var(--fg)}
 .ver .va{display:flex;flex-direction:column;gap:.35em;align-items:flex-end;white-space:nowrap}
+dialog.wide{width:min(1080px,calc(100% - 32px))}
+.brows{display:flex;flex-direction:column;gap:.6em;max-height:58vh;overflow:auto;padding-right:.2em}
+.brow{display:grid;grid-template-columns:auto minmax(12em,2.2fr) minmax(8em,1fr) minmax(10em,1.2fr);gap:.5em .7em;align-items:center;background:var(--row);border:1px solid var(--line);border-radius:8px;padding:.6em .8em}
+.brow .bf{grid-column:2/-1;color:var(--muted);font-size:.88em;overflow-wrap:anywhere}
+.brow .bf b{font-weight:600}.brow .bf .bad{color:#f97066;font-weight:600}.brow .bf .ok{color:var(--good);font-weight:600}.brow .bf .warn{color:var(--warn);font-weight:600}
+.brow input[type=checkbox]{width:1.15rem;height:1.15rem;accent-color:var(--accent);grid-row:1/3}
+.brow .inp{min-height:2.3rem;font-size:13.5px}
+.brow.off .inp{opacity:.45}
+@media (max-width:720px){.brow{grid-template-columns:auto 1fr}.brow .inp{grid-column:2}.brow .bf{grid-column:2}}
 .linkbtn.del{color:#f97066}
 .vers>.who{padding:.7em .8em}
 dialog{background:var(--card);color:var(--fg);border:1px solid var(--line-light);border-radius:14px;padding:0;width:min(760px,calc(100% - 32px));max-height:calc(100% - 32px);box-shadow:0 12px 48px rgba(0,0,0,.6)}
@@ -257,6 +266,7 @@ dialog::backdrop{background:rgba(5,12,24,.7)}
     <div class="controls">
       <a class="btn ghost" href="../">All tools</a>
       <button type="button" class="btn" id="catBtn" hidden>Categories</button>
+      <label class="btn" id="bulkBtn" hidden>Add several<input type="file" id="bFiles" multiple></label>
       <button type="button" class="btn primary" id="newBtn" hidden>Add document</button>
       <button type="button" class="btn ghost" id="signOut">Sign out</button>
     </div>
@@ -307,13 +317,23 @@ dialog::backdrop{background:rgba(5,12,24,.7)}
   </div>
   <div id="edSource">
     <div class="fld"><label>Document</label><div class="segm" id="eKind" role="group" aria-label="File or link"><button type="button" data-k="file">Upload a file</button><button type="button" data-k="link">Link to a file</button></div></div>
-    <div class="fld" id="eFileFld"><label for="eFile">File (up to 10 MB)</label><input class="inp" id="eFile" type="file"><span class="who" id="eFileHint">PDF, Word, Excel, PowerPoint, images and short video. For anything larger, use a link.</span></div>
+    <div class="fld" id="eFileFld"><label for="eFile">File (up to 20 MB)</label><input class="inp" id="eFile" type="file"><span class="who" id="eFileHint">PDF, Word, Excel, PowerPoint, images and short video. For anything larger, use a link.</span></div>
     <div class="fld" id="eUrlFld" hidden><label for="eUrl">Link (https://…)</label><input class="inp" id="eUrl" type="url" maxlength="1000" autocomplete="off" placeholder="https://"><span class="who">For large files and video kept in SharePoint, OneDrive or Teams. People need their own access to that location.</span></div>
     <div class="fld"><label for="eNote" id="eNoteLbl">Change note</label><input class="inp" id="eNote" maxlength="500" autocomplete="off"></div>
   </div>
   <div class="who" id="edBusy" role="status"></div>
   <div class="err" id="edErr" role="alert" hidden></div>
   <div class="row"><button class="btn ghost" value="cancel" type="submit" formnovalidate id="edClose">Close</button><button class="btn primary" type="button" id="edSave">Save</button></div>
+</form></dialog>
+
+<!-- add several documents at once -->
+<dialog id="bd" class="wide" aria-labelledby="bdTitle"><form method="dialog" class="dlg" id="bdForm">
+  <h2 id="bdTitle">Add several documents</h2>
+  <p class="gate-p">Each file becomes its own document. The title, number and category are read from the file name; check them and correct any that are off before adding.</p>
+  <div class="brows" id="bRows"></div>
+  <div class="who" id="bdBusy" role="status"></div>
+  <div class="err" id="bdErr" role="alert" hidden></div>
+  <div class="row"><button class="btn ghost" value="cancel" type="submit" formnovalidate id="bdClose">Close</button><button class="btn primary" type="button" id="bdSave"></button></div>
 </form></dialog>
 
 <dialog id="cd" class="sm" aria-labelledby="cdTitle"><form method="dialog" class="dlg">
@@ -331,7 +351,7 @@ const FB='https://www.gstatic.com/firebasejs/10.14.1/';
 const ROLE_LABEL={viewer:'Viewer',supervisor:'Supervisor',user:'User',admin:'Admin'};
 const DEF_CATS=["Safety","Onboarding","Inbound and receiving","Putaway","Picking","Outbound and shipping","Inventory control","Quality","Equipment (PIT)","SAP EWM","Other"];
 // Files are stored in Firestore in pieces (a Firestore document holds at most 1 MiB), so the size is capped.
-const MAX=10*1024*1024,CH=720*1024,MAXCH=15;
+const MAX=20*1024*1024,CH=720*1024;
 // Only these types are opened in a browser tab; everything else is download only. The type comes from the file name, never from stored data.
 const VIEW={pdf:"application/pdf",png:"image/png",jpg:"image/jpeg",jpeg:"image/jpeg",gif:"image/gif",webp:"image/webp"};
 const BLOCK=/\.(exe|msi|bat|cmd|com|scr|js|mjs|jse|vbs|vbe|ps1|jar|html?|xhtml|xml|svg|hta|lnk|dll|sh|php|app|apk)$/i;
@@ -388,7 +408,7 @@ function render(){
   const due=A.filter(d=>{const r=revDays(d);return r!=null&&r<0}).length,soon=A.filter(d=>{const r=revDays(d);return r!=null&&r>=0&&r<=30}).length;
   $("status").innerHTML=[`<span><span class="dot ${S.docs?"ok":""}"></span>${S.docs?"Live":"Loading…"}</span>`,
     `<span>Signed in as <b>${esc(S.myName||(S.authUser&&S.authUser.email)||"")}</b> · ${ROLE_LABEL[S.role]}</span>`].join("");
-  $("newBtn").hidden=!S.canEdit;$("catBtn").hidden=!S.isAdmin;
+  $("newBtn").hidden=$("bulkBtn").hidden=!S.canEdit;$("catBtn").hidden=!S.isAdmin;
   $("msg").hidden=!S.loadErr;$("msg").textContent=S.loadErr?"The documents can’t be read yet. An admin needs to publish the latest security rules (firestore.rules) in the Firebase console.":"";
   $("stats").innerHTML=[["Documents",A.length,""],["Categories in use",new Set(A.map(d=>d.cat)).size,""],["Updated, 30 days",A.filter(d=>now-(d.curAt||0)<30*864e5).length,""],
     ["Review due in 30 days",soon,soon?"warn":""],["Review overdue",due,due?"hot":""]].map(t=>`<div class="${t[2]}"><dt>${t[0]}</dt><dd>${t[1]}</dd></div>`).join("");
@@ -410,7 +430,7 @@ function render(){
         <td class="n">v${esc(d.cur||1)}</td><td>${dt(d.curAt)}</td><td>${esc(d.curByName)}</td><td class="${r==null?"":r<0?"late":r<=30?"soon":""}">${mdy(d.review)}</td><td><span class="pill${d.curKind==="link"?" lk":""}">${esc(kindLabel(d.curKind,d.curName))}</span></td></tr>`}).join("")+"</tbody>";
   }
   $("note").textContent="Every document keeps its full version history: the newest version is the one in the list, and older versions stay available inside the document. "
-    +(S.canEdit?"Use Add document for something new, or open a document and select Upload new version to replace it. Files up to 10 MB are stored here; add larger files and video as a link.":"Your role can open and download documents. Supervisors and admins add and update them.");
+    +(S.canEdit?"Use Add document for something new, or open a document and select Upload new version to replace it. Files up to 20 MB are stored here; add larger files and video as a link.":"Your role can open and download documents. Supervisors and admins add and update them.");
 }
 
 /* ---------- one document ---------- */
@@ -497,6 +517,27 @@ function drawKind(){const k=S.ed.kind;$("eKind").querySelectorAll("button").forE
 $("eKind").addEventListener("click",e=>{const b=e.target.closest("button[data-k]");if(b&&S.ed&&!S.busy){S.ed.kind=b.dataset.k;drawKind()}});
 $("ed").addEventListener("cancel",e=>{if(S.busy)e.preventDefault()});
 $("edForm").addEventListener("submit",e=>{if(S.busy)e.preventDefault()});
+// Stores one version: the file in pieces first, then the version record and the document's current-version details together.
+async function saveVersion(docId,det,src,isNew,say){
+  const {Fs,fs}=S.fb,verId=newId();let name="",bytes=null,n=0;
+  if(src.kind==="file"){
+    bytes=new Uint8Array(await src.file.arrayBuffer());name=str(src.file.name.replace(/[\\/:*?"<>|\u0000-\u001f]/g,"_"),200);n=Math.ceil(bytes.length/CH);
+    let next=0,done=0;say(0);
+    const worker=async()=>{while(next<n){const i=next++;await Fs.setDoc(Fs.doc(fs,"tdocs",docId,"vers",verId,"chunks",String(i)),{i,d:Fs.Bytes.fromUint8Array(bytes.subarray(i*CH,(i+1)*CH))});say(Math.round(++done/n*100))}};
+    await Promise.all([0,1,2].map(worker));
+  }
+  say(-1);
+  // The version number is taken inside a transaction so two people adding a version at once get different numbers.
+  return Fs.runTransaction(fs,async tx=>{
+    const ref=Fs.doc(fs,"tdocs",docId),snap=await tx.get(ref),w=who(),num=snap.exists()?(snap.data().cur||0)+1:1;
+    if(!isNew&&!snap.exists())throw new Error("gone");
+    tx.set(Fs.doc(fs,"tdocs",docId,"vers",verId),{v:num,kind:src.kind,name,sz:bytes?bytes.length:0,url:src.url||"",note:src.note,n,...w});
+    const head={cur:num,curId:verId,curKind:src.kind,curName:name,curSize:bytes?bytes.length:0,curUrl:src.url||"",curN:n,curAt:w.at,curByName:w.byName,...w};
+    if(snap.exists())tx.update(ref,head);else tx.set(ref,{...det,status:"active",created:w.at,...head});
+    return num;
+  });
+}
+const fileBad=f=>!f?"Choose a file.":!f.size?"That file is empty.":BLOCK.test(f.name)?"That file type can’t be stored here. Save it as a PDF or an Office file.":f.size>MAX?"That file is "+size(f.size)+". The limit is 20 MB, so add it as a link instead.":"";
 function readDetails(){return {title:str($("eTitle").value,150),no:str($("eNo").value,30),cat:str($("eCat").value,60),own:str($("eOwn").value,60),review:isIso($("eRev").value)?$("eRev").value:"",desc:str($("eDesc").value,1000)}}
 $("edSave").addEventListener("click",async()=>{
   const m=S.ed;if(!m||!S.canEdit||S.busy)return;showErr("edErr","");
@@ -507,35 +548,69 @@ $("edSave").addEventListener("click",async()=>{
     const note=str($("eNote").value,500);
     if(m.kind==="link"){const url=$("eUrl").value.trim();if(!okUrl(url)){showErr("edErr","Enter a link that starts with https://");$("eUrl").focus();return}src={kind:"link",url,note}}
     else{const f=$("eFile").files[0];
-      const bad=!f?"Choose a file.":!f.size?"That file is empty.":BLOCK.test(f.name)?"That file type can’t be stored here. Save it as a PDF or an Office file.":f.size>MAX?"That file is "+size(f.size)+". The limit is 10 MB, so add it as a link instead.":"";
+      const bad=fileBad(f);
       if(bad){showErr("edErr",bad);return}src={kind:"file",file:f,note}}
     if(m.mode==="ver"&&!note){showErr("edErr","Say what changed in this version.");$("eNote").focus();return}
   }
   S.busy=true;$("edSave").disabled=$("edClose").disabled=true;
   try{
     if(m.mode==="edit"){await Fs.updateDoc(Fs.doc(fs,"tdocs",m.id),{...det,...who()});$("ed").close();toast("Saved");return}
-    const docId=m.id||newId(),verId=newId();let name="",bytes=null,n=0;
-    if(src.kind==="file"){
-      bytes=new Uint8Array(await src.file.arrayBuffer());name=str(src.file.name.replace(/[\\/:*?"<>|\u0000-\u001f]/g,"_"),200);n=Math.ceil(bytes.length/CH);
-      let next=0,done=0;busy.textContent="Uploading… 0%";
-      const worker=async()=>{while(next<n){const i=next++;await Fs.setDoc(Fs.doc(fs,"tdocs",docId,"vers",verId,"chunks",String(i)),{i,d:Fs.Bytes.fromUint8Array(bytes.subarray(i*CH,(i+1)*CH))});busy.textContent="Uploading… "+Math.round(++done/n*100)+"%"}};
-      await Promise.all([0,1,2].map(worker));
-    }
-    busy.textContent="Saving…";
-    // The version number is taken inside a transaction so two people adding a version at once get different numbers.
-    const v=await Fs.runTransaction(fs,async tx=>{
-      const ref=Fs.doc(fs,"tdocs",docId),snap=await tx.get(ref),w=who(),num=snap.exists()?(snap.data().cur||0)+1:1;
-      if(m.mode==="ver"&&!snap.exists())throw new Error("gone");
-      tx.set(Fs.doc(fs,"tdocs",docId,"vers",verId),{v:num,kind:src.kind,name,sz:bytes?bytes.length:0,url:src.url||"",note:src.note,n,...w});
-      const head={cur:num,curId:verId,curKind:src.kind,curName:name,curSize:bytes?bytes.length:0,curUrl:src.url||"",curN:n,curAt:w.at,curByName:w.byName,...w};
-      if(snap.exists())tx.update(ref,head);else tx.set(ref,{...det,status:"active",created:w.at,...head});
-      return num;
-    });
+    const v=await saveVersion(m.id||newId(),det,src,m.mode!=="ver",pc=>busy.textContent=pc<0?"Saving…":"Uploading… "+pc+"%");
     $("ed").close();toast(m.mode==="ver"?"Version "+v+" saved":"Document added");
   }catch(e){showErr("edErr",e&&e.message==="gone"?"This document was deleted while you were working.":saveErr(e))}
   finally{S.busy=false;busy.textContent="";$("edSave").disabled=$("edClose").disabled=false}
 });
 $("ddVer").addEventListener("click",()=>openEd("ver"));$("ddEdit").addEventListener("click",()=>openEd("edit"));$("newBtn").addEventListener("click",()=>openEd("new"));
+
+/* ---------- add several at once ---------- */
+// Title, document number and category are guessed from the file name, e.g. "WI LNV NC-0003 PUTAWAY.docx".
+const ACR=/^(PI|DAS|SAP|EWM|RF|HU|PPE|POPP|ASN|GR|GI|PIT|QA|5S|WI|SOP|HSE|MHE|KPI|UOM|SKU|FIFO|LPN|BOL|WMS)$/i;
+const CAT_HINT=[[/putaway|put away/,"Putaway"],[/unload|receiv|inbound|\bdas\b|slot|dock/,"Inbound and receiving"],[/pick/,"Picking"],[/outbound|ship|load/,"Outbound and shipping"],
+  [/cycle count|inventory|\bbins?\b/,"Inventory control"],[/quality|meridian|audit|\bqa\b/,"Quality"],[/safety|\bppe\b|lockout|\bhse\b/,"Safety"],[/forklift|\bpit\b|reach truck/,"Equipment (PIT)"],[/\bsap\b|\bewm\b|\brf\b/,"SAP EWM"],[/onboard|new hire|orientation/,"Onboarding"]];
+function guess(fileName){
+  const base=fileName.replace(/\.[a-z0-9]{1,8}$/i,"").replace(/_/g," ").replace(/\s+/g," ").trim();let no="",title=base;
+  const m=/^((?:WI|SOP|JA|POL|FRM)(?:[ -][A-Z]{2,4}){1,3}[ -]\d{2,5})\b[ -]*(.*)$/i.exec(base),k=/^(?:WI|SOP|JA|POL|FRM)(?:-[A-Z0-9]{2,6}){2,4}$/i.test(base);
+  if(m){no=m[1].toUpperCase().replace(/ /g,"-");title=m[2]||base}else if(k)no=base.toUpperCase();
+  const draft=/\bdraft\b/i.test(title);if(draft)title=title.replace(/[\s\-(]*\bdraft\b\)?/i,"").trim()||base;
+  if(title===title.toUpperCase()&&/[A-Z]/.test(title)&&title!==no){title=title.split(" ").map(w=>ACR.test(w)?w.toUpperCase():w.toLowerCase()).join(" ");title=title.charAt(0).toUpperCase()+title.slice(1)}
+  if(draft)title+=" (draft)";
+  const t=title.toLowerCase(),hit=CAT_HINT.find(h=>h[0].test(t)&&S.cats.includes(h[1]));
+  return {title:str(title,150),no:str(no,30),cat:hit?hit[1]:S.cats.includes("Other")?"Other":S.cats[0]};
+}
+function openBulk(files){
+  if(!S.canEdit||!files.length)return;const key=x=>norm(x).replace(/[^a-z0-9]/g,"");
+  const have=new Set((S.docs||[]).filter(d=>d.status!=="archived").flatMap(d=>[d.no&&"n"+key(d.no),"t"+key(d.title)]).filter(Boolean));
+  S.bulk=[...files].sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true})).map(f=>{const g=guess(f.name),bad=fileBad(f),dup=!bad&&(g.no&&have.has("n"+key(g.no))||have.has("t"+key(g.title)));
+    return {f,...g,bad,dup,on:!bad&&!dup,state:""}});
+  showErr("bdErr","");$("bdBusy").textContent="";drawBulk();$("bd").showModal();
+}
+function drawBulk(){
+  const B=S.bulk||[],n=B.filter(r=>r.on&&r.state!=="done").length;
+  $("bRows").innerHTML=B.map((r,i)=>{const lock=r.bad||r.state==="done"||S.busy;
+    return `<div class="brow${r.on?"":" off"}" data-i="${i}"><input type="checkbox" aria-label="Include ${esc(r.f.name)}"${r.on?" checked":""}${lock?" disabled":""}>
+    <input class="inp" data-f="title" maxlength="150" aria-label="Title" placeholder="Title" value="${esc(r.title)}"${lock?" disabled":""}>
+    <input class="inp" data-f="no" maxlength="30" aria-label="Document number" placeholder="Number (optional)" value="${esc(r.no)}"${lock?" disabled":""}>
+    <select class="inp" data-f="cat" aria-label="Category"${lock?" disabled":""}>${S.cats.map(c=>`<option${c===r.cat?" selected":""}>${esc(c)}</option>`).join("")}</select>
+    <div class="bf"><b>${esc(r.f.name)}</b> · ${size(r.f.size)}${r.bad?` · <span class="bad">${esc(r.bad)}</span>`:r.state==="done"?` · <span class="ok">Added</span>`:r.state==="fail"?` · <span class="bad">Not added. ${esc(r.msg||"")}</span>`
+      :r.state?` · <span class="warn">${esc(r.state)}</span>`:r.dup?` · <span class="warn">A document with this number or title is already in the library. Tick the box to add it anyway.</span>`:""}</div></div>`}).join("");
+  $("bdSave").textContent=n?"Add "+n+" document"+(n===1?"":"s"):"Nothing to add";$("bdSave").disabled=!n||S.busy;$("bdClose").disabled=S.busy;
+}
+$("bFiles").addEventListener("change",e=>{const f=[...e.target.files];e.target.value="";openBulk(f)});
+$("bRows").addEventListener("input",e=>{const row=e.target.closest(".brow"),r=row&&S.bulk[+row.dataset.i];if(!r||e.target.type==="checkbox")return;r[e.target.dataset.f]=e.target.value});
+$("bRows").addEventListener("change",e=>{const row=e.target.closest(".brow"),r=row&&S.bulk[+row.dataset.i];if(!r)return;if(e.target.type==="checkbox"){r.on=e.target.checked;drawBulk()}else r[e.target.dataset.f]=e.target.value});
+$("bd").addEventListener("cancel",e=>{if(S.busy)e.preventDefault()});$("bdForm").addEventListener("submit",e=>{if(S.busy)e.preventDefault()});
+$("bdSave").addEventListener("click",async()=>{
+  const B=(S.bulk||[]).filter(r=>r.on&&r.state!=="done");if(!B.length||!S.canEdit||S.busy)return;showErr("bdErr","");
+  const blank=B.find(r=>!str(r.title,150));if(blank){showErr("bdErr","Give “"+blank.f.name+"” a title, or untick it.");return}
+  S.busy=true;let ok=0,fail=0;
+  for(const r of B){
+    r.state="Uploading…";drawBulk();$("bdBusy").textContent="Adding "+(ok+fail+1)+" of "+B.length+": "+r.f.name;
+    try{await saveVersion(newId(),{title:str(r.title,150),no:str(r.no,30),cat:str(r.cat,60),own:"",review:"",desc:""},{kind:"file",file:r.f,note:""},true,()=>{});r.state="done";ok++}
+    catch(e){r.state="fail";r.msg=saveErr(e);fail++}
+  }
+  S.busy=false;$("bdBusy").textContent="";drawBulk();
+  if(fail)showErr("bdErr",fail+" of "+B.length+" could not be added. Select the button again to retry them.");else{$("bd").close();toast(ok+" document"+(ok===1?"":"s")+" added")}
+});
 
 /* ---------- categories (admins) ---------- */
 $("catBtn").addEventListener("click",()=>{if(!S.isAdmin)return;$("cList").value=S.cats.join("\n");showErr("cdErr","");$("cd").showModal()});
