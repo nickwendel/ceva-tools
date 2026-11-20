@@ -262,15 +262,15 @@ svg text{font-family:var(--f);font-size:11px;fill:var(--muted)}svg .tl{fill:var(
 <div class="toast" id="toast" role="status" hidden></div>
 
 <script src="firebase-config.js"></script>
+<script src="../assets/access.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="../assets/sap-export.js"></script>
 <script type="module">
 const FB='https://www.gstatic.com/firebasejs/10.14.1/';
 const ROLE_LABEL={viewer:'Viewer',supervisor:'Supervisor',user:'User',admin:'Admin'};
 const TLIST=["Pick","Putaway","Internal move","Posting change","Goods issue","Goods receipt","Other"],TC={Pick:"--s1",Putaway:"--s2","Internal move":"--s3","Posting change":"--s4","Goods issue":"--s5","Goods receipt":"--s6",Other:"--s7"};
-const CAT={"stock removal":"Pick","putaway":"Putaway","internal warehouse movement":"Internal move","posting change":"Posting change","goods issue posting":"Goods issue","goods receipt posting":"Goods receipt"};
-const TMAP={PICK:"Pick",PTWY:"Putaway",INTL:"Internal move"};
 const PICK_CAP=300; // expected picking capacity, pick lines per day
-const AMBER=4*3600,REDAGE=8*3600,CHUNK=600000,MAXEXC=300;
+const AMBER=4*3600,REDAGE=8*3600,MAXEXC=300;
 const BUCKETS=[["Under 1 hour",0,3600,"ok"],["1 to 4 hours",3600,AMBER,""],["4 to 8 hours",AMBER,REDAGE,"p2"],["8 to 24 hours",REDAGE,86400,"p1"],["Over 24 hours",86400,Infinity,"p1"]];
 const RANGES=[["today","Today"],["week","Week"],["month","Month"],["all","All"]];
 const S={days:new Map(),daysReady:false,open:null,openMeta:null,openVer:null,view:"done",range:"today",day:null,type:"All",user:null,sort:"tot",dir:-1,tmode:"day",trend:null,
@@ -279,7 +279,7 @@ const $=id=>document.getElementById(id),nf=n=>Math.round(n).toLocaleString("en-U
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const str=(v,n)=>typeof v==="string"?v.trim().slice(0,n||200):"";
 const hm=s=>s<0?"":p2(Math.floor(s/3600))+":"+p2(Math.floor(s%3600/60));
-const typ=r=>r.t||(r.t=CAT[String(r[18]||"").toLowerCase().replace(/\s+/g," ").trim()]||TMAP[r[2]]||"Other");
+const typ=SapExport.typ;
 const wallNow=()=>Math.floor(Date.now()/1000)-new Date().getTimezoneOffset()*60;
 const ymd=d=>d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate());
 const today=()=>ymd(new Date());
@@ -290,60 +290,11 @@ function tsFmt(t){if(t<0)return "";const d=new Date(t*1000);return p2(d.getUTCMo
 let toastT;function toast(t,keep){const e=$("toast");e.textContent=t;e.hidden=false;clearTimeout(toastT);if(!keep)toastT=setTimeout(()=>e.hidden=true,typeof keep==="number"?keep:6000)}
 const TH=a=>"<thead><tr>"+a.map(x=>`<th${x[1]?' class="t"':""}>${x[0]}</th>`).join("")+"</tr></thead>";
 
-/* ---------- reading the SAP export ---------- */
-function toSec(v){if(v==null||v==="")return -1;if(typeof v==="number")return Math.round((v%1)*86400);const m=String(v).match(/(\d+):(\d+)(?::(\d+))?/);return m?+m[1]*3600+ +m[2]*60+ +(m[3]||0):-1}
-function toDay(v){if(v==null||v==="")return -1;if(typeof v==="number")return Math.floor(v-25569)*86400;const d=new Date(v);return isNaN(d)?-1:Math.floor((d.getTime()/1000-d.getTimezoneOffset()*60)/86400)*86400}
-function dts(d,t){const a=toDay(d);if(a<0)return -1;return a+Math.max(0,toSec(t))}
-function parse(buf,name){
-  const wb=XLSX.read(buf,{type:"array"}),a=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true,defval:""});
-  const h=(a[0]||[]).map(x=>String(x).trim()),col=(...n)=>n.find(x=>h.includes(x))||"";
-  const qC=col("Act. Qty Dest. BUoM","Act Dest Qty Alt UoM"),sC=col("Src Trgt Qty BUoM","Src Trgt Qty AUoM"),dC=col("Diff. Qty in Alt.Un","Diff. Qty in BUoM"),eC=col("Exception Code");
-  const miss=["Warehouse Task","Warehouse Task Status","Confirmed By","Confirmation Date","Confirmation Time","Created On","Created At","Whse Process Type"].filter(n=>!h.includes(n));
-  if(!qC)miss.push("Act. Qty Dest. BUoM or Act Dest Qty Alt UoM");if(!col("Activity","Whse Process Category Desc."))miss.push("Activity or Whse Process Category Desc.");
-  if(miss.length)throw new Error("This file is missing these columns: "+miss.join(", ")+". Load the SAP warehouse task export.");
-  const c=n=>h.indexOf(n),v=(r,n)=>c(n)<0?"":r[c(n)],g=(r,n)=>String(v(r,n)??"").trim();let last=-1,same=0;const rows=[],seen=new Set();
-  for(let i=1;i<a.length;i++){const r=a[i];if(g(r,"Warehouse Task")==="")continue;
-    const whole=JSON.stringify(r);if(seen.has(whole)){same++;continue}seen.add(whole);const st=g(r,"Warehouse Task Status").toUpperCase(),done=st==="C";
-    const cr=dts(v(r,"Created On"),v(r,"Created At")),cf=done?dts(v(r,"Confirmation Date"),v(r,"Confirmation Time")):-1;
-    last=Math.max(last,cr,cf);const df=+v(r,dC)||0;
-    rows.push([done?toSec(v(r,"Confirmation Time")):-1,g(r,"Confirmed By")||"(blank)",g(r,"Activity"),g(r,"Whse Process Type"),+v(r,qC)||0,eC?g(r,eC):df?(df>0?"+":"")+df:"",
-      g(r,"Product"),g(r,"Product Short Description"),g(r,"Source Storage Bin"),g(r,"Destination Bin"),g(r,"Warehouse Order"),g(r,"Warehouse Task"),
-      st,cr,g(r,"Queue"),g(r,"Created By"),+v(r,sC)||0,cf,g(r,"Whse Process Category Desc."),g(r,"Wave"),g(r,"Pull header ID")]);
-    const one=(x,y)=>x&&!y?"from":y&&!x?"to":"";
-    rows[rows.length-1].side=one(g(r,"Source Storage Bin"),g(r,"Destination Bin"))||(g(r,"Source Storage Bin")?"":one(g(r,"Source Handling Unit"),g(r,"Dest. Handling Unit")))}
-  if(!rows.length)throw new Error("No warehouse task lines were found in this file.");
-  const legs=joinLegs(rows);
-  return {file:str(name.replace(/\.[^.]+$/,""),80),asOf:last>0?last:wallNow(),excKind:eC?"code":"diff",rows:rows.filter(r=>!r.drop),dup:{same,legs}}}
-/* SAP can list one task as two lines, one holding only the source side (bin, handling unit) and one holding only the destination side.
-   Lines that match on everything else are joined into one line, so the task is counted once. Returns how many lines were joined away. */
-function joinLegs(rows){
-  const groups=new Map();let n=0;
-  for(const r of rows){const from=r.side==="from";if(!r.side)continue;
-    const k=JSON.stringify([r[1],r[2],r[3],r[4],r[5],r[6],r[7],r[10],r[11],r[12],r[13],r[14],r[15],r[16],r[18],r[19],r[20]]);
-    let o=groups.get(k);if(!o){o={from:[],to:[]};groups.set(k,o)}(from?o.from:o.to).push(r)}
-  for(const o of groups.values())for(const f of o.from){
-    const near=t=>!t.drop&&(f[17]<0||t[17]<0?f[17]===t[17]:Math.abs(f[17]-t[17])<=60);
-    const t=o.to.find(t=>near(t)&&t[9]===f[8])||o.to.find(near);if(!t)continue;
-    if(t[9])f[9]=t[9];if(t[17]>f[17]){f[17]=t[17];f[0]=t[0]}t.drop=true;n++}
-  return n}
-
-/* ---------- turning task lines into one summary per day ----------
+/* ---------- one summary per day ----------
+   The SAP export is read and saved by ../assets/sap-export.js, the loader every tool shares, so one load updates all of them.
    A day keeps a "cube" of counts, one entry per associate, type, process type and hour: [user, type, processType, hour, lines, units].
    Every table and chart on the Completed and Trends sections is added up from those entries, so the task lines themselves are not stored. */
-function buildDays(d){
-  const m=new Map();
-  for(const r of d.rows){if(r[12]!=="C"||r[17]<0)continue;
-    const date=new Date(Math.floor(r[17]/86400)*86400000).toISOString().slice(0,10),sec=Math.max(0,r[0]),t=typ(r),pt=r[3]||"(blank)";
-    let o=m.get(date);if(!o){o={cube:new Map(),spans:{},exc:[],n:0,units:0};m.set(date,o)}
-    const k=[r[1],t,pt,Math.floor(sec/3600)].join("\t"),c=o.cube.get(k)||[0,0];c[0]++;c[1]+=r[4];o.cube.set(k,c);o.n++;o.units+=r[4];
-    const s=o.spans[r[1]]||(o.spans[r[1]]=[sec,sec]);if(sec<s[0])s[0]=sec;if(sec>s[1])s[1]=sec;
-    if(r[5]&&o.exc.length<MAXEXC)o.exc.push([sec,r[1],r[5],t,pt,r[6],d.excKind==="diff"?r[16]:r[7],r[4],r[8],r[9],r[11]])}
-  return m}
 const round3=x=>Math.round(x*1000)/1000;
-function dayDoc(date,o,d){
-  const cube=JSON.stringify([...o.cube].map(([k,v])=>{const p=k.split("\t");return [p[0],p[1],p[2],+p[3],v[0],round3(v[1])]}));
-  if(cube.length>900000)throw new Error("too-big");
-  return {date,n:o.n,units:round3(o.units),cube,spans:JSON.stringify(o.spans),exc:JSON.stringify(o.exc),excKind:d.excKind,file:d.file,by:S.authUser.uid,byName:S.myName||S.authUser.email||"",at:Date.now()}}
 function readDay(id,x,old){
   if(old&&old.at===x.at)return old;
   let cube=[],spans={},exc=[];try{cube=JSON.parse(x.cube||"[]");spans=JSON.parse(x.spans||"{}");exc=JSON.parse(x.exc||"[]")}catch(_){}
@@ -352,19 +303,6 @@ function readDay(id,x,old){
 /* ---------- shared data ----------
    wtdays/{YYYY-MM-DD}             one summary per confirmation date (history builds up as exports are loaded)
    wt/open + wt/open/chunks/{v}_{n} the open task lines from the most recent export, as JSON text */
-function chunkRows(rows){const out=[];let cur=[],len=0;for(const r of rows){const s=JSON.stringify(r);if(len+s.length>CHUNK&&cur.length){out.push("["+cur.join(",")+"]");cur=[];len=0}cur.push(s);len+=s.length+1}
-  if(cur.length)out.push("["+cur.join(",")+"]");return out}
-async function publish(d){
-  const {Fs,fs}=S.fb,list=[...buildDays(d)].sort((a,b)=>a[0]<b[0]?-1:1),docs=list.map(([date,o])=>dayDoc(date,o,d));
-  for(let i=0;i<docs.length;i+=8){await Promise.all(docs.slice(i,i+8).map(x=>Fs.setDoc(Fs.doc(fs,"wtdays",x.date),x)));if(docs.length>8)toast("Saving day "+Math.min(docs.length,i+8)+" of "+docs.length+"…",true)}
-  const prev=S.openMeta;let openSaved=false;
-  if(!prev||d.asOf>=(+prev.asOf||0)){
-    const open=d.rows.filter(r=>r[12]===""||r[12]==="B"),ver=Date.now().toString(36),parts=chunkRows(open);
-    for(let i=0;i<parts.length;i++)await Fs.setDoc(Fs.doc(fs,"wt","open","chunks",ver+"_"+i),{ver,i,rows:parts[i]});
-    await Fs.setDoc(Fs.doc(fs,"wt","open"),{ver,chunks:parts.length,count:open.length,asOf:d.asOf,file:d.file,by:S.authUser.uid,byName:S.myName||S.authUser.email||"",at:Date.now()});
-    if(prev&&prev.ver&&prev.ver!==ver)for(let i=0;i<(prev.chunks||0);i++)Fs.deleteDoc(Fs.doc(fs,"wt","open","chunks",prev.ver+"_"+i)).catch(()=>{});
-    openSaved=true}
-  return {dates:docs.map(x=>x.date),openSaved,open:d.rows.filter(r=>r[12]===""||r[12]==="B").length}}
 async function pullOpen(m){
   const {Fs,fs}=S.fb,rows=[];
   for(let i=0;i<(m.chunks||0);i++){const s=await Fs.getDoc(Fs.doc(fs,"wt","open","chunks",m.ver+"_"+i));if(!s.exists())throw new Error("missing");rows.push(...JSON.parse(s.data().rows))}
@@ -401,20 +339,16 @@ function stopData(){S.unsubs.forEach(u=>{try{u()}catch(_){}});S.unsubs=[];if(S.d
   S.subStart=null;S.days=new Map();S.daysReady=false;S.open=null;S.openMeta=null;S.openVer=null;S.pickedRange=false;S.view="done";S.tmode="day";S.trend=null;S.range="today";S.day=null;S.type="All";S.user=null}
 function load(f){
   if(!f)return;
-  if(!S.canLoad){toast("Only supervisors and admins can load an export.");return}
+  if(!S.canLoad){toast("Your user group cannot load an export.");return}
   if(S.busy)return;
   const rd=new FileReader();rd.onload=async()=>{
-    let d;try{d=parse(new Uint8Array(rd.result),f.name)}catch(e){$("msg").textContent=e.message;$("msg").hidden=false;return}
-    $("msg").hidden=true;S.busy=true;$("loadBtn").classList.add("busy");toast("Saving "+nf(d.rows.length)+" task lines…",true);
-    const dup=d.dup.same+d.dup.legs,dupNote=dup?" "+nf(dup)+" duplicate "+(dup===1?"line was":"lines were")+" removed ("+nf(d.dup.same)+" repeated, "+nf(d.dup.legs)+" second lines of a two-line task).":"";
-    try{const r=await publish(d);S.type="All";S.user=null;S.pickedRange=true;
-      if(r.dates.length===1){S.range=r.dates[0]===today()?"today":"day";S.day=r.dates[0]}else if(r.dates.length>1){S.range="all"}
-      toast((r.dates.length?"Loaded "+(r.dates.length===1?mdy(r.dates[0]):r.dates.length+" days, "+mdy(r.dates[0])+" to "+mdy(r.dates[r.dates.length-1]))+(r.openSaved?", with "+nf(r.open)+" open tasks.":". Open tasks were left as they are because a newer export is already loaded.")
-        :"This file has no confirmed task lines."+(r.openSaved?" Open tasks were updated ("+nf(r.open)+").":""))+dupNote,dup?15000:0);
-      render()}
-    catch(e){$("msg").textContent=e&&e.message==="too-big"?"One day in this file has too many task lines to save. Split the export into smaller date ranges and load them one at a time."
-      :"The file could not be saved"+(e&&e.code==="permission-denied"?" because Firebase refused it. Either your account is not a supervisor or admin, or the latest security rules have not been published yet.":". Check the connection and load it again.");
-      $("msg").hidden=false;$("toast").hidden=true}
+    S.busy=true;$("loadBtn").classList.add("busy");$("msg").hidden=true;toast("Reading the export…",true);
+    try{const r=await SapExport.loadAll({Fs:S.fb.Fs,fs:S.fb.fs,uid:S.authUser.uid,byName:S.myName||S.authUser.email||""},new Uint8Array(rd.result),f.name,t=>toast(t,true)),t=r.tasks;
+      if(t.error){$("msg").textContent=t.error;$("msg").hidden=false;$("toast").hidden=true;return}
+      S.type="All";S.user=null;S.pickedRange=true;
+      if(t.dates.length===1){S.range=t.dates[0]===today()?"today":"day";S.day=t.dates[0]}else if(t.dates.length>1){S.range="all"}
+      toast(SapExport.summary(r),15000);render()}
+    catch(e){$("msg").textContent=e.message;$("msg").hidden=false;$("toast").hidden=true}
     finally{S.busy=false;$("loadBtn").classList.remove("busy")}
   };rd.readAsArrayBuffer(f)}
 $("file").addEventListener("change",e=>{load(e.target.files[0]);e.target.value=""});
@@ -492,7 +426,7 @@ function render(){
   if(!S.daysReady){$("stats").hidden=true;$("noData").hidden=false;$("noData").innerHTML="<strong>Loading…</strong>";return}
   if(S.view==="trends")return renderTrends(all,TYPES);
   if(!ds.length){$("stats").hidden=true;$("noData").hidden=false;const latest=all.length?all[all.length-1].date:null;
-    $("noData").innerHTML=`<strong>Nothing loaded for ${single?mdy(a):"this range"}</strong><span>${S.canLoad?"Select “Load export” and choose the SAP warehouse task export (.xlsx), or drop the file on this page. A file can hold one day or many; every day in it is saved.":"A supervisor or admin loads the SAP warehouse task export. This page updates on its own when they do."}${latest?` The most recent day with data in view is <button type="button" class="linkbtn" data-day="${latest}">${mdy(latest)}</button>.`:""}</span>`;return}
+    $("noData").innerHTML=`<strong>Nothing loaded for ${single?mdy(a):"this range"}</strong><span>${S.canLoad?"Select “Load export” and choose the SAP warehouse task export (.xlsx), or drop the file on this page. A file can hold one day or many; every day in it is saved.":"Someone with edit access loads the SAP warehouse task export. This page updates on its own when they do."}${latest?` The most recent day with data in view is <button type="button" class="linkbtn" data-day="${latest}">${mdy(latest)}</button>.`:""}</span>`;return}
   $("vDone").hidden=false;
   const diff=ds.every(d=>d.excKind==="diff"),A=total(ds,S.type,S.user),ex=excOf(ds,S.type,S.user),mx=Math.max(1,...A.H.map(h=>h.n)),pk=A.H.findIndex(h=>h.n===mx);
   $("stats").innerHTML=[["Confirmed",nf(A.n),""],["Units",nf(A.u),""],["Associates",A.users.size,""],[diff?"Qty differences":"Exceptions",nf(ex.length),ex.length?"warn":""],["Peak hour",A.n?p2(pk)+":00":"—",""],[single?"Lines per assoc. hour":"Days with data",single?(A.hrs>=.5?(A.n/A.hrs).toFixed(1):"—"):ds.length,""],
@@ -714,10 +648,11 @@ $("dOut").addEventListener("click",signOut);$("signOut").addEventListener("click
     if(S.pendingReq){const q=S.pendingReq;S.pendingReq=null;fileRequest(user,q.name,q.note).then(()=>toast("Request sent. An admin will approve it."),()=>toast("Signed up, but the request didn’t send. Fill in the form below."))}
     showGate("wait","Checking access…");
     reqUnsub=Fs.onSnapshot(Fs.doc(fs,"requests",user.uid),s=>{S.myReq=s.exists();if(!S.role&&!$("gateDenied").hidden)renderDenied()},()=>{});
-    roleUnsub=Fs.onSnapshot(Fs.doc(fs,"roles",user.uid),{includeMetadataChanges:true},snap=>{
+    roleUnsub=CevaAccess.watch(Fs,fs,user.uid,"transactions",snap=>{
       const d=snap.exists()?(snap.data()||{}):{},role=d.role;
+      if(d.noAccess){S.role=null;stopData();showGate("wait",CevaAccess.NO_ACCESS);return}
       if(!ROLE_LABEL[role]){if(snap.metadata.fromCache){showGate("wait","Waiting for the network…");return}S.role=null;stopData();showGate("denied");return}
-      const first=!S.role;S.role=role;S.myName=str(d.name,40);S.canLoad=role==="supervisor"||role==="admin";
+      const first=!S.role;S.role=role;S.myName=str(d.name,40);S.canLoad=!!d.canLoad;S.who=d.groupName+" · "+CevaAccess.LEVEL_LABEL[d.level];
       if(first){startData();showGate("ready")}
       render();
     },()=>{S.role=null;stopData();showGate("denied")});

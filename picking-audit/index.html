@@ -1,0 +1,589 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Picking Audit</title>
+<link rel="icon" href="../assets/ceva-logo.svg" type="image/svg+xml">
+<style>
+/* Visual system shared with the other CEVA tools (matched to the Whitsett KPI dashboard): dark navy, card panels, CEVA red accent, system type.
+   Layout: header, KPI tiles, section tabs with a date range, filters, then card panels. Dark only. */
+:root{
+  --bg:#0a1626; --card:#122A47; --row:#0e2038; --line:#1f3d61; --line-light:#2a4a73;
+  --fg:#e7eef7; --muted:#93a8c4; --faint:#5f7796;
+  --accent:#e2231a; --good:#2fbf71; --warn:#e8a33d; --bad:#e2231a; --info:#3d9fe8; --purple:#a78bfa;
+  --s1:#e7eef7; --s2:#3d9fe8; --s3:#2fbf71; --s4:#5f7796; --s5:#a78bfa; --s6:#4fd0e0; --s7:#3a5273;
+  --radius:10px;
+  --f:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{height:100%;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{min-height:100%;margin:0;color:var(--fg);font-family:var(--f);font-size:13.5px;line-height:1.45;-webkit-font-smoothing:antialiased;
+  background:radial-gradient(1200px 600px at 10% -10%,#123156 0%,var(--bg) 55%) fixed,var(--bg)}
+[hidden]{display:none!important}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--info);outline-offset:2px}
+::-webkit-scrollbar{height:8px;width:8px}
+::-webkit-scrollbar-thumb{background:var(--line-light);border-radius:4px}
+.gut{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.btn{background:var(--card);color:var(--fg);border:1px solid var(--line-light);border-radius:8px;min-height:2.6rem;padding:0 .95rem;font:600 13px/1 var(--f);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:.45rem;white-space:nowrap;position:relative;transition:filter .15s,border-color .15s}
+.btn:hover{border-color:var(--accent);filter:brightness(1.08)}
+.btn.primary{background:var(--accent);border-color:transparent;color:#fff}
+.btn.ghost{background:transparent;color:var(--muted)}
+.btn.ghost:hover{color:var(--fg)}
+.btn:disabled,.btn.busy{opacity:.45;cursor:default;filter:none}
+.btn input[type=file]{position:absolute;opacity:0;width:1px;height:1px}
+.btn:focus-within{outline:2px solid var(--info);outline-offset:2px}
+.inp{width:100%;min-height:2.6rem;background:var(--bg);color:var(--fg);border:1px solid var(--line-light);border-radius:8px;padding:.5rem .75rem;font-size:14px;outline:none}
+.inp:focus{border-color:var(--accent)}
+.fld{display:flex;flex-direction:column;gap:.35rem;min-width:0}
+.fld>label{font:600 10.5px/1 var(--f);letter-spacing:.5px;text-transform:uppercase;color:var(--faint)}
+.err{color:#f97066;font-weight:600;font-size:12px}
+
+/* sign-in gate */
+.gate{min-height:100vh;display:flex;align-items:center;justify-content:center;padding-block:2rem}
+.gate-card{width:100%;max-width:400px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:2.2rem 2.2rem 2rem;box-shadow:0 8px 40px rgba(0,0,0,.55);display:flex;flex-direction:column}
+.gate-head{display:flex;flex-direction:column;align-items:center;text-align:center;gap:.5rem;margin-bottom:1.4rem}
+.gate-head img{height:2.3rem;width:auto;display:block}
+.gate-site{font-size:12px;color:var(--faint);letter-spacing:.02em}
+.gate-body{display:flex;flex-direction:column;gap:.9rem}
+.gate-title{margin:0;font:700 20px/1.2 var(--f)}
+.gate-p{margin:0;color:var(--muted);line-height:1.5;font-size:12.5px}
+.gate-p b{color:var(--fg)}
+.gate form{display:flex;flex-direction:column;gap:.85rem}
+.gate .btn{width:100%;min-height:2.75rem;font-size:14px}
+.gate .btn.ghost{min-height:2.4rem;font-size:12.5px}
+.gate-alt{border-top:1px solid var(--line);padding-top:.85rem}
+
+/* app */
+.app{max-width:1500px;margin:0 auto;padding-bottom:3rem;font-size:14px}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:1.2em 1.6em;flex-wrap:wrap;padding-block:1.4em 1.1em;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:.9em;min-width:0}
+.logo-plate{height:2.6em;display:flex;align-items:center;flex:none}
+.logo-plate img{height:100%;width:auto;max-width:12em;object-fit:contain;display:block}
+.b-title{margin:0;font:700 1.35em/1.15 var(--f);letter-spacing:.2px}
+.status-line{display:flex;flex-wrap:wrap;align-items:center;gap:.3em 1em;margin-top:.45em;font-size:.85em;color:var(--faint)}
+.status-line b{color:var(--muted);font-weight:600}
+.dot{width:.6em;height:.6em;border-radius:50%;background:var(--warn);display:inline-block;margin-right:.4em}
+.dot.ok{background:var(--good)}.dot.bad{background:var(--bad)}
+.controls{display:flex;gap:.6em;align-items:center;flex-wrap:wrap}
+.b-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(9.5em,1fr));gap:.7em;margin:1.2em 0 0;padding:0}
+.b-stats>div{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:1.1em 1.2em 1em;position:relative;overflow:hidden;margin:0}
+.b-stats>div::before{content:"";position:absolute;top:0;left:0;width:3px;height:100%;background:var(--kpi,var(--line-light))}
+.b-stats>div:nth-child(1){--kpi:var(--accent)}.b-stats>div:nth-child(2){--kpi:var(--info)}.b-stats>div:nth-child(3){--kpi:var(--purple)}
+.b-stats>div:nth-child(5){--kpi:var(--good)}
+.b-stats>div.warn{--kpi:var(--warn)}.b-stats>div.hot{--kpi:var(--bad)}
+.b-stats dt{font:700 .75em/1.2 var(--f);letter-spacing:.6px;text-transform:uppercase;color:var(--faint);white-space:nowrap}
+.b-stats dd{margin:.45em 0 0;font:800 2.1em/1 var(--f);font-variant-numeric:tabular-nums;white-space:nowrap}
+.b-stats .hot dd{color:#ff6b61}.b-stats .warn dd{color:var(--warn)}
+.bar{display:flex;flex-wrap:wrap;gap:.6em;align-items:center;margin:1.2em 0 1em}
+.tab{background:transparent;border:1px solid var(--line-light);color:var(--muted);border-radius:2rem;min-height:2.3rem;padding:0 .9rem;font:600 13px/1 var(--f);cursor:pointer}
+.tab:hover{color:var(--fg)}
+.tab[aria-pressed="true"]{background:var(--accent);border-color:transparent;color:#fff}
+.msg{border:1px solid rgba(226,35,26,.5);color:#f97066;border-radius:8px;padding:.7rem 1rem;font-weight:600;margin-bottom:1em}
+.panels{display:flex;flex-direction:column;gap:1em}
+.b-panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);display:flex;flex-direction:column;min-width:0;padding:1em 1.1em .9em}
+.p-head{display:flex;align-items:baseline;flex-wrap:wrap;gap:.55em;padding-bottom:.6em;border-bottom:1px solid var(--line-light)}
+.p-head h2{margin:0;font:700 1.05em/1.2 var(--f)}
+.p-count{font:700 1.05em/1 var(--f);color:var(--muted);font-variant-numeric:tabular-nums}
+.p-page{margin-left:auto;font:600 .75em/1 var(--f);letter-spacing:.5px;text-transform:uppercase;color:var(--faint)}
+.p-body{padding-top:.7em}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:1em}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th{font:700 .72em/1 var(--f);letter-spacing:.5px;text-transform:uppercase;color:var(--faint);text-align:right;padding:.5em .7em;white-space:nowrap;border-bottom:1px solid var(--line)}
+th.s{cursor:pointer}th.s:hover{color:var(--fg)}
+th:first-child,td:first-child,th.t,td.t{text-align:left}
+td{padding:.5em .7em;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line)}
+tbody tr:last-child td{border-bottom:0}
+td.n{font-weight:700}
+tr.click{cursor:pointer}tr.click:hover td{background:var(--row)}tr.sel td{background:rgba(61,159,232,.14)}
+tr.tot td{font-weight:700;border-top:1px solid var(--line-light)}
+tr.hot td{background:rgba(226,35,26,.1)}
+.meter{display:inline-block;height:.4em;background:var(--info);vertical-align:middle;margin-right:.5em;border-radius:2px;opacity:.7}
+.pill{display:inline-block;padding:.2em .55em;border-radius:5px;font:700 .85em/1 var(--f);background:var(--row);color:var(--muted);border:1px solid var(--line-light)}
+.pill.p1{background:rgba(226,35,26,.16);color:#ff6b61;border-color:rgba(226,35,26,.5)}
+.pill.p2{background:rgba(232,163,61,.16);color:var(--warn);border-color:rgba(232,163,61,.5)}
+.legend{display:flex;flex-wrap:wrap;gap:.5em 1.2em;margin-top:.5em}
+.legend span{display:inline-flex;align-items:center;gap:.4em;font:600 .78em/1 var(--f);color:var(--muted)}
+.legend i{display:inline-block;width:.9em;height:.7em;border-radius:2px}
+svg text{font-family:var(--f);font-size:11px;fill:var(--muted)}svg .tl{fill:var(--fg);font-weight:700;paint-order:stroke;stroke:var(--card);stroke-width:3px;stroke-linejoin:round}
+.empty{border:1px dashed var(--line-light);border-radius:var(--radius);padding:1.2em;color:var(--muted);display:flex;flex-direction:column;gap:.35em}
+.empty strong{font:700 1.05em/1.2 var(--f);color:var(--fg)}
+.empty span{line-height:1.5;max-width:75ch}
+.ag{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.6em;margin-bottom:.8em}
+.ag>div{background:var(--row);border:1px solid var(--line);border-radius:8px;padding:.7em .9em;position:relative;overflow:hidden}
+.ag>div::before{content:"";position:absolute;top:0;left:0;width:3px;height:100%;background:var(--line-light)}
+.ag>div.ok::before{background:var(--good)}.ag>div.p2::before{background:var(--warn)}.ag>div.p1::before{background:var(--bad)}
+.ag .k{font:700 .72em/1.2 var(--f);letter-spacing:.5px;text-transform:uppercase;color:var(--faint)}
+.ag .v{font:800 1.7em/1 var(--f);font-variant-numeric:tabular-nums;margin-top:.3em}
+.ag .b{height:.35em;background:var(--line);border-radius:2px;margin-top:.55em;overflow:hidden}.ag .b i{display:block;height:100%;background:var(--muted)}
+.note{color:var(--faint);font-size:.88em;line-height:1.5;max-width:120ch;margin-top:1.2em;border-top:1px solid var(--line);padding-top:1em}
+.drop{outline:2px dashed var(--info);outline-offset:-6px}
+.views{display:flex;gap:.4em;flex-wrap:wrap}
+.view{background:var(--card);border:1px solid var(--line-light);color:var(--muted);border-radius:8px;min-height:2.6rem;padding:0 1rem;font:700 13.5px/1 var(--f);cursor:pointer;display:inline-flex;align-items:center;gap:.5em}
+.view:hover{color:var(--fg)}
+.view[aria-selected="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.view .n{font:700 .85em/1 var(--f);background:var(--row);color:var(--fg);border-radius:1rem;padding:.25em .55em;font-variant-numeric:tabular-nums}
+.view[aria-selected="true"] .n{background:var(--bg)}
+.navrow{display:flex;flex-wrap:wrap;gap:.7em 1em;align-items:center;justify-content:space-between;margin-top:1.2em}
+.range{display:flex;flex-wrap:wrap;gap:.5em;align-items:center}
+.segm{display:flex;background:var(--card);border:1px solid var(--line-light);border-radius:8px;padding:3px;gap:2px}
+.segm button{background:transparent;border:0;border-radius:6px;min-height:2.1rem;padding:0 .8rem;font:600 13px/1 var(--f);color:var(--muted);cursor:pointer}
+.segm button:hover{color:var(--fg)}
+.segm button[aria-pressed="true"]{background:var(--accent);color:#fff}
+.dayinp{background:var(--card);border:1px solid var(--line-light);border-radius:8px;min-height:2.5rem;padding:0 .6rem;font:600 13px/1 var(--f);color:var(--fg)}
+.dayinp.on{border-color:var(--accent)}
+.grid4{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:1em}
+.trbar{display:flex;flex-wrap:wrap;gap:.6em 1em;align-items:center;justify-content:space-between}
+.cap{display:flex;flex-wrap:wrap;gap:.3em 1.3em;margin-top:.5em;font:600 .82em/1.35 var(--f);color:var(--muted)}
+.cap b{color:var(--fg)}
+.cap i{display:inline-block;width:1.5em;height:0;border-top:2px dashed var(--warn);vertical-align:middle;margin-right:.45em}
+.cap i.t{border-top:3px solid var(--accent)}
+.cap i.c{border-top:2px dotted var(--info)}
+.linkbtn{background:none;border:0;padding:0;color:var(--info);font:inherit;font-weight:600;cursor:pointer;text-decoration:underline}
+.toast{position:fixed;left:50%;bottom:calc(1.2rem + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:30;background:var(--card);color:var(--fg);border:1px solid var(--line-light);padding:.75rem 1.1rem;border-radius:8px;font:600 13px/1.35 var(--f);box-shadow:0 8px 24px rgba(0,0,0,.45);max-width:calc(100% - 32px)}
+/* inventory differences */
+.tools{display:flex;flex-wrap:wrap;gap:.6em;align-items:center;margin:1em 0 .8em}
+.tools .inp{max-width:22rem;min-height:2.4rem}
+.chips{display:flex;flex-wrap:wrap;gap:.4em}
+.pill.p3{color:var(--muted)}
+.pill.st-new{color:var(--fg)}
+.pill.st-recount{background:rgba(61,159,232,.16);color:var(--info);border-color:rgba(61,159,232,.5)}
+.pill.st-research{background:rgba(167,139,250,.16);color:var(--purple);border-color:rgba(167,139,250,.5)}
+.pill.st-post{background:rgba(232,163,61,.16);color:var(--warn);border-color:rgba(232,163,61,.5)}
+.pill.st-closed{background:rgba(47,191,113,.14);color:var(--good);border-color:rgba(47,191,113,.45)}
+.pill.off{background:rgba(61,159,232,.12);color:var(--info);border-color:rgba(61,159,232,.45)}
+td.pos{color:var(--good)}td.neg{color:#ff6b61}
+td.note{max-width:22em;overflow:hidden;text-overflow:ellipsis;color:var(--muted)}
+tr.closed td{opacity:.55}
+.more{margin-top:.8em}
+dialog{background:var(--card);color:var(--fg);border:1px solid var(--line-light);border-radius:14px;padding:0;width:min(560px,calc(100% - 32px));box-shadow:0 12px 48px rgba(0,0,0,.6)}
+dialog::backdrop{background:rgba(5,12,24,.7)}
+.dlg{padding:1.4rem 1.5rem 1.3rem;display:flex;flex-direction:column;gap:.9rem}
+.dlg h2{margin:0;font:700 1.15em/1.25 var(--f)}
+.dlg .facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(7.5em,1fr));gap:.5em}
+.dlg .facts div{background:var(--row);border:1px solid var(--line);border-radius:8px;padding:.5em .7em}
+.dlg .facts b{display:block;font:700 .7em/1.2 var(--f);letter-spacing:.5px;text-transform:uppercase;color:var(--faint)}
+.dlg .facts span{display:block;font:700 1.05em/1.3 var(--f);margin-top:.2em;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.dlg textarea.inp{min-height:5.5rem;resize:vertical;font-family:var(--f)}
+.dlg .row{display:flex;gap:.6em;justify-content:flex-end;flex-wrap:wrap}
+.dlg .segm{flex-wrap:wrap}
+.dlg .who{font-size:.85em;color:var(--faint)}
+.map{display:grid;grid-template-columns:repeat(auto-fit,minmax(16em,1fr));gap:.2em 1.4em;margin-top:.5em}
+.map span{color:var(--muted)}.map b{color:var(--fg);font-weight:600}.map .miss{color:var(--faint)}
+/* picking audit */
+select.sel{max-width:15rem;min-height:2.4rem;padding:.3rem .6rem;font-size:13.5px}
+.dlg .segm button[disabled]{cursor:default;opacity:.6}
+/* printed audit sheet: CEVA document style on white (Arial, title in CEVA Red, red and blue band, logo top right) */
+#sheet{display:none}
+@page{size:letter landscape;margin:9mm}
+@media print{
+  :root{color-scheme:light}
+  html,body{background:#fff!important;color:#000;padding:0;min-height:0}
+  #gate,#app,dialog,.toast{display:none!important}
+  #sheet{display:block;font:9.5pt/1.3 Arial,Helvetica,sans-serif;color:#021D49}
+  .sh-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8mm}
+  .sh-head h1{margin:0;font:700 17pt/1.1 Arial,Helvetica,sans-serif;color:#FF0000;letter-spacing:.3px}
+  .sh-head p{margin:2mm 0 0;font-size:9.5pt;color:#021D49}
+  .sh-head img{width:14.3%;height:auto}
+  .sh-band{display:flex;width:60mm;height:1.6mm;margin-top:1.5mm}.sh-band i{flex:2;background:#FF0000!important}.sh-band b{flex:1;background:#021D49!important}.sh-band i,.sh-band b{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .sh-sign{display:flex;align-items:flex-end;gap:2mm;margin:4mm 0 3mm;font-weight:700}
+  .sh-sign i{display:block;width:70mm;border-bottom:.3mm solid #021D49;height:5mm;margin-right:6mm}.sh-sign i.sm{width:32mm}
+  #sheet table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+  #sheet thead{display:table-header-group}
+  #sheet tr{break-inside:avoid}
+  #sheet th{background:#021D49!important;color:#fff!important;font:700 8pt/1.2 Arial,Helvetica,sans-serif;letter-spacing:.2px;text-transform:uppercase;text-align:left;padding:1.6mm 1.8mm;border:.2mm solid #021D49;white-space:nowrap;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  #sheet td{padding:1.5mm 1.8mm;border:.2mm solid #666666;text-align:left;white-space:nowrap;color:#000;height:7.5mm}
+  #sheet th.r,#sheet td.r{text-align:right}#sheet th.c,#sheet td.c{text-align:center;width:11mm}
+  #sheet td.w{width:34%;white-space:normal}
+  #sheet .box{display:inline-block;width:4mm;height:4mm;border:.3mm solid #021D49;vertical-align:middle}
+  .sh-foot{margin:3mm 0 0;font-size:8pt;color:#666666}
+}
+</style>
+</head>
+<body>
+<noscript><p style="padding:1rem">This tool needs JavaScript turned on.</p></noscript>
+
+<!-- SIGN-IN GATE -->
+<section id="gate" class="gate gut" aria-label="Sign in">
+  <div class="gate-card">
+    <div class="gate-head"><img src="../assets/ceva-logo-whitered.png" alt="CEVA Logistics"><div class="gate-site">Picking audit</div></div>
+    <div class="gate-body">
+      <h1 class="gate-title">Sign in</h1>
+      <p class="gate-p" id="gateWait">Connecting…</p>
+      <p class="gate-p" id="gateSetup" hidden>This tool isn’t connected to its database yet. Add the Firebase web config to <code>picking-audit/firebase-config.js</code> in the repository.</p>
+      <form id="gateLogin" novalidate hidden>
+        <p class="gate-p">Sign in with the same account you use on the other CEVA tools.</p>
+        <div class="fld"><label for="lEmail">Email</label><input class="inp" id="lEmail" type="email" autocomplete="username" inputmode="email"></div>
+        <div class="fld"><label for="lPass">Password</label><input class="inp" id="lPass" type="password" autocomplete="current-password"></div>
+        <div class="err" id="lErr" role="alert" hidden></div>
+        <button class="btn primary" type="submit" id="lGo">Sign in</button>
+        <button class="btn ghost" type="button" id="lForgot">Forgot password? Email me a reset link</button>
+        <div class="gate-alt"><button class="btn" type="button" id="lRequest">New here? Request access</button></div>
+      </form>
+      <form id="gateRequest" novalidate hidden>
+        <p class="gate-p">Tell us who you are and create a password. An admin approves requests, and you’re let in automatically once approved.</p>
+        <div class="fld"><label for="qName">Your name</label><input class="inp" id="qName" maxlength="40" autocomplete="name"></div>
+        <div class="fld"><label for="qEmail">Work email</label><input class="inp" id="qEmail" type="email" autocomplete="username" inputmode="email"></div>
+        <div class="fld"><label for="qPass">Create a password (8+ characters)</label><input class="inp" id="qPass" type="password" autocomplete="new-password" minlength="8"></div>
+        <div class="fld"><label for="qNote">Role or site (optional)</label><input class="inp" id="qNote" maxlength="120" autocomplete="off"></div>
+        <div class="err" id="qErr" role="alert" hidden></div>
+        <button class="btn primary" type="submit" id="qGo">Send request</button>
+        <button class="btn ghost" type="button" id="qBack">Back to sign in</button>
+      </form>
+      <div id="gateDenied" hidden>
+        <p class="gate-p" id="dPending" hidden><b>Request sent.</b> Signed in as <b id="dEmailP"></b>, waiting for an admin to approve. Keep this page open or come back later; it opens on its own once approved.</p>
+        <div id="dNone" hidden>
+          <p class="gate-p">Signed in as <b id="dEmail"></b>, but this account hasn’t been added to the tools yet. Ask for access and an admin will approve it.</p>
+          <form id="dRequest" novalidate style="margin-top:.7rem">
+            <div class="fld"><label for="dName">Your name</label><input class="inp" id="dName" maxlength="40" autocomplete="name"></div>
+            <div class="fld"><label for="dNote">Role or site (optional)</label><input class="inp" id="dNote" maxlength="120" autocomplete="off"></div>
+            <div class="err" id="dReqErr" role="alert" hidden></div>
+            <button class="btn primary" type="submit" id="dReqGo">Request access</button>
+          </form>
+        </div>
+        <button type="button" class="btn ghost" id="dOut" style="margin-top:.7rem">Sign out</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TOOL -->
+<div id="app" class="app gut" hidden>
+  <header class="top">
+    <div class="brand">
+      <div class="logo-plate"><img src="../assets/ceva-logo-whitered.png" alt="CEVA Logistics"></div>
+      <div><h1 class="b-title">Picking audit</h1><div class="status-line" id="status"></div></div>
+    </div>
+    <div class="controls">
+      <label class="btn primary" id="loadBtn" hidden>Load SAP export<input type="file" id="file" accept=".xlsx,.xls,.csv,.txt"></label>
+      <button type="button" class="btn ghost" id="signOut">Sign out</button>
+    </div>
+  </header>
+  <dl class="b-stats" id="stats"></dl>
+  <div class="navrow"><div class="views" role="tablist" aria-label="Sections" id="views"></div>
+    <div class="range"><div class="segm" id="rangeBtns" role="group" aria-label="Date range"></div>
+      <input type="date" class="dayinp" id="dayIn" aria-label="Show one day"></div></div>
+  <div class="msg" id="msg" hidden></div>
+  <div id="noData" class="empty" hidden></div>
+
+  <!-- Pick list -->
+  <div id="vList" hidden>
+    <div class="tools">
+      <input class="inp" id="q" type="search" placeholder="Search product, bin, associate, order, task" aria-label="Search">
+      <select class="inp sel" id="who" aria-label="Associate"></select>
+      <div class="chips" id="resChips" role="group" aria-label="Audit result"></div>
+      <span style="margin-left:auto;display:flex;gap:.6em;flex-wrap:wrap"><button type="button" class="btn" id="xlsBtn">Export to Excel</button><button type="button" class="btn primary" id="printBtn">Print audit sheet</button></span>
+    </div>
+    <section class="b-panel"><header class="p-head"><h2 id="hList">Picks out of storage bins</h2><span class="p-count" id="cList"></span><span class="p-page" id="listHint"></span></header>
+      <div class="p-body scroll"><table id="tList"></table><div class="more" id="more"></div></div></section>
+  </div>
+
+  <!-- By associate -->
+  <div class="panels" id="vUser" style="margin-top:1em" hidden>
+    <section class="b-panel"><header class="p-head"><h2>Errors by associate</h2><span class="p-count" id="cUser"></span><span class="p-page">Select a row to see that associate's picks, a heading to sort</span></header>
+      <div class="p-body scroll"><table id="tUser"></table></div></section>
+    <section class="b-panel"><header class="p-head"><h2>Errors by type</h2><span class="p-count" id="cType"></span></header>
+      <div class="p-body scroll"><table id="tType"></table></div></section>
+  </div>
+
+  <div class="note" id="note"></div>
+</div>
+
+<!-- Printed audit sheet (only shown when printing) -->
+<div id="sheet" aria-hidden="true"></div>
+
+<dialog id="dlg" aria-labelledby="dTitle"><form method="dialog" class="dlg" id="dForm">
+  <h2 id="dTitle"></h2>
+  <div class="facts" id="dFacts"></div>
+  <div class="fld"><label>Audit result</label><div class="segm" id="dRes" role="group" aria-label="Audit result"></div></div>
+  <div id="dErrBox" hidden>
+    <div class="fld"><label>What was wrong</label><div class="segm" id="dType" role="group" aria-label="Error type"></div></div>
+  </div>
+  <div class="fld"><label for="dNoteIn">Notes (what was found)</label><textarea class="inp" id="dNoteIn" maxlength="500"></textarea></div>
+  <div class="who" id="dWho"></div>
+  <div class="err" id="dErr" role="alert" hidden></div>
+  <div class="row"><button class="btn ghost" value="cancel" type="submit" formnovalidate>Close</button><button class="btn" type="button" id="dNext">Save and next</button><button class="btn primary" type="button" id="dSave">Save</button></div>
+</form></dialog>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script src="firebase-config.js"></script>
+<script src="../assets/access.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="../assets/sap-export.js"></script>
+<script type="module">
+const FB='https://www.gstatic.com/firebasejs/10.14.1/';
+const ROLE_LABEL={viewer:'Viewer',supervisor:'Supervisor',user:'User',admin:'Admin'};
+const PAGE=300;
+const TYPES=[["bin","Wrong bin"],["qty","Wrong quantity"],["prod","Wrong product"],["missing","Bin count off"],["label","Label or handling unit"],["damage","Damaged"],["other","Other"]],TL=Object.fromEntries(TYPES);
+const RES=[["none","Not audited"],["ok","Correct"],["error","Error"]],RL=Object.fromEntries(RES);
+const RANGES=[["day","One day"],["7","7 days"],["30","30 days"],["all","All"]];
+const S={rows:null,days:new Map(),auds:new Map(),view:"list",range:"day",day:null,q:"",who:"",res:"all",sort:"dt",dir:1,show:PAGE,usort:"err",udir:-1,
+  fb:null,authUser:null,role:null,myName:"",canLoad:false,canEdit:false,isAdmin:false,busy:false,pendingReq:null,unsubs:[],cur:null,dRes:"none",dType:""};
+const $=id=>document.getElementById(id),p2=n=>String(n).padStart(2,"0");
+const nf=(n,d)=>(+n||0).toLocaleString("en-US",{maximumFractionDigits:d==null?2:d});
+const pct=(a,b)=>b?(a/b*100).toFixed(1)+"%":"";
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const str=(v,n)=>typeof v==="string"?v.trim().slice(0,n||200):"";
+const norm=s=>String(s==null?"":s).toLowerCase().replace(/\s+/g," ").trim();
+const dayNow=()=>Math.floor((Date.now()/1000-new Date().getTimezoneOffset()*60)/86400);
+const iso=d=>new Date(d*86400000).toISOString().slice(0,10);
+const mdyDay=d=>{if(d==null||d<0)return "";const x=new Date(d*86400000);return p2(x.getUTCMonth()+1)+"/"+p2(x.getUTCDate())+"/"+x.getUTCFullYear()};
+const hm=s=>s==null||s<0?"":p2(Math.floor(s/3600))+":"+p2(Math.floor(s%3600/60));
+const stamp=t=>new Date(t).toLocaleString("en-US",{month:"numeric",day:"numeric",hour:"numeric",minute:"2-digit"});
+let toastT;function toast(t,keep){const e=$("toast");e.textContent=t;e.hidden=false;clearTimeout(toastT);if(!keep)toastT=setTimeout(()=>e.hidden=true,typeof keep==="number"?keep:6000)}
+const keyOf=r=>r.t+"|"+r.s;
+const docId=k=>encodeURIComponent(k).slice(0,1400)||"_";
+
+/* ---------- shared data ----------
+   The SAP export is read and saved by ../assets/sap-export.js, the loader every tool shares, so one load updates all of them.
+   pickdays/{YYYY-MM-DD}    the picks out of a storage bin confirmed on that date, as JSON text. Loading an export adds to a
+                           day and refreshes the lines it already holds; nothing is removed.
+   pickaud/{task|bin}       the audit result on one pick: correct or error, what was wrong, notes, and the associate it belongs to */
+function startData(){
+  const {Fs,fs}=S.fb;
+  S.unsubs.push(Fs.onSnapshot(Fs.collection(fs,"pickdays"),snap=>{
+    const m=new Map();snap.docs.forEach(x=>{const d=x.data()||{},old=S.days.get(x.id);if(old&&old.at===d.at){m.set(x.id,old);return}
+      let rows=[];try{rows=JSON.parse(d.rows||"[]")}catch(_){}m.set(x.id,{at:+d.at||0,file:str(d.file,80),byName:str(d.byName,40),rows})});
+    S.days=m;S.rows=[].concat(...[...m.values()].map(d=>d.rows));render()},()=>{S.rows=S.rows||[];render()}));
+  S.unsubs.push(Fs.onSnapshot(Fs.collection(fs,"pickaud"),snap=>{const m=new Map();snap.docs.forEach(x=>{const a=x.data()||{};m.set(str(a.k,600)||decodeURIComponent(x.id),a)});S.auds=m;render()},()=>{}));
+}
+function stopData(){S.unsubs.forEach(u=>{try{u()}catch(_){}});S.unsubs=[];S.rows=null;S.days=new Map();S.auds=new Map()}
+function load(f){
+  if(!f)return;
+  if(!S.canLoad){toast("Your user group cannot load an export.");return}
+  if(S.busy)return;
+  const rd=new FileReader();rd.onload=async()=>{
+    S.busy=true;$("loadBtn").classList.add("busy");$("msg").hidden=true;toast("Reading the export…",true);
+    try{const r=await SapExport.loadAll({Fs:S.fb.Fs,fs:S.fb.fs,uid:S.authUser.uid,byName:S.myName||S.authUser.email||""},new Uint8Array(rd.result),f.name,t=>toast(t,true)),x=r.picks;
+      if(x.error){$("msg").textContent=x.error;$("msg").hidden=false;$("toast").hidden=true;return}
+      if(x.found){S.q="";$("q").value="";S.who="";S.res="all";S.view="list";S.range="day";S.day=x.maxDay}
+      toast(SapExport.summary(r),15000);render()}
+    catch(e){$("msg").textContent=e.message;$("msg").hidden=false;$("toast").hidden=true}
+    finally{S.busy=false;$("loadBtn").classList.remove("busy")}
+  };rd.readAsArrayBuffer(f)}
+$("file").addEventListener("change",e=>{load(e.target.files[0]);e.target.value=""});
+const W=$("app");["dragenter","dragover"].forEach(n=>W.addEventListener(n,e=>{e.preventDefault();if(S.canLoad)W.classList.add("drop")}));
+["dragleave","drop"].forEach(n=>W.addEventListener(n,e=>{e.preventDefault();W.classList.remove("drop")}));
+W.addEventListener("drop",e=>load(e.dataTransfer.files[0]));
+
+/* ---------- which picks are showing ---------- */
+function latestDay(){let m=-1;for(const r of S.rows)if(r.dt>m)m=r.dt;return m}
+function curDay(){return S.day!=null?S.day:latestDay()}
+function inRange(){if(S.range==="all")return S.rows;if(S.range==="day"){const d=curDay();return S.rows.filter(r=>r.dt===d)}
+  const from=dayNow()-(+S.range-1);return S.rows.filter(r=>r.dt>=from)}
+function rangeText(){if(S.range==="all")return "all dates";if(S.range==="day")return mdyDay(curDay());return "last "+S.range+" days"}
+function enrich(rows){for(const r of rows){const a=S.auds.get(keyOf(r))||null;r._a=a;r._s=a&&RL[a.res]?a.res:"none"}}
+function listRows(R){
+  const q=norm(S.q);
+  return R.filter(r=>{
+    if(S.who&&r.by!==S.who)return false;
+    if(S.res!=="all"&&r._s!==S.res)return false;
+    if(q){const a=r._a;const hay=norm([r.p,r.d,r.s,r.b,r.by,r.t,r.wo,r.wv,a&&a.note,a&&TL[a.type]].join(" "));if(!q.split(" ").every(w=>hay.includes(w)))return false}
+    return true})}
+const SORTS={dt:r=>[r.dt,r.tm],by:r=>[r.by,r.dt,r.tm],p:r=>[r.p,r.s],b:r=>[r.s,r.dt,r.tm],q:r=>[-r.q],res:r=>[r._s==="error"?0:r._s==="ok"?1:2,r.by]};
+function cmp(a,b){for(let i=0;i<a.length;i++){if(a[i]<b[i])return -1;if(a[i]>b[i])return 1}return 0}
+function sorted(R){const rows=listRows(R),f=SORTS[S.sort]||SORTS.dt;return rows.sort((a,b)=>S.dir*cmp(f(a),f(b)))}
+
+/* ---------- drawing ---------- */
+let CUR=[],LIST=[];
+function render(){
+  if(!S.role)return;
+  const has=!!(S.rows&&S.rows.length);
+  $("loadBtn").hidden=!S.canLoad;
+  let newest=null;for(const d of S.days.values())if(!newest||d.at>newest.at)newest=d;
+  const live=S.rows===null?"Loading…":newest?`${nf(S.rows.length,0)} picks kept over ${S.days.size} ${S.days.size===1?"day":"days"} · last load <b>${esc(newest.file)}</b> ${esc(stamp(newest.at))}${newest.byName?" by "+esc(newest.byName):""}`:"No export loaded yet";
+  $("status").innerHTML=`<span><span class="dot ok"></span>${esc(S.myName||"")}${S.myName?" · ":""}${(S.who||ROLE_LABEL[S.role])}</span><span>${live}</span>`;
+  $("noData").hidden=has||S.rows===null;
+  if(!has){$("noData").innerHTML=S.rows===null?"":`<strong>No picks loaded</strong><span>${S.canLoad?"Load the SAP warehouse task export with <b>Load SAP export</b>, on the <a href=\"../data/\" style=\"color:var(--info)\">Data upload</a> page, or drag the file onto this page. The page pulls out the picks from storage bins and keeps them.":"A supervisor loads the SAP warehouse task export. Once it is loaded, everyone signed in sees the picks."}</span>`;
+    ["vList","vUser"].forEach(id=>$(id).hidden=true);$("stats").innerHTML="";$("views").innerHTML="";$("rangeBtns").innerHTML="";$("dayIn").hidden=true;renderNote();return}
+  const R=CUR=inRange();enrich(R);
+  let ok=0,er=0,units=0;const users=new Set();for(const r of R){if(r._s==="ok")ok++;else if(r._s==="error")er++;units+=r.q;users.add(r.by)}
+  const aud=ok+er;
+  $("stats").innerHTML=[["Picks",nf(R.length,0),""],["Units picked",nf(units,0),""],["Audited",nf(aud,0),""],["Not audited",nf(R.length-aud,0),""],["Correct",nf(ok,0),""],["Errors",nf(er,0),er?"hot":""],["Error rate",aud?pct(er,aud):"—",er?"warn":""],["Associates",nf(users.size,0),""]]
+    .map(t=>`<div class="${t[2]}"><dt>${t[0]}</dt><dd>${t[1]}</dd></div>`).join("");
+  $("rangeBtns").innerHTML=RANGES.map(r=>`<button type="button" data-r="${r[0]}" aria-pressed="${S.range===r[0]}">${r[0]==="day"?(S.day==null||S.day===latestDay()?"Latest day":"One day"):r[1]}</button>`).join("");
+  $("dayIn").hidden=false;$("dayIn").value=S.range==="day"&&curDay()>=0?iso(curDay()):"";$("dayIn").classList.toggle("on",S.range==="day");
+  $("views").innerHTML=[["list","Pick list",R.length],["user","Errors by associate",er]]
+    .map(v=>`<button type="button" class="view" role="tab" data-v="${v[0]}" aria-selected="${S.view===v[0]}">${v[1]}<span class="n">${nf(v[2],0)}</span></button>`).join("");
+  $("vList").hidden=S.view!=="list";$("vUser").hidden=S.view!=="user";
+  if(S.view==="list")renderList(R);else renderUsers(R);
+  renderNote()}
+function chip(val,label){return `<button type="button" class="tab" data-x="${val}" aria-pressed="${S.res===val}">${label}</button>`}
+function resPill(r){const a=r._a||{};return r._s==="error"?`<span class="pill p1">${esc(TL[a.type]||"Error")}</span>`:r._s==="ok"?'<span class="pill st-closed">Correct</span>':'<span class="pill p3">Not audited</span>'}
+function renderList(R){
+  const c={none:0,ok:0,error:0},names=new Map();for(const r of R){names.set(r.by,(names.get(r.by)||0)+1);if(!S.who||r.by===S.who)c[r._s]++}
+  if(S.who&&!names.has(S.who))names.set(S.who,0);
+  $("who").innerHTML=`<option value="">All associates</option>`+[...names].sort((a,b)=>a[0]<b[0]?-1:1).map(([n,k])=>`<option value="${esc(n)}"${S.who===n?" selected":""}>${esc(n)} · ${k}</option>`).join("");
+  $("resChips").innerHTML=chip("all","All")+chip("none","Not audited · "+nf(c.none,0))+chip("ok","Correct · "+nf(c.ok,0))+chip("error","Errors · "+nf(c.error,0));
+  const rows=LIST=sorted(R);
+  $("cList").textContent=nf(rows.length,0);$("listHint").textContent=S.canEdit?"Select a row to enter its audit result":"Select a row to see its details";
+  const th=(k,l,t)=>`<th class="s${t?" t":""}" data-s="${k}">${l}${S.sort===k?(S.dir>0?" ▲":" ▼"):""}</th>`;
+  let h="<thead><tr>"+th("dt","Picked",1)+th("by","Associate",1)+th("b","Picked from",1)+th("p","Product",1)+th("q","Qty")+'<th>Asked</th><th class="t">To</th><th class="t">Type</th><th class="t">Whse order</th><th class="t">Task</th>'+th("res","Audit",1)+'<th class="t">Notes</th></tr></thead><tbody>';
+  for(const r of rows.slice(0,S.show)){const a=r._a||{};
+    h+=`<tr class="click${r._s==="error"?" hot":""}" data-k="${esc(keyOf(r))}"><td class="t">${mdyDay(r.dt)} ${hm(r.tm)}</td><td class="t n">${esc(r.by)}</td><td class="t n">${esc(r.s)}</td><td class="t n" title="${esc(r.d||"")}">${esc(r.p||"(blank)")}</td><td>${nf(r.q)}</td>`
+      +`<td>${r.tg?`<span class="pill p2" title="${r.tg>r.q?"Short pick":"Over pick"}">${nf(r.tg)}</span>`:""}</td><td class="t">${esc(r.b)}</td><td class="t">${esc(r.pt)}</td><td class="t">${esc(r.wo)}</td><td class="t">${esc(r.t)}</td>`
+      +`<td class="t">${resPill(r)}</td><td class="t note" title="${esc(a.note||"")}">${esc(a.note||"")}</td></tr>`}
+  if(!rows.length)h+=`<tr><td colspan="12" class="t" style="color:var(--muted)">Nothing matches these filters.</td></tr>`;
+  $("tList").innerHTML=h+"</tbody>";
+  $("more").innerHTML=rows.length>S.show?`<button type="button" class="btn" data-more="list">Show ${nf(Math.min(PAGE,rows.length-S.show),0)} more of ${nf(rows.length-S.show,0)}</button>`:""}
+function byUser(R){const m=new Map();
+  for(const r of R){let o=m.get(r.by);if(!o){o={k:r.by,n:0,units:0,ok:0,err:0,types:{},last:-1};m.set(r.by,o)}
+    o.n++;o.units+=r.q;if(r._s==="ok")o.ok++;else if(r._s==="error"){o.err++;const t=r._a.type||"other";o.types[t]=(o.types[t]||0)+1;if(r.dt>o.last)o.last=r.dt}}
+  return [...m.values()]}
+function renderUsers(R){
+  const L=byUser(R),ks={k:o=>o.k,n:o=>o.n,units:o=>o.units,aud:o=>o.ok+o.err,ok:o=>o.ok,err:o=>o.err,rate:o=>o.ok+o.err?o.err/(o.ok+o.err):-1,last:o=>o.last};
+  const f=ks[S.usort]||ks.err;L.sort((a,b)=>{const x=f(a),y=f(b);return S.udir*(x<y?-1:x>y?1:0)||b.n-a.n});
+  const th=(k,l,t)=>`<th class="s${t?" t":""}" data-us="${k}">${l}${S.usort===k?(S.udir>0?" ▲":" ▼"):""}</th>`;
+  $("cUser").textContent=nf(L.length,0);
+  const top=o=>Object.entries(o.types).sort((a,b)=>b[1]-a[1]).map(([t,n])=>(TL[t]||"Other")+(n>1?" ×"+n:"")).join(", ");
+  let T={n:0,units:0,ok:0,err:0};for(const o of L){T.n+=o.n;T.units+=o.units;T.ok+=o.ok;T.err+=o.err}
+  $("tUser").innerHTML="<thead><tr>"+th("k","Associate",1)+th("n","Picks")+th("units","Units")+th("aud","Audited")+th("ok","Correct")+th("err","Errors")+th("rate","Error rate")+'<th class="t">What was wrong</th>'+th("last","Last error",1)+"</tr></thead><tbody>"
+    +L.map(o=>`<tr class="click${o.err?" hot":""}" data-u="${esc(o.k)}"><td class="t n">${esc(o.k)}</td><td>${nf(o.n,0)}</td><td>${nf(o.units,0)}</td><td>${o.ok+o.err||""}</td><td>${o.ok||""}</td><td class="n${o.err?" neg":""}">${o.err||""}</td><td>${o.ok+o.err?pct(o.err,o.ok+o.err):""}</td><td class="t">${esc(top(o))}</td><td class="t">${mdyDay(o.last)}</td></tr>`).join("")
+    +`<tr class="tot"><td class="t">Total</td><td>${nf(T.n,0)}</td><td>${nf(T.units,0)}</td><td>${T.ok+T.err}</td><td>${T.ok}</td><td>${T.err}</td><td>${pct(T.err,T.ok+T.err)}</td><td></td><td></td></tr></tbody>`;
+  const tc={};let te=0;for(const r of R)if(r._s==="error"){const t=TL[r._a.type]?r._a.type:"other";tc[t]=(tc[t]||0)+1;te++}
+  const tl=Object.entries(tc).sort((a,b)=>b[1]-a[1]),mx=Math.max(1,...tl.map(x=>x[1]));$("cType").textContent=nf(te,0);
+  $("tType").innerHTML=tl.length?'<thead><tr><th class="t">What was wrong</th><th class="t">Errors</th><th>Share</th></tr></thead><tbody>'+tl.map(([t,n])=>`<tr><td class="t n">${TL[t]}</td><td class="t"><span class="meter" style="width:${(n/mx*9).toFixed(2)}em"></span>${n}</td><td>${pct(n,te)}</td></tr>`).join("")+"</tbody>"
+    :'<tbody><tr><td class="t" style="color:var(--muted)">No errors entered for these dates.</td></tr></tbody>'}
+function renderNote(){
+  $("note").innerHTML=`A pick here is a confirmed stock removal task out of a storage bin, shown with the bin it was picked from and the associate who confirmed it. The drop into the goods issue zone, the goods issue posting and open tasks are left out. When the quantity confirmed is not the quantity the task asked for, the quantity asked is shown beside it. Each pick is kept once on its confirmation date; loading another export adds to the list and never removes a line or its audit result. Error rate is errors out of the picks audited, not out of all picks. 7 days and 30 days include today.`}
+
+/* ---------- entering an audit result ---------- */
+function openDlg(k){
+  const r=CUR.find(x=>keyOf(x)===k);if(!r)return;S.cur=r;const a=r._a||{};S.dRes=r._s;S.dType=TL[a.type]?a.type:"";
+  $("dTitle").textContent=(r.p||"(blank product)")+" · picked from "+r.s;
+  const F=[["Associate",r.by||"—"],["Picked",mdyDay(r.dt)+" "+hm(r.tm)],["Picked from",r.s],["Quantity picked",nf(r.q)],["Product",r.p||"—"],["Description",r.d||"—"],
+    ["Warehouse order",r.wo||"—"],["Task",r.t],["Process type",r.pt||"—"]];
+  if(r.tg)F.splice(4,0,["Quantity asked",nf(r.tg)]);if(r.b)F.push(["To",r.b]);if(r.wv)F.push(["Wave",r.wv]);
+  $("dFacts").innerHTML=F.map(f=>`<div><b>${f[0]}</b><span>${esc(f[1])}</span></div>`).join("");
+  $("dNoteIn").value=a.note||"";
+  $("dWho").textContent=a.at?"Entered "+stamp(a.at)+(a.byName?" by "+a.byName:""):"";
+  $("dNoteIn").disabled=!S.canEdit;$("dSave").hidden=$("dNext").hidden=!S.canEdit;$("dErr").hidden=true;
+  drawD();if(!$("dlg").open)$("dlg").showModal()}
+function drawD(){const dis=S.canEdit?"":" disabled";
+  $("dRes").innerHTML=RES.map(s=>`<button type="button" data-res="${s[0]}" aria-pressed="${S.dRes===s[0]}"${dis}>${s[1]}</button>`).join("");
+  $("dErrBox").hidden=S.dRes!=="error";
+  $("dType").innerHTML=TYPES.map(s=>`<button type="button" data-ty="${s[0]}" aria-pressed="${S.dType===s[0]}"${dis}>${s[1]}</button>`).join("")}
+$("dRes").addEventListener("click",e=>{const b=e.target.closest("button[data-res]");if(b&&S.canEdit){S.dRes=b.dataset.res;drawD()}});
+$("dType").addEventListener("click",e=>{const b=e.target.closest("button[data-ty]");if(b&&S.canEdit){S.dType=b.dataset.ty;drawD()}});
+async function saveDlg(next){
+  const r=S.cur;if(!r||!S.canEdit)return;const {Fs,fs}=S.fb,k=keyOf(r),err=$("dErr");err.hidden=true;
+  if(S.dRes==="error"&&!S.dType){err.textContent="Choose what was wrong.";err.hidden=false;return}
+  const i=LIST.findIndex(x=>keyOf(x)===k),nx=next&&i>=0?LIST[i+1]:null,nk=nx?keyOf(nx):null;
+  $("dSave").disabled=$("dNext").disabled=true;
+  try{await Fs.setDoc(Fs.doc(fs,"pickaud",docId(k)),{k:k.slice(0,600),res:S.dRes,type:S.dRes==="error"?S.dType:"",note:str($("dNoteIn").value,500),who:String(r.by||"").slice(0,40),
+      p:String(r.p||"").slice(0,60),b:String(r.s||"").slice(0,60),dt:r.dt,by:S.authUser.uid,byName:S.myName||S.authUser.email||"",at:Date.now()});
+    if(nk&&CUR.some(x=>keyOf(x)===nk)){toast("Saved");enrich(CUR);openDlg(nk)}else{$("dlg").close();toast(next?"Saved. That was the last line in the list.":"Saved")}}
+  catch(e){err.textContent=e&&e.code==="permission-denied"?"Firebase refused the change. Your user group may be view only, or the latest security rules have not been published yet.":"Couldn’t save. Check the connection and try again.";err.hidden=false}
+  finally{$("dSave").disabled=$("dNext").disabled=false}}
+$("dSave").addEventListener("click",()=>saveDlg(false));$("dNext").addEventListener("click",()=>saveDlg(true));
+
+/* ---------- printed audit sheet: every line of the list as filtered and sorted, with room to mark the result by hand ---------- */
+function buildSheet(){
+  const rows=sorted(CUR),who=S.who||"All associates";
+  const flt=[rangeText(),who,S.res!=="all"?RL[S.res]+" only":"",S.q?"search “"+S.q+"”":""].filter(Boolean).join(" · ");
+  $("sheet").innerHTML=`<div class="sh-head"><div><h1>PICKING AUDIT SHEET</h1><div class="sh-band"><i></i><b></b></div><p>${esc(flt)} · ${nf(rows.length,0)} ${rows.length===1?"pick":"picks"} out of storage bins</p></div><img src="../assets/ceva-logo.svg" alt="CEVA Logistics"></div>
+    <div class="sh-sign"><span>Audited by</span><i></i><span>Date</span><i class="sm"></i><span>Shift</span><i class="sm"></i></div>
+    <table><thead><tr><th>#</th><th>Picked</th><th>Associate</th><th>Bin</th><th>Product</th><th class="r">Qty picked</th><th>Whse order</th><th class="c">OK</th><th class="c">Error</th><th>What was found (bin, quantity, product)</th></tr></thead><tbody>`
+    +rows.map((r,i)=>`<tr><td>${i+1}</td><td>${mdyDay(r.dt).slice(0,5)} ${hm(r.tm)}</td><td>${esc(r.by)}</td><td><b>${esc(r.s)}</b></td><td><b>${esc(r.p||"")}</b></td><td class="r">${nf(r.q)}${r.tg?" of "+nf(r.tg):""}</td><td>${esc(r.wo)}</td><td class="c"><span class="box"></span></td><td class="c"><span class="box"></span></td><td class="w">${r._s==="error"?esc((TL[r._a.type]||"Error")+(r._a.note?": "+r._a.note:"")):r._s==="ok"?"Correct":""}</td></tr>`).join("")
+    +`</tbody></table><p class="sh-foot">Error types: ${TYPES.map(t=>t[1]).join(", ")}. Enter the results in the Picking audit tool.</p>`;
+  return rows.length}
+$("printBtn").addEventListener("click",()=>{if(!buildSheet()){toast("There are no picks in the list to print.");return}window.print()});
+window.addEventListener("beforeprint",()=>{if(S.role&&CUR.length)buildSheet()});
+
+/* ---------- Excel ---------- */
+$("xlsBtn").addEventListener("click",()=>{
+  const rows=sorted(CUR);if(!rows.length)return;
+  const head=["Picked on","Time","Associate","Picked from","Product","Description","Qty picked","Qty asked","To","Process type","Warehouse order","Wave","Task","Audit result","What was wrong","Notes","Entered by","Entered on"];
+  const out=[head].concat(rows.map(r=>{const a=r._a||{};return [mdyDay(r.dt),hm(r.tm),r.by,r.s,r.p,r.d||"",r.q,r.tg||r.q,r.b,r.pt,r.wo,r.wv||"",r.t,RL[r._s],r._s==="error"?TL[a.type]||"":"",a.note||"",a.byName||"",a.at?stamp(a.at):""]}));
+  const ws=XLSX.utils.aoa_to_sheet(out);ws["!cols"]=head.map((h,i)=>({wch:[12,7,14,14,16,26,9,9,14,8,14,12,14,12,20,40,16,16][i]||14}));ws["!autofilter"]={ref:"A1:"+XLSX.utils.encode_col(head.length-1)+"1"};
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Picks");
+  const L=byUser(CUR).sort((a,b)=>b.err-a.err||b.n-a.n);
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([["Associate","Picks","Units","Audited","Correct","Errors","Error rate"]].concat(L.map(o=>[o.k,o.n,o.units,o.ok+o.err,o.ok,o.err,o.ok+o.err?Math.round(o.err/(o.ok+o.err)*1000)/1000:""]))),"By associate");
+  const t=new Date();XLSX.writeFile(wb,"CEVA Picking Audit "+t.getFullYear()+"-"+p2(t.getMonth()+1)+"-"+p2(t.getDate())+".xlsx");
+  toast("Exported "+nf(rows.length,0)+" picks.")});
+
+/* ---------- clicks ---------- */
+$("views").addEventListener("click",e=>{const b=e.target.closest("button[data-v]");if(b){S.view=b.dataset.v;render()}});
+$("rangeBtns").addEventListener("click",e=>{const b=e.target.closest("button[data-r]");if(b){S.range=b.dataset.r;if(S.range==="day")S.day=null;S.show=PAGE;render()}});
+$("dayIn").addEventListener("change",e=>{const v=e.target.value;if(!v){S.day=null}else{S.day=Math.floor(Date.parse(v+"T00:00:00Z")/86400000)}S.range="day";S.show=PAGE;render()});
+$("resChips").addEventListener("click",e=>{const b=e.target.closest("button[data-x]");if(!b)return;S.res=b.dataset.x;S.show=PAGE;render()});
+$("who").addEventListener("change",e=>{S.who=e.target.value;S.show=PAGE;render()});
+let qT;$("q").addEventListener("input",e=>{clearTimeout(qT);qT=setTimeout(()=>{S.q=e.target.value;S.show=PAGE;render()},150)});
+$("tList").addEventListener("click",e=>{const th=e.target.closest("th[data-s]");if(th){const k=th.dataset.s;if(S.sort===k)S.dir=-S.dir;else{S.sort=k;S.dir=1}render();return}
+  const tr=e.target.closest("tr[data-k]");if(tr)openDlg(tr.dataset.k)});
+$("tUser").addEventListener("click",e=>{const th=e.target.closest("th[data-us]");if(th){const k=th.dataset.us;if(S.usort===k)S.udir=-S.udir;else{S.usort=k;S.udir=k==="k"?1:-1}render();return}
+  const tr=e.target.closest("tr[data-u]");if(tr){S.who=tr.dataset.u;S.q="";$("q").value="";const o=byUser(CUR).find(x=>x.k===S.who);S.res=o&&o.err?"error":"all";S.view="list";S.show=PAGE;render()}});
+document.addEventListener("click",e=>{const b=e.target.closest("button[data-more]");if(!b)return;S.show+=PAGE;render()});
+/* ---------- sign-in gate (same accounts, roles and access requests as the other CEVA tools) ---------- */
+function showGate(mode,waitText){
+  const ready=mode==="ready";$("gate").hidden=ready;$("app").hidden=!ready;
+  $("gateWait").hidden=mode!=="wait";if(waitText)$("gateWait").textContent=waitText;
+  $("gateSetup").hidden=mode!=="setup";$("gateLogin").hidden=mode!=="login";$("gateRequest").hidden=mode!=="request";$("gateDenied").hidden=mode!=="denied";
+  if(mode==="denied")renderDenied();
+}
+function renderDenied(){const em=S.authUser?S.authUser.email||"":"";$("dEmail").textContent=em;$("dEmailP").textContent=em;$("dPending").hidden=!S.myReq;$("dNone").hidden=!!S.myReq}
+function reqErrMsg(c){return c==="auth/email-already-in-use"?"That email already has a login. Go back and sign in, or use Forgot password."
+  :c==="auth/invalid-email"?"That doesn’t look like an email address.":c==="auth/weak-password"?"Use a password of at least 8 characters."
+  :c==="auth/network-request-failed"?"No connection. Check the network and try again.":"Couldn’t send the request. Try again in a moment."}
+function fileRequest(user,name,note){const {Fs,fs}=S.fb;return Fs.setDoc(Fs.doc(fs,"requests",user.uid),{name:str(name,40),email:str(user.email||"",80),company:"ceva",note:str(note,120),at:Date.now()})}
+$("gateLogin").addEventListener("submit",async e=>{e.preventDefault();const email=$("lEmail").value.trim(),pass=$("lPass").value,err=$("lErr");err.hidden=true;
+  if(!email||!pass){err.textContent="Enter your email and password.";err.hidden=false;return}
+  if(!S.fb)return;$("lGo").disabled=true;
+  try{await S.fb.F.signInWithEmailAndPassword(S.fb.auth,email,pass);$("lPass").value=""}
+  catch(x){const c=x&&x.code;err.textContent=c==="auth/too-many-requests"?"Too many tries. Wait a few minutes, then try again.":c==="auth/network-request-failed"?"No connection. Check the network and try again.":"That email and password don’t match an account on this tool.";err.hidden=false}
+  finally{$("lGo").disabled=false}});
+$("lForgot").addEventListener("click",async()=>{const email=$("lEmail").value.trim(),err=$("lErr");err.hidden=true;
+  if(!email){err.textContent="Type your email above first, then select this again.";err.hidden=false;$("lEmail").focus();return}
+  if(!S.fb)return;
+  try{await S.fb.F.sendPasswordResetEmail(S.fb.auth,email);toast("Reset link sent to "+email+". Check spam too; the link expires, so use it soon.")}
+  catch(x){err.textContent="Couldn’t send the reset link. Check the email address and the connection, then try again.";err.hidden=false}});
+$("lRequest").addEventListener("click",()=>{$("qEmail").value=$("lEmail").value;showGate("request");setTimeout(()=>$("qName").focus(),30)});
+$("qBack").addEventListener("click",()=>showGate("login"));
+$("gateRequest").addEventListener("submit",async e=>{e.preventDefault();const name=str($("qName").value,40),email=$("qEmail").value.trim(),pass=$("qPass").value,note=str($("qNote").value,120),err=$("qErr");err.hidden=true;
+  const bad=!name?"Enter your name so the admin knows who is asking.":!email?"Enter your work email.":pass.length<8?"Use a password of at least 8 characters.":"";
+  if(bad){err.textContent=bad;err.hidden=false;return}
+  if(!S.fb)return;$("qGo").disabled=true;S.pendingReq={name,note};
+  try{await S.fb.F.createUserWithEmailAndPassword(S.fb.auth,email,pass);$("qPass").value=""}
+  catch(x){S.pendingReq=null;err.textContent=reqErrMsg(x&&x.code);err.hidden=false}
+  finally{$("qGo").disabled=false}});
+$("dRequest").addEventListener("submit",async e=>{e.preventDefault();const name=str($("dName").value,40),note=str($("dNote").value,120),err=$("dReqErr");err.hidden=true;
+  if(!name){err.textContent="Enter your name so the admin knows who is asking.";err.hidden=false;return}
+  if(!S.fb||!S.authUser)return;$("dReqGo").disabled=true;
+  try{await fileRequest(S.authUser,name,note);toast("Request sent")}catch(x){err.textContent=reqErrMsg(x&&x.code);err.hidden=false}finally{$("dReqGo").disabled=false}});
+const signOut=()=>{if(S.fb)S.fb.F.signOut(S.fb.auth)};
+$("dOut").addEventListener("click",signOut);$("signOut").addEventListener("click",signOut);
+
+(async function connect(){
+  const cfg=window.FIREBASE_CONFIG;
+  if(!cfg||!cfg.apiKey||/PASTE/i.test(cfg.apiKey+cfg.projectId)){showGate("setup");return}
+  let A,F,Fs;
+  try{[A,F,Fs]=await Promise.all([import(FB+"firebase-app.js"),import(FB+"firebase-auth.js"),import(FB+"firebase-firestore.js")])}
+  catch(_){showGate("wait","Can’t reach Firebase from this network. Ask IT to allow gstatic.com, googleapis.com and firebaseapp.com, then reload.");return}
+  const app=A.initializeApp(cfg),auth=F.getAuth(app);let fs;
+  try{fs=Fs.initializeFirestore(app,{localCache:Fs.persistentLocalCache({tabManager:Fs.persistentMultipleTabManager()})})}catch(_){fs=Fs.getFirestore(app)}
+  S.fb={auth,F,Fs,fs};
+  let roleUnsub=null,reqUnsub=null;
+  F.onAuthStateChanged(auth,user=>{
+    if(roleUnsub){roleUnsub();roleUnsub=null}if(reqUnsub){reqUnsub();reqUnsub=null}
+    stopData();S.authUser=user;S.role=null;S.canLoad=S.canEdit=S.isAdmin=false;S.myReq=null;
+    if(!user){showGate("login");return}
+    if(S.pendingReq){const q=S.pendingReq;S.pendingReq=null;fileRequest(user,q.name,q.note).then(()=>toast("Request sent. An admin will approve it."),()=>toast("Signed up, but the request didn’t send. Fill in the form below."))}
+    showGate("wait","Checking access…");
+    reqUnsub=Fs.onSnapshot(Fs.doc(fs,"requests",user.uid),s=>{S.myReq=s.exists();if(!S.role&&!$("gateDenied").hidden)renderDenied()},()=>{});
+    roleUnsub=CevaAccess.watch(Fs,fs,user.uid,"picking",snap=>{
+      const d=snap.exists()?(snap.data()||{}):{},role=d.role;
+      if(d.noAccess){S.role=null;stopData();showGate("wait",CevaAccess.NO_ACCESS);return}
+      if(!ROLE_LABEL[role]){if(snap.metadata.fromCache){showGate("wait","Waiting for the network…");return}S.role=null;stopData();showGate("denied");return}
+      const first=!S.role;S.role=role;S.myName=str(d.name,40);S.canLoad=!!d.canLoad;S.canEdit=role==="supervisor"||role==="admin";S.who=d.groupName+" · "+CevaAccess.LEVEL_LABEL[d.level];S.isAdmin=role==="admin";
+      if(first){startData();showGate("ready")}
+      render();
+    },()=>{S.role=null;stopData();showGate("denied")});
+  });
+})();
+</script>
+</body>
+</html>

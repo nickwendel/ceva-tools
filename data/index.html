@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Data Upload</title>
+<link rel="icon" href="../assets/ceva-logo.svg" type="image/svg+xml">
+<style>
+/* Visual system shared with the other CEVA tools (matched to the Whitsett KPI dashboard): dark navy, card panels, CEVA red accent, system type.
+   Layout: header, KPI tiles, section tabs with a date range, filters, then card panels. Dark only. */
+:root{
+  --bg:#0a1626; --card:#122A47; --row:#0e2038; --line:#1f3d61; --line-light:#2a4a73;
+  --fg:#e7eef7; --muted:#93a8c4; --faint:#5f7796;
+  --accent:#e2231a; --good:#2fbf71; --warn:#e8a33d; --bad:#e2231a; --info:#3d9fe8; --purple:#a78bfa;
+  --s1:#e7eef7; --s2:#3d9fe8; --s3:#2fbf71; --s4:#5f7796; --s5:#a78bfa; --s6:#4fd0e0; --s7:#3a5273;
+  --radius:10px;
+  --f:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{height:100%;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{min-height:100%;margin:0;color:var(--fg);font-family:var(--f);font-size:13.5px;line-height:1.45;-webkit-font-smoothing:antialiased;
+  background:radial-gradient(1200px 600px at 10% -10%,#123156 0%,var(--bg) 55%) fixed,var(--bg)}
+[hidden]{display:none!important}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--info);outline-offset:2px}
+::-webkit-scrollbar{height:8px;width:8px}
+::-webkit-scrollbar-thumb{background:var(--line-light);border-radius:4px}
+.gut{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.btn{background:var(--card);color:var(--fg);border:1px solid var(--line-light);border-radius:8px;min-height:2.6rem;padding:0 .95rem;font:600 13px/1 var(--f);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:.45rem;white-space:nowrap;position:relative;transition:filter .15s,border-color .15s}
+.btn:hover{border-color:var(--accent);filter:brightness(1.08)}
+.btn.primary{background:var(--accent);border-color:transparent;color:#fff}
+.btn.ghost{background:transparent;color:var(--muted)}
+.btn.ghost:hover{color:var(--fg)}
+.btn:disabled,.btn.busy{opacity:.45;cursor:default;filter:none}
+.btn input[type=file]{position:absolute;opacity:0;width:1px;height:1px}
+.btn:focus-within{outline:2px solid var(--info);outline-offset:2px}
+.inp{width:100%;min-height:2.6rem;background:var(--bg);color:var(--fg);border:1px solid var(--line-light);border-radius:8px;padding:.5rem .75rem;font-size:14px;outline:none}
+.inp:focus{border-color:var(--accent)}
+.fld{display:flex;flex-direction:column;gap:.35rem;min-width:0}
+.fld>label{font:600 10.5px/1 var(--f);letter-spacing:.5px;text-transform:uppercase;color:var(--faint)}
+.err{color:#f97066;font-weight:600;font-size:12px}
+
+/* sign-in gate */
+.gate{min-height:100vh;display:flex;align-items:center;justify-content:center;padding-block:2rem}
+.gate-card{width:100%;max-width:400px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:2.2rem 2.2rem 2rem;box-shadow:0 8px 40px rgba(0,0,0,.55);display:flex;flex-direction:column}
+.gate-head{display:flex;flex-direction:column;align-items:center;text-align:center;gap:.5rem;margin-bottom:1.4rem}
+.gate-head img{height:2.3rem;width:auto;display:block}
+.gate-site{font-size:12px;color:var(--faint);letter-spacing:.02em}
+.gate-body{display:flex;flex-direction:column;gap:.9rem}
+.gate-title{margin:0;font:700 20px/1.2 var(--f)}
+.gate-p{margin:0;color:var(--muted);line-height:1.5;font-size:12.5px}
+.gate-p b{color:var(--fg)}
+.gate form{display:flex;flex-direction:column;gap:.85rem}
+.gate .btn{width:100%;min-height:2.75rem;font-size:14px}
+.gate .btn.ghost{min-height:2.4rem;font-size:12.5px}
+.gate-alt{border-top:1px solid var(--line);padding-top:.85rem}
+
+/* app */
+.app{max-width:1500px;margin:0 auto;padding-bottom:3rem;font-size:14px}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:1.2em 1.6em;flex-wrap:wrap;padding-block:1.4em 1.1em;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:.9em;min-width:0}
+.logo-plate{height:2.6em;display:flex;align-items:center;flex:none}
+.logo-plate img{height:100%;width:auto;max-width:12em;object-fit:contain;display:block}
+.b-title{margin:0;font:700 1.35em/1.15 var(--f);letter-spacing:.2px}
+.status-line{display:flex;flex-wrap:wrap;align-items:center;gap:.3em 1em;margin-top:.45em;font-size:.85em;color:var(--faint)}
+.status-line b{color:var(--muted);font-weight:600}
+.dot{width:.6em;height:.6em;border-radius:50%;background:var(--warn);display:inline-block;margin-right:.4em}
+.dot.ok{background:var(--good)}.dot.bad{background:var(--bad)}
+.controls{display:flex;gap:.6em;align-items:center;flex-wrap:wrap}
+.b-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(9.5em,1fr));gap:.7em;margin:1.2em 0 0;padding:0}
+.b-stats>div{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:1.1em 1.2em 1em;position:relative;overflow:hidden;margin:0}
+.b-stats>div::before{content:"";position:absolute;top:0;left:0;width:3px;height:100%;background:var(--kpi,var(--line-light))}
+.b-stats>div:nth-child(1){--kpi:var(--accent)}.b-stats>div:nth-child(2){--kpi:var(--info)}.b-stats>div:nth-child(3){--kpi:var(--purple)}
+.b-stats>div:nth-child(5){--kpi:var(--good)}
+.b-stats>div.warn{--kpi:var(--warn)}.b-stats>div.hot{--kpi:var(--bad)}
+.b-stats dt{font:700 .75em/1.2 var(--f);letter-spacing:.6px;text-transform:uppercase;color:var(--faint);white-space:nowrap}
+.b-stats dd{margin:.45em 0 0;font:800 2.1em/1 var(--f);font-variant-numeric:tabular-nums;white-space:nowrap}
+.b-stats .hot dd{color:#ff6b61}.b-stats .warn dd{color:var(--warn)}
+.bar{display:flex;flex-wrap:wrap;gap:.6em;align-items:center;margin:1.2em 0 1em}
+.tab{background:transparent;border:1px solid var(--line-light);color:var(--muted);border-radius:2rem;min-height:2.3rem;padding:0 .9rem;font:600 13px/1 var(--f);cursor:pointer}
+.tab:hover{color:var(--fg)}
+.tab[aria-pressed="true"]{background:var(--accent);border-color:transparent;color:#fff}
+.msg{border:1px solid rgba(226,35,26,.5);color:#f97066;border-radius:8px;padding:.7rem 1rem;font-weight:600;margin-bottom:1em}
+.panels{display:flex;flex-direction:column;gap:1em}
+.b-panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);display:flex;flex-direction:column;min-width:0;padding:1em 1.1em .9em}
+.p-head{display:flex;align-items:baseline;flex-wrap:wrap;gap:.55em;padding-bottom:.6em;border-bottom:1px solid var(--line-light)}
+.p-head h2{margin:0;font:700 1.05em/1.2 var(--f)}
+.p-count{font:700 1.05em/1 var(--f);color:var(--muted);font-variant-numeric:tabular-nums}
+.p-page{margin-left:auto;font:600 .75em/1 var(--f);letter-spacing:.5px;text-transform:uppercase;color:var(--faint)}
+.p-body{padding-top:.7em}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:1em}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th{font:700 .72em/1 var(--f);letter-spacing:.5px;text-transform:uppercase;color:var(--faint);text-align:right;padding:.5em .7em;white-space:nowrap;border-bottom:1px solid var(--line)}
+th.s{cursor:pointer}th.s:hover{color:var(--fg)}
+th:first-child,td:first-child,th.t,td.t{text-align:left}
+td{padding:.5em .7em;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line)}
+tbody tr:last-child td{border-bottom:0}
+td.n{font-weight:700}
+tr.click{cursor:pointer}tr.click:hover td{background:var(--row)}tr.sel td{background:rgba(61,159,232,.14)}
+tr.tot td{font-weight:700;border-top:1px solid var(--line-light)}
+tr.hot td{background:rgba(226,35,26,.1)}
+.meter{display:inline-block;height:.4em;background:var(--info);vertical-align:middle;margin-right:.5em;border-radius:2px;opacity:.7}
+.pill{display:inline-block;padding:.2em .55em;border-radius:5px;font:700 .85em/1 var(--f);background:var(--row);color:var(--muted);border:1px solid var(--line-light)}
+.pill.p1{background:rgba(226,35,26,.16);color:#ff6b61;border-color:rgba(226,35,26,.5)}
+.pill.p2{background:rgba(232,163,61,.16);color:var(--warn);border-color:rgba(232,163,61,.5)}
+.legend{display:flex;flex-wrap:wrap;gap:.5em 1.2em;margin-top:.5em}
+.legend span{display:inline-flex;align-items:center;gap:.4em;font:600 .78em/1 var(--f);color:var(--muted)}
+.legend i{display:inline-block;width:.9em;height:.7em;border-radius:2px}
+svg text{font-family:var(--f);font-size:11px;fill:var(--muted)}svg .tl{fill:var(--fg);font-weight:700;paint-order:stroke;stroke:var(--card);stroke-width:3px;stroke-linejoin:round}
+.empty{border:1px dashed var(--line-light);border-radius:var(--radius);padding:1.2em;color:var(--muted);display:flex;flex-direction:column;gap:.35em}
+.empty strong{font:700 1.05em/1.2 var(--f);color:var(--fg)}
+.empty span{line-height:1.5;max-width:75ch}
+.ag{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.6em;margin-bottom:.8em}
+.ag>div{background:var(--row);border:1px solid var(--line);border-radius:8px;padding:.7em .9em;position:relative;overflow:hidden}
+.ag>div::before{content:"";position:absolute;top:0;left:0;width:3px;height:100%;background:var(--line-light)}
+.ag>div.ok::before{background:var(--good)}.ag>div.p2::before{background:var(--warn)}.ag>div.p1::before{background:var(--bad)}
+.ag .k{font:700 .72em/1.2 var(--f);letter-spacing:.5px;text-transform:uppercase;color:var(--faint)}
+.ag .v{font:800 1.7em/1 var(--f);font-variant-numeric:tabular-nums;margin-top:.3em}
+.ag .b{height:.35em;background:var(--line);border-radius:2px;margin-top:.55em;overflow:hidden}.ag .b i{display:block;height:100%;background:var(--muted)}
+.note{color:var(--faint);font-size:.88em;line-height:1.5;max-width:120ch;margin-top:1.2em;border-top:1px solid var(--line);padding-top:1em}
+.drop{outline:2px dashed var(--info);outline-offset:-6px}
+.views{display:flex;gap:.4em;flex-wrap:wrap}
+.view{background:var(--card);border:1px solid var(--line-light);color:var(--muted);border-radius:8px;min-height:2.6rem;padding:0 1rem;font:700 13.5px/1 var(--f);cursor:pointer;display:inline-flex;align-items:center;gap:.5em}
+.view:hover{color:var(--fg)}
+.view[aria-selected="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.view .n{font:700 .85em/1 var(--f);background:var(--row);color:var(--fg);border-radius:1rem;padding:.25em .55em;font-variant-numeric:tabular-nums}
+.view[aria-selected="true"] .n{background:var(--bg)}
+.navrow{display:flex;flex-wrap:wrap;gap:.7em 1em;align-items:center;justify-content:space-between;margin-top:1.2em}
+.range{display:flex;flex-wrap:wrap;gap:.5em;align-items:center}
+.segm{display:flex;background:var(--card);border:1px solid var(--line-light);border-radius:8px;padding:3px;gap:2px}
+.segm button{background:transparent;border:0;border-radius:6px;min-height:2.1rem;padding:0 .8rem;font:600 13px/1 var(--f);color:var(--muted);cursor:pointer}
+.segm button:hover{color:var(--fg)}
+.segm button[aria-pressed="true"]{background:var(--accent);color:#fff}
+.dayinp{background:var(--card);border:1px solid var(--line-light);border-radius:8px;min-height:2.5rem;padding:0 .6rem;font:600 13px/1 var(--f);color:var(--fg)}
+.dayinp.on{border-color:var(--accent)}
+.grid4{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:1em}
+.trbar{display:flex;flex-wrap:wrap;gap:.6em 1em;align-items:center;justify-content:space-between}
+.cap{display:flex;flex-wrap:wrap;gap:.3em 1.3em;margin-top:.5em;font:600 .82em/1.35 var(--f);color:var(--muted)}
+.cap b{color:var(--fg)}
+.cap i{display:inline-block;width:1.5em;height:0;border-top:2px dashed var(--warn);vertical-align:middle;margin-right:.45em}
+.cap i.t{border-top:3px solid var(--accent)}
+.cap i.c{border-top:2px dotted var(--info)}
+.linkbtn{background:none;border:0;padding:0;color:var(--info);font:inherit;font-weight:600;cursor:pointer;text-decoration:underline}
+.toast{position:fixed;left:50%;bottom:calc(1.2rem + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:30;background:var(--card);color:var(--fg);border:1px solid var(--line-light);padding:.75rem 1.1rem;border-radius:8px;font:600 13px/1.35 var(--f);box-shadow:0 8px 24px rgba(0,0,0,.45);max-width:calc(100% - 32px)}
+/* inventory differences */
+.tools{display:flex;flex-wrap:wrap;gap:.6em;align-items:center;margin:1em 0 .8em}
+.tools .inp{max-width:22rem;min-height:2.4rem}
+.chips{display:flex;flex-wrap:wrap;gap:.4em}
+.pill.p3{color:var(--muted)}
+.pill.st-new{color:var(--fg)}
+.pill.st-recount{background:rgba(61,159,232,.16);color:var(--info);border-color:rgba(61,159,232,.5)}
+.pill.st-research{background:rgba(167,139,250,.16);color:var(--purple);border-color:rgba(167,139,250,.5)}
+.pill.st-post{background:rgba(232,163,61,.16);color:var(--warn);border-color:rgba(232,163,61,.5)}
+.pill.st-closed{background:rgba(47,191,113,.14);color:var(--good);border-color:rgba(47,191,113,.45)}
+.pill.off{background:rgba(61,159,232,.12);color:var(--info);border-color:rgba(61,159,232,.45)}
+td.pos{color:var(--good)}td.neg{color:#ff6b61}
+td.note{max-width:22em;overflow:hidden;text-overflow:ellipsis;color:var(--muted)}
+tr.closed td{opacity:.55}
+.more{margin-top:.8em}
+dialog{background:var(--card);color:var(--fg);border:1px solid var(--line-light);border-radius:14px;padding:0;width:min(560px,calc(100% - 32px));box-shadow:0 12px 48px rgba(0,0,0,.6)}
+dialog::backdrop{background:rgba(5,12,24,.7)}
+.dlg{padding:1.4rem 1.5rem 1.3rem;display:flex;flex-direction:column;gap:.9rem}
+.dlg h2{margin:0;font:700 1.15em/1.25 var(--f)}
+.dlg .facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(7.5em,1fr));gap:.5em}
+.dlg .facts div{background:var(--row);border:1px solid var(--line);border-radius:8px;padding:.5em .7em}
+.dlg .facts b{display:block;font:700 .7em/1.2 var(--f);letter-spacing:.5px;text-transform:uppercase;color:var(--faint)}
+.dlg .facts span{display:block;font:700 1.05em/1.3 var(--f);margin-top:.2em;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.dlg textarea.inp{min-height:5.5rem;resize:vertical;font-family:var(--f)}
+.dlg .row{display:flex;gap:.6em;justify-content:flex-end;flex-wrap:wrap}
+.dlg .segm{flex-wrap:wrap}
+.dlg .who{font-size:.85em;color:var(--faint)}
+.map{display:grid;grid-template-columns:repeat(auto-fit,minmax(16em,1fr));gap:.2em 1.4em;margin-top:.5em}
+.map span{color:var(--muted)}.map b{color:var(--fg);font-weight:600}.map .miss{color:var(--faint)}
+.dz{border:2px dashed var(--line-light);border-radius:var(--radius);padding:2.2em 1.2em;display:flex;flex-direction:column;align-items:center;text-align:center;gap:.8em;margin-top:1.2em;background:rgba(18,42,71,.5)}
+.dz strong{font:700 1.25em/1.25 var(--f)}
+.dz span{color:var(--muted);max-width:70ch;line-height:1.5}
+.dz .btn{min-height:3rem;padding:0 1.4rem;font-size:14.5px}
+.dz.drop{border-color:var(--info);outline:0;background:rgba(61,159,232,.1)}
+.res{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.6em}
+.res li{display:grid;grid-template-columns:minmax(11em,auto) 1fr;gap:.3em 1.2em;align-items:baseline;background:var(--row);border:1px solid var(--line);border-left:3px solid var(--good);border-radius:8px;padding:.7em .9em}
+.res li.bad{border-left-color:var(--bad)}.res li.skip{border-left-color:var(--warn)}
+.res b{font-weight:700}.res span{color:var(--muted);line-height:1.5}
+.res li.bad span{color:#f97066}
+td.w{white-space:normal;min-width:12em}
+td a{color:var(--fg);font-weight:600}
+a.btn{text-decoration:none}
+@media(max-width:560px){.res li{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<noscript><p style="padding:1rem">This tool needs JavaScript turned on.</p></noscript>
+
+<!-- SIGN-IN GATE -->
+<section id="gate" class="gate gut" aria-label="Sign in">
+  <div class="gate-card">
+    <div class="gate-head"><img src="../assets/ceva-logo-whitered.png" alt="CEVA Logistics"><div class="gate-site">Data upload</div></div>
+    <div class="gate-body">
+      <h1 class="gate-title">Sign in</h1>
+      <p class="gate-p" id="gateWait">Connecting…</p>
+      <p class="gate-p" id="gateSetup" hidden>This tool isn’t connected to its database yet. Add the Firebase web config to <code>data/firebase-config.js</code> in the repository.</p>
+      <form id="gateLogin" novalidate hidden>
+        <p class="gate-p">Sign in with the same account you use on the other CEVA tools.</p>
+        <div class="fld"><label for="lEmail">Email</label><input class="inp" id="lEmail" type="email" autocomplete="username" inputmode="email"></div>
+        <div class="fld"><label for="lPass">Password</label><input class="inp" id="lPass" type="password" autocomplete="current-password"></div>
+        <div class="err" id="lErr" role="alert" hidden></div>
+        <button class="btn primary" type="submit" id="lGo">Sign in</button>
+        <button class="btn ghost" type="button" id="lForgot">Forgot password? Email me a reset link</button>
+        <div class="gate-alt"><button class="btn" type="button" id="lRequest">New here? Request access</button></div>
+      </form>
+      <form id="gateRequest" novalidate hidden>
+        <p class="gate-p">Tell us who you are and create a password. An admin approves requests, and you’re let in automatically once approved.</p>
+        <div class="fld"><label for="qName">Your name</label><input class="inp" id="qName" maxlength="40" autocomplete="name"></div>
+        <div class="fld"><label for="qEmail">Work email</label><input class="inp" id="qEmail" type="email" autocomplete="username" inputmode="email"></div>
+        <div class="fld"><label for="qPass">Create a password (8+ characters)</label><input class="inp" id="qPass" type="password" autocomplete="new-password" minlength="8"></div>
+        <div class="fld"><label for="qNote">Role or site (optional)</label><input class="inp" id="qNote" maxlength="120" autocomplete="off"></div>
+        <div class="err" id="qErr" role="alert" hidden></div>
+        <button class="btn primary" type="submit" id="qGo">Send request</button>
+        <button class="btn ghost" type="button" id="qBack">Back to sign in</button>
+      </form>
+      <div id="gateDenied" hidden>
+        <p class="gate-p" id="dPending" hidden><b>Request sent.</b> Signed in as <b id="dEmailP"></b>, waiting for an admin to approve. Keep this page open or come back later; it opens on its own once approved.</p>
+        <div id="dNone" hidden>
+          <p class="gate-p">Signed in as <b id="dEmail"></b>, but this account hasn’t been added to the tools yet. Ask for access and an admin will approve it.</p>
+          <form id="dRequest" novalidate style="margin-top:.7rem">
+            <div class="fld"><label for="dName">Your name</label><input class="inp" id="dName" maxlength="40" autocomplete="name"></div>
+            <div class="fld"><label for="dNote">Role or site (optional)</label><input class="inp" id="dNote" maxlength="120" autocomplete="off"></div>
+            <div class="err" id="dReqErr" role="alert" hidden></div>
+            <button class="btn primary" type="submit" id="dReqGo">Request access</button>
+          </form>
+        </div>
+        <button type="button" class="btn ghost" id="dOut" style="margin-top:.7rem">Sign out</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PAGE -->
+<div id="app" class="app gut" hidden>
+  <header class="top">
+    <div class="brand">
+      <div class="logo-plate"><img src="../assets/ceva-logo-whitered.png" alt="CEVA Logistics"></div>
+      <div><h1 class="b-title">Data upload</h1><div class="status-line" id="status"></div></div>
+    </div>
+    <div class="controls">
+      <a class="btn" href="../">All tools</a>
+      <button type="button" class="btn ghost" id="signOut">Sign out</button>
+    </div>
+  </header>
+
+  <div class="dz" id="dz">
+    <strong>One SAP export updates every tool</strong>
+    <span id="dzText"></span>
+    <label class="btn primary" id="loadBtn" hidden>Load SAP export<input type="file" id="file" accept=".xlsx,.xls,.csv,.txt"></label>
+  </div>
+  <div class="msg" id="msg" style="margin-top:1em" hidden></div>
+
+  <div class="panels" style="margin-top:1.2em">
+    <section class="b-panel" id="pRes" hidden><header class="p-head"><h2>This load</h2><span class="p-page" id="resFile"></span></header>
+      <div class="p-body"><ul class="res" id="res"></ul></div></section>
+    <section class="b-panel"><header class="p-head"><h2>What each tool has now</h2><span class="p-page">Updates on its own</span></header>
+      <div class="p-body scroll"><table id="tHas"></table></div></section>
+  </div>
+  <div class="note">The SAP warehouse task export uses the same layout for every pull. Loading it here, or with the load button inside Warehouse transactions, Inventory differences, Putaway audit or Picking audit, does the same thing: the file is read once and every tool that uses it is updated. Days already loaded are refreshed, not doubled, and the inventory differences, putaway and pick lists only grow. HU consolidation uses a second file, the SAP stock export (stock by storage bin and handling unit); load it here or on its own page and each load replaces the one before. The receiving dock board and inbound exceptions are entered by hand and do not use the export.</div>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script src="firebase-config.js"></script>
+<script src="../assets/access.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="../assets/sap-export.js"></script>
+<script type="module">
+const FB='https://www.gstatic.com/firebasejs/10.14.1/';
+const ROLE_LABEL={viewer:'Viewer',supervisor:'Supervisor',user:'User',admin:'Admin'};
+const S={wt:undefined,open:undefined,inv:undefined,last:null,fb:null,authUser:null,role:null,myName:"",canLoad:false,busy:false,pendingReq:null,unsubs:[]};
+const $=id=>document.getElementById(id),p2=n=>String(n).padStart(2,"0"),nf=n=>(+n||0).toLocaleString("en-US");
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const str=(v,n)=>typeof v==="string"?v.trim().slice(0,n||200):"";
+const mdy=s=>String(s||"").replace(/(\d+)-(\d+)-(\d+)/,"$2/$3/$1");
+const when=t=>{if(!t)return "";const d=new Date(t);return p2(d.getMonth()+1)+"/"+p2(d.getDate())+"/"+d.getFullYear()+" "+p2(d.getHours())+":"+p2(d.getMinutes())};
+const asOfFmt=t=>{if(!(t>0))return "";const d=new Date(t*1000);return p2(d.getUTCMonth()+1)+"/"+p2(d.getUTCDate())+"/"+d.getUTCFullYear()+" "+p2(d.getUTCHours())+":"+p2(d.getUTCMinutes())};
+let toastT;function toast(t,keep){const e=$("toast");e.textContent=t;e.hidden=false;clearTimeout(toastT);if(!keep)toastT=setTimeout(()=>e.hidden=true,typeof keep==="number"?keep:6000)}
+
+/* ---------- what each tool has ----------
+   The export is read and saved by ../assets/sap-export.js, the loader every tool shares. This page only shows the newest day each tool holds. */
+function startData(){
+  const {Fs,fs}=S.fb,newest=(col,set)=>S.unsubs.push(Fs.onSnapshot(Fs.query(Fs.collection(fs,col),Fs.orderBy("date","desc"),Fs.limit(1)),
+    snap=>{set(snap.docs.length?snap.docs[0].data()||{}:null);render()},()=>{set(null);render()}));
+  newest("wtdays",x=>S.wt=x);newest("invdays",x=>S.inv=x);newest("putdays",x=>S.put=x);newest("pickdays",x=>S.pick=x);
+  S.unsubs.push(Fs.onSnapshot(Fs.doc(fs,"hucons","current"),snap=>{S.hu=snap.exists()?snap.data():null;render()},()=>{S.hu=null;render()}));
+  S.unsubs.push(Fs.onSnapshot(Fs.doc(fs,"wt","open"),snap=>{S.open=snap.exists()?snap.data():null;render()},()=>{S.open=null;render()}));
+}
+function stopData(){S.unsubs.forEach(u=>{try{u()}catch(_){}});S.unsubs=[];S.wt=S.open=S.inv=S.put=S.pick=S.hu=undefined;S.last=null}
+function load(f){
+  if(!f)return;
+  if(!S.canLoad){toast("Your user group cannot load an export.");return}
+  if(S.busy)return;
+  const rd=new FileReader();rd.onload=async()=>{
+    S.busy=true;$("loadBtn").classList.add("busy");$("msg").hidden=true;toast("Reading the export…",true);
+    try{S.last=await SapExport.loadAll({Fs:S.fb.Fs,fs:S.fb.fs,uid:S.authUser.uid,byName:S.myName||S.authUser.email||""},new Uint8Array(rd.result),f.name,t=>toast(t,true));
+      const bad=SapExport.describe(S.last).filter(x=>!x.ok||x.skipped).length;toast(bad?"Loaded, but "+bad+" tool"+(bad===1?" was":"s were")+" not updated. See the list on this page.":S.last.stock?"Loaded. HU consolidation is updated.":"Loaded. Every tool that uses the warehouse task export is updated.");render()}
+    catch(e){$("msg").textContent=e.message;$("msg").hidden=false;$("toast").hidden=true}
+    finally{S.busy=false;$("loadBtn").classList.remove("busy")}
+  };rd.readAsArrayBuffer(f)}
+$("file").addEventListener("change",e=>{load(e.target.files[0]);e.target.value=""});
+const W=$("app"),DZ=$("dz");["dragenter","dragover"].forEach(n=>W.addEventListener(n,e=>{e.preventDefault();if(S.canLoad)DZ.classList.add("drop")}));
+["dragleave","drop"].forEach(n=>W.addEventListener(n,e=>{e.preventDefault();DZ.classList.remove("drop")}));
+W.addEventListener("drop",e=>load(e.dataTransfer.files[0]));
+
+/* ---------- drawing ---------- */
+function render(){
+  if(!S.role)return;
+  $("status").innerHTML=`<span>Signed in as <b>${esc(S.myName||S.authUser.email||"")}</b></span><span>${(S.who||ROLE_LABEL[S.role])}</span>`;
+  $("loadBtn").hidden=!S.canLoad;
+  $("dzText").textContent=S.canLoad?"Choose the SAP warehouse task export (.xlsx) or drag it onto this page. It is read once and saved for Warehouse transactions, Inventory differences, Putaway audit and Picking audit together. The SAP stock export goes here too: the page tells the two files apart and updates HU consolidation from it."
+    :"Someone with edit access loads the SAP warehouse task export here. Every tool updates on its own when they do.";
+  $("pRes").hidden=!S.last;
+  if(S.last){$("resFile").textContent=S.last.file;
+    $("res").innerHTML=SapExport.describe(S.last).map(x=>`<li class="${x.ok?(x.skipped?"skip":""):"bad"}"><b>${esc(x.tool)}</b><span>${esc(x.text)}</span></li>`).join("")}
+  const wait=x=>x===undefined,none='<td class="t" colspan="4" style="color:var(--faint)">Nothing loaded yet</td>',dots='<td class="t" colspan="4" style="color:var(--faint)">…</td>';
+  const cells=(x,through)=>wait(x)?dots:!x?none:`<td class="t n">${esc(through)}</td><td class="t">${esc(when(+x.at))}</td><td class="t">${esc(str(x.byName,40))}</td><td class="t w">${esc(str(x.file,80))}</td>`;
+  $("tHas").innerHTML=`<thead><tr><th class="t">Tool</th><th class="t">Data through</th><th class="t">Last loaded</th><th class="t">Loaded by</th><th class="t">From file</th></tr></thead><tbody>`
+    +`<tr><td><a href="../transactions/">Warehouse transactions</a>, completed work</td>${cells(S.wt,S.wt?mdy(S.wt.date)+", "+nf(S.wt.n)+" lines that day":"")}</tr>`
+    +`<tr><td><a href="../transactions/">Warehouse transactions</a>, open tasks</td>${cells(S.open,S.open?nf(S.open.count)+" open as of "+asOfFmt(+S.open.asOf):"")}</tr>`
+    +`<tr><td><a href="../inventory-differences/">Inventory differences</a></td>${cells(S.inv,S.inv?mdy(S.inv.date)+", "+nf(S.inv.n)+(+S.inv.n===1?" difference":" differences")+" that day":"")}</tr>`
+    +`<tr><td><a href="../putaway-audit/">Putaway audit</a></td>${cells(S.put,S.put?mdy(S.put.date)+", "+nf(S.put.n)+(+S.put.n===1?" putaway":" putaways")+" that day":"")}</tr>`
+    +`<tr><td><a href="../picking-audit/">Picking audit</a></td>${cells(S.pick,S.pick?mdy(S.pick.date)+", "+nf(S.pick.n)+(+S.pick.n===1?" pick":" picks")+" that day":"")}</tr>`
+    +`<tr><td><a href="../consolidation/">HU consolidation</a>, from the stock export</td>${cells(S.hu,S.hu?nf(S.hu.n)+(+S.hu.n===1?" location":" locations")+" over one HU, of "+nf(S.hu.bins)+" with stock":"")}</tr></tbody>`;
+}
+
+/* ---------- sign-in gate (same accounts, roles and access requests as the other CEVA tools) ---------- */
+function showGate(mode,waitText){
+  const ready=mode==="ready";$("gate").hidden=ready;$("app").hidden=!ready;
+  $("gateWait").hidden=mode!=="wait";if(waitText)$("gateWait").textContent=waitText;
+  $("gateSetup").hidden=mode!=="setup";$("gateLogin").hidden=mode!=="login";$("gateRequest").hidden=mode!=="request";$("gateDenied").hidden=mode!=="denied";
+  if(mode==="denied")renderDenied();
+}
+function renderDenied(){const em=S.authUser?S.authUser.email||"":"";$("dEmail").textContent=em;$("dEmailP").textContent=em;$("dPending").hidden=!S.myReq;$("dNone").hidden=!!S.myReq}
+function reqErrMsg(c){return c==="auth/email-already-in-use"?"That email already has a login. Go back and sign in, or use Forgot password."
+  :c==="auth/invalid-email"?"That doesn’t look like an email address.":c==="auth/weak-password"?"Use a password of at least 8 characters."
+  :c==="auth/network-request-failed"?"No connection. Check the network and try again.":"Couldn’t send the request. Try again in a moment."}
+function fileRequest(user,name,note){const {Fs,fs}=S.fb;return Fs.setDoc(Fs.doc(fs,"requests",user.uid),{name:str(name,40),email:str(user.email||"",80),company:"ceva",note:str(note,120),at:Date.now()})}
+$("gateLogin").addEventListener("submit",async e=>{e.preventDefault();const email=$("lEmail").value.trim(),pass=$("lPass").value,err=$("lErr");err.hidden=true;
+  if(!email||!pass){err.textContent="Enter your email and password.";err.hidden=false;return}
+  if(!S.fb)return;$("lGo").disabled=true;
+  try{await S.fb.F.signInWithEmailAndPassword(S.fb.auth,email,pass);$("lPass").value=""}
+  catch(x){const c=x&&x.code;err.textContent=c==="auth/too-many-requests"?"Too many tries. Wait a few minutes, then try again.":c==="auth/network-request-failed"?"No connection. Check the network and try again.":"That email and password don’t match an account on this tool.";err.hidden=false}
+  finally{$("lGo").disabled=false}});
+$("lForgot").addEventListener("click",async()=>{const email=$("lEmail").value.trim(),err=$("lErr");err.hidden=true;
+  if(!email){err.textContent="Type your email above first, then select this again.";err.hidden=false;$("lEmail").focus();return}
+  if(!S.fb)return;
+  try{await S.fb.F.sendPasswordResetEmail(S.fb.auth,email);toast("Reset link sent to "+email+". Check spam too; the link expires, so use it soon.")}
+  catch(x){err.textContent="Couldn’t send the reset link. Check the email address and the connection, then try again.";err.hidden=false}});
+$("lRequest").addEventListener("click",()=>{$("qEmail").value=$("lEmail").value;showGate("request");setTimeout(()=>$("qName").focus(),30)});
+$("qBack").addEventListener("click",()=>showGate("login"));
+$("gateRequest").addEventListener("submit",async e=>{e.preventDefault();const name=str($("qName").value,40),email=$("qEmail").value.trim(),pass=$("qPass").value,note=str($("qNote").value,120),err=$("qErr");err.hidden=true;
+  const bad=!name?"Enter your name so the admin knows who is asking.":!email?"Enter your work email.":pass.length<8?"Use a password of at least 8 characters.":"";
+  if(bad){err.textContent=bad;err.hidden=false;return}
+  if(!S.fb)return;$("qGo").disabled=true;S.pendingReq={name,note};
+  try{await S.fb.F.createUserWithEmailAndPassword(S.fb.auth,email,pass);$("qPass").value=""}
+  catch(x){S.pendingReq=null;err.textContent=reqErrMsg(x&&x.code);err.hidden=false}
+  finally{$("qGo").disabled=false}});
+$("dRequest").addEventListener("submit",async e=>{e.preventDefault();const name=str($("dName").value,40),note=str($("dNote").value,120),err=$("dReqErr");err.hidden=true;
+  if(!name){err.textContent="Enter your name so the admin knows who is asking.";err.hidden=false;return}
+  if(!S.fb||!S.authUser)return;$("dReqGo").disabled=true;
+  try{await fileRequest(S.authUser,name,note);toast("Request sent")}catch(x){err.textContent=reqErrMsg(x&&x.code);err.hidden=false}finally{$("dReqGo").disabled=false}});
+const signOut=()=>{if(S.fb)S.fb.F.signOut(S.fb.auth)};
+$("dOut").addEventListener("click",signOut);$("signOut").addEventListener("click",signOut);
+
+(async function connect(){
+  const cfg=window.FIREBASE_CONFIG;
+  if(!cfg||!cfg.apiKey||/PASTE/i.test(cfg.apiKey+cfg.projectId)){showGate("setup");return}
+  let A,F,Fs;
+  try{[A,F,Fs]=await Promise.all([import(FB+"firebase-app.js"),import(FB+"firebase-auth.js"),import(FB+"firebase-firestore.js")])}
+  catch(_){showGate("wait","Can’t reach Firebase from this network. Ask IT to allow gstatic.com, googleapis.com and firebaseapp.com, then reload.");return}
+  const app=A.initializeApp(cfg),auth=F.getAuth(app);let fs;
+  try{fs=Fs.initializeFirestore(app,{localCache:Fs.persistentLocalCache({tabManager:Fs.persistentMultipleTabManager()})})}catch(_){fs=Fs.getFirestore(app)}
+  S.fb={auth,F,Fs,fs};
+  let roleUnsub=null,reqUnsub=null;
+  F.onAuthStateChanged(auth,user=>{
+    if(roleUnsub){roleUnsub();roleUnsub=null}if(reqUnsub){reqUnsub();reqUnsub=null}
+    stopData();S.authUser=user;S.role=null;S.canLoad=false;S.myReq=null;
+    if(!user){showGate("login");return}
+    if(S.pendingReq){const q=S.pendingReq;S.pendingReq=null;fileRequest(user,q.name,q.note).then(()=>toast("Request sent. An admin will approve it."),()=>toast("Signed up, but the request didn’t send. Fill in the form below."))}
+    showGate("wait","Checking access…");
+    reqUnsub=Fs.onSnapshot(Fs.doc(fs,"requests",user.uid),s=>{S.myReq=s.exists();if(!S.role&&!$("gateDenied").hidden)renderDenied()},()=>{});
+    roleUnsub=CevaAccess.watch(Fs,fs,user.uid,"data",snap=>{
+      const d=snap.exists()?(snap.data()||{}):{},role=d.role;
+      if(d.noAccess){S.role=null;stopData();showGate("wait",CevaAccess.NO_ACCESS);return}
+      if(!ROLE_LABEL[role]){if(snap.metadata.fromCache){showGate("wait","Waiting for the network…");return}S.role=null;stopData();showGate("denied");return}
+      const first=!S.role;S.role=role;S.myName=str(d.name,40);S.canLoad=!!d.canLoad;S.who=d.groupName+" · "+CevaAccess.LEVEL_LABEL[d.level];
+      if(first){startData();showGate("ready")}
+      render();
+    },()=>{S.role=null;stopData();showGate("denied")});
+  });
+})();
+</script>
+</body>
+</html>

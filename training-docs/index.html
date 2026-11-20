@@ -1,0 +1,698 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Training Documents</title>
+<link rel="icon" href="../assets/ceva-logo.svg" type="image/svg+xml">
+<style>
+/* Visual system shared with the other CEVA tools (matched to the Whitsett KPI dashboard): dark navy, card panels, CEVA red accent, system type.
+   Layout: header, KPI tiles, filters, then the document list. Dark only. */
+:root{
+  --bg:#0a1626; --card:#122A47; --row:#0e2038; --line:#1f3d61; --line-light:#2a4a73;
+  --fg:#e7eef7; --muted:#93a8c4; --faint:#5f7796;
+  --accent:#e2231a; --good:#2fbf71; --warn:#e8a33d; --bad:#e2231a; --info:#3d9fe8; --purple:#a78bfa;
+  --s1:#e7eef7; --s2:#3d9fe8; --s3:#2fbf71; --s4:#5f7796; --s5:#a78bfa; --s6:#4fd0e0; --s7:#3a5273;
+  --radius:10px;
+  --f:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{height:100%;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{min-height:100%;margin:0;color:var(--fg);font-family:var(--f);font-size:13.5px;line-height:1.45;-webkit-font-smoothing:antialiased;
+  background:radial-gradient(1200px 600px at 10% -10%,#123156 0%,var(--bg) 55%) fixed,var(--bg)}
+[hidden]{display:none!important}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--info);outline-offset:2px}
+::-webkit-scrollbar{height:8px;width:8px}
+::-webkit-scrollbar-thumb{background:var(--line-light);border-radius:4px}
+.gut{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.btn{background:var(--card);color:var(--fg);border:1px solid var(--line-light);border-radius:8px;min-height:2.6rem;padding:0 .95rem;font:600 13px/1 var(--f);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:.45rem;white-space:nowrap;position:relative;transition:filter .15s,border-color .15s}
+.btn:hover{border-color:var(--accent);filter:brightness(1.08)}
+.btn.primary{background:var(--accent);border-color:transparent;color:#fff}
+.btn.ghost{background:transparent;color:var(--muted)}
+.btn.ghost:hover{color:var(--fg)}
+.btn:disabled,.btn.busy{opacity:.45;cursor:default;filter:none}
+.btn input[type=file]{position:absolute;opacity:0;width:1px;height:1px}
+.btn:focus-within{outline:2px solid var(--info);outline-offset:2px}
+.inp{width:100%;min-height:2.6rem;background:var(--bg);color:var(--fg);border:1px solid var(--line-light);border-radius:8px;padding:.5rem .75rem;font-size:14px;outline:none}
+.inp:focus{border-color:var(--accent)}
+.fld{display:flex;flex-direction:column;gap:.35rem;min-width:0}
+.fld>label{font:600 10.5px/1 var(--f);letter-spacing:.5px;text-transform:uppercase;color:var(--faint)}
+.err{color:#f97066;font-weight:600;font-size:12px}
+
+/* sign-in gate */
+.gate{min-height:100vh;display:flex;align-items:center;justify-content:center;padding-block:2rem}
+.gate-card{width:100%;max-width:400px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:2.2rem 2.2rem 2rem;box-shadow:0 8px 40px rgba(0,0,0,.55);display:flex;flex-direction:column}
+.gate-head{display:flex;flex-direction:column;align-items:center;text-align:center;gap:.5rem;margin-bottom:1.4rem}
+.gate-head img{height:2.3rem;width:auto;display:block}
+.gate-site{font-size:12px;color:var(--faint);letter-spacing:.02em}
+.gate-body{display:flex;flex-direction:column;gap:.9rem}
+.gate-title{margin:0;font:700 20px/1.2 var(--f)}
+.gate-p{margin:0;color:var(--muted);line-height:1.5;font-size:12.5px}
+.gate-p b{color:var(--fg)}
+.gate form{display:flex;flex-direction:column;gap:.85rem}
+.gate .btn{width:100%;min-height:2.75rem;font-size:14px}
+.gate .btn.ghost{min-height:2.4rem;font-size:12.5px}
+.gate-alt{border-top:1px solid var(--line);padding-top:.85rem}
+
+/* app */
+.app{max-width:1500px;margin:0 auto;padding-bottom:3rem;font-size:14px}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:1.2em 1.6em;flex-wrap:wrap;padding-block:1.4em 1.1em;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:.9em;min-width:0}
+.logo-plate{height:2.6em;display:flex;align-items:center;flex:none}
+.logo-plate img{height:100%;width:auto;max-width:12em;object-fit:contain;display:block}
+.b-title{margin:0;font:700 1.35em/1.15 var(--f);letter-spacing:.2px}
+.status-line{display:flex;flex-wrap:wrap;align-items:center;gap:.3em 1em;margin-top:.45em;font-size:.85em;color:var(--faint)}
+.status-line b{color:var(--muted);font-weight:600}
+.dot{width:.6em;height:.6em;border-radius:50%;background:var(--warn);display:inline-block;margin-right:.4em}
+.dot.ok{background:var(--good)}.dot.bad{background:var(--bad)}
+.controls{display:flex;gap:.6em;align-items:center;flex-wrap:wrap}
+.b-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(9.5em,1fr));gap:.7em;margin:1.2em 0 0;padding:0}
+.b-stats>div{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:1.1em 1.2em 1em;position:relative;overflow:hidden;margin:0}
+.b-stats>div::before{content:"";position:absolute;top:0;left:0;width:3px;height:100%;background:var(--kpi,var(--line-light))}
+.b-stats>div:nth-child(1){--kpi:var(--accent)}.b-stats>div:nth-child(2){--kpi:var(--info)}.b-stats>div:nth-child(3){--kpi:var(--purple)}
+.b-stats>div:nth-child(5){--kpi:var(--good)}
+.b-stats>div.warn{--kpi:var(--warn)}.b-stats>div.hot{--kpi:var(--bad)}
+.b-stats dt{font:700 .75em/1.2 var(--f);letter-spacing:.6px;text-transform:uppercase;color:var(--faint);white-space:nowrap}
+.b-stats dd{margin:.45em 0 0;font:800 2.1em/1 var(--f);font-variant-numeric:tabular-nums;white-space:nowrap}
+.b-stats .hot dd{color:#ff6b61}.b-stats .warn dd{color:var(--warn)}
+.bar{display:flex;flex-wrap:wrap;gap:.6em;align-items:center;margin:1.2em 0 1em}
+.tab{background:transparent;border:1px solid var(--line-light);color:var(--muted);border-radius:2rem;min-height:2.3rem;padding:0 .9rem;font:600 13px/1 var(--f);cursor:pointer}
+.tab:hover{color:var(--fg)}
+.tab[aria-pressed="true"]{background:var(--accent);border-color:transparent;color:#fff}
+.msg{border:1px solid rgba(226,35,26,.5);color:#f97066;border-radius:8px;padding:.7rem 1rem;font-weight:600;margin-bottom:1em}
+.panels{display:flex;flex-direction:column;gap:1em}
+.b-panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);display:flex;flex-direction:column;min-width:0;padding:1em 1.1em .9em}
+.p-head{display:flex;align-items:baseline;flex-wrap:wrap;gap:.55em;padding-bottom:.6em;border-bottom:1px solid var(--line-light)}
+.p-head h2{margin:0;font:700 1.05em/1.2 var(--f)}
+.p-count{font:700 1.05em/1 var(--f);color:var(--muted);font-variant-numeric:tabular-nums}
+.p-page{margin-left:auto;font:600 .75em/1 var(--f);letter-spacing:.5px;text-transform:uppercase;color:var(--faint)}
+.p-body{padding-top:.7em}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:1em}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th{font:700 .72em/1 var(--f);letter-spacing:.5px;text-transform:uppercase;color:var(--faint);text-align:right;padding:.5em .7em;white-space:nowrap;border-bottom:1px solid var(--line)}
+th.s{cursor:pointer}th.s:hover{color:var(--fg)}
+th:first-child,td:first-child,th.t,td.t{text-align:left}
+td{padding:.5em .7em;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line)}
+tbody tr:last-child td{border-bottom:0}
+td.n{font-weight:700}
+tr.click{cursor:pointer}tr.click:hover td{background:var(--row)}tr.sel td{background:rgba(61,159,232,.14)}
+tr.tot td{font-weight:700;border-top:1px solid var(--line-light)}
+tr.hot td{background:rgba(226,35,26,.1)}
+.meter{display:inline-block;height:.4em;background:var(--info);vertical-align:middle;margin-right:.5em;border-radius:2px;opacity:.7}
+.pill{display:inline-block;padding:.2em .55em;border-radius:5px;font:700 .85em/1 var(--f);background:var(--row);color:var(--muted);border:1px solid var(--line-light)}
+.pill.p1{background:rgba(226,35,26,.16);color:#ff6b61;border-color:rgba(226,35,26,.5)}
+.pill.p2{background:rgba(232,163,61,.16);color:var(--warn);border-color:rgba(232,163,61,.5)}
+.legend{display:flex;flex-wrap:wrap;gap:.5em 1.2em;margin-top:.5em}
+.legend span{display:inline-flex;align-items:center;gap:.4em;font:600 .78em/1 var(--f);color:var(--muted)}
+.legend i{display:inline-block;width:.9em;height:.7em;border-radius:2px}
+svg text{font-family:var(--f);font-size:11px;fill:var(--muted)}svg .tl{fill:var(--fg);font-weight:700;paint-order:stroke;stroke:var(--card);stroke-width:3px;stroke-linejoin:round}
+.empty{border:1px dashed var(--line-light);border-radius:var(--radius);padding:1.2em;color:var(--muted);display:flex;flex-direction:column;gap:.35em}
+.empty strong{font:700 1.05em/1.2 var(--f);color:var(--fg)}
+.empty span{line-height:1.5;max-width:75ch}
+.ag{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.6em;margin-bottom:.8em}
+.ag>div{background:var(--row);border:1px solid var(--line);border-radius:8px;padding:.7em .9em;position:relative;overflow:hidden}
+.ag>div::before{content:"";position:absolute;top:0;left:0;width:3px;height:100%;background:var(--line-light)}
+.ag>div.ok::before{background:var(--good)}.ag>div.p2::before{background:var(--warn)}.ag>div.p1::before{background:var(--bad)}
+.ag .k{font:700 .72em/1.2 var(--f);letter-spacing:.5px;text-transform:uppercase;color:var(--faint)}
+.ag .v{font:800 1.7em/1 var(--f);font-variant-numeric:tabular-nums;margin-top:.3em}
+.ag .b{height:.35em;background:var(--line);border-radius:2px;margin-top:.55em;overflow:hidden}.ag .b i{display:block;height:100%;background:var(--muted)}
+.note{color:var(--faint);font-size:.88em;line-height:1.5;max-width:120ch;margin-top:1.2em;border-top:1px solid var(--line);padding-top:1em}
+.drop{outline:2px dashed var(--info);outline-offset:-6px}
+.views{display:flex;gap:.4em;flex-wrap:wrap}
+.view{background:var(--card);border:1px solid var(--line-light);color:var(--muted);border-radius:8px;min-height:2.6rem;padding:0 1rem;font:700 13.5px/1 var(--f);cursor:pointer;display:inline-flex;align-items:center;gap:.5em}
+.view:hover{color:var(--fg)}
+.view[aria-selected="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.view .n{font:700 .85em/1 var(--f);background:var(--row);color:var(--fg);border-radius:1rem;padding:.25em .55em;font-variant-numeric:tabular-nums}
+.view[aria-selected="true"] .n{background:var(--bg)}
+.navrow{display:flex;flex-wrap:wrap;gap:.7em 1em;align-items:center;justify-content:space-between;margin-top:1.2em}
+.range{display:flex;flex-wrap:wrap;gap:.5em;align-items:center}
+.segm{display:flex;background:var(--card);border:1px solid var(--line-light);border-radius:8px;padding:3px;gap:2px}
+.segm button{background:transparent;border:0;border-radius:6px;min-height:2.1rem;padding:0 .8rem;font:600 13px/1 var(--f);color:var(--muted);cursor:pointer}
+.segm button:hover{color:var(--fg)}
+.segm button[aria-pressed="true"]{background:var(--accent);color:#fff}
+.dayinp{background:var(--card);border:1px solid var(--line-light);border-radius:8px;min-height:2.5rem;padding:0 .6rem;font:600 13px/1 var(--f);color:var(--fg)}
+.dayinp.on{border-color:var(--accent)}
+.grid4{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:1em}
+.trbar{display:flex;flex-wrap:wrap;gap:.6em 1em;align-items:center;justify-content:space-between}
+.cap{display:flex;flex-wrap:wrap;gap:.3em 1.3em;margin-top:.5em;font:600 .82em/1.35 var(--f);color:var(--muted)}
+.cap b{color:var(--fg)}
+.cap i{display:inline-block;width:1.5em;height:0;border-top:2px dashed var(--warn);vertical-align:middle;margin-right:.45em}
+.cap i.t{border-top:3px solid var(--accent)}
+.cap i.c{border-top:2px dotted var(--info)}
+.linkbtn{background:none;border:0;padding:0;color:var(--info);font:inherit;font-weight:600;cursor:pointer;text-decoration:underline}
+.toast{position:fixed;left:50%;bottom:calc(1.2rem + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:30;background:var(--card);color:var(--fg);border:1px solid var(--line-light);padding:.75rem 1.1rem;border-radius:8px;font:600 13px/1.35 var(--f);box-shadow:0 8px 24px rgba(0,0,0,.45);max-width:calc(100% - 32px)}
+/* training documents */
+.tools{display:flex;flex-wrap:wrap;gap:.6em;align-items:center;margin:1.2em 0 .8em}
+.tools .inp{max-width:22rem;min-height:2.4rem}
+.chips{display:flex;flex-wrap:wrap;gap:.4em}
+select.inp{appearance:auto}
+a.btn{text-decoration:none}
+#tDoc td,#tDoc th{text-align:left;vertical-align:top}
+#tDoc td{white-space:nowrap}
+#tDoc td.no{color:var(--muted);font-weight:600}
+#tDoc td.item{white-space:normal;min-width:16em;max-width:34em}
+#tDoc td.item b{display:block;font-weight:700}
+#tDoc td.item span{color:var(--muted);font-size:.9em;margin-top:.2em;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.late{color:#ff6b61;font-weight:700}.soon{color:var(--warn);font-weight:700}
+.pill.lk{background:rgba(61,159,232,.14);color:var(--info);border-color:rgba(61,159,232,.45)}
+.dlg .row.left{justify-content:flex-start}
+.dlg #edDetails,.dlg #edSource{display:flex;flex-direction:column;gap:.9rem}
+.dlg input[type=file].inp{padding:.45rem .6rem}
+.dlg h2{overflow-wrap:anywhere}
+.dhead{display:flex;flex-wrap:wrap;align-items:center;gap:.5em}
+.dhead .dno{color:var(--muted);font-weight:700}
+.meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(11em,1fr));gap:.6em}
+.meta div{background:var(--row);border:1px solid var(--line);border-radius:8px;padding:.55em .75em;min-width:0}
+.meta span{display:block;font:700 .68em/1.2 var(--f);letter-spacing:.5px;text-transform:uppercase;color:var(--faint)}
+.meta b{display:block;margin-top:.3em;font-weight:600;overflow-wrap:anywhere}
+.meta b span{display:inline;font:inherit;letter-spacing:0;text-transform:none}
+.meta b .late{color:#ff6b61}.meta b .soon{color:var(--warn)}
+.vers{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:8px;max-height:16em;overflow:auto}
+.ver{display:flex;gap:.9em;align-items:flex-start;padding:.6em .8em;border-bottom:1px solid var(--line)}
+.ver:last-child{border-bottom:0}
+.ver.cur{background:var(--row)}
+.ver .vn{font-weight:800;min-width:3.2em}
+.ver .vn i{display:block;font:700 .68em/1.4 var(--f);font-style:normal;color:var(--good);text-transform:uppercase;letter-spacing:.4px}
+.ver .vi{flex:1;min-width:0;display:flex;flex-direction:column;gap:.15em}
+.ver .vi b{font-weight:600}
+.ver .vi span{color:var(--muted);font-size:.92em;overflow-wrap:anywhere}
+.ver .vi .vnote{color:var(--fg)}
+.ver .va{display:flex;flex-direction:column;gap:.35em;align-items:flex-end;white-space:nowrap}
+dialog.wide{width:min(1080px,calc(100% - 32px))}
+.brows{display:flex;flex-direction:column;gap:.6em;max-height:58vh;overflow:auto;padding-right:.2em}
+.brow{display:grid;grid-template-columns:auto minmax(12em,2.2fr) minmax(8em,1fr) minmax(10em,1.2fr);gap:.5em .7em;align-items:center;background:var(--row);border:1px solid var(--line);border-radius:8px;padding:.6em .8em}
+.brow .bf{grid-column:2/-1;color:var(--muted);font-size:.88em;overflow-wrap:anywhere}
+.brow .bf b{font-weight:600}.brow .bf .bad{color:#f97066;font-weight:600}.brow .bf .ok{color:var(--good);font-weight:600}.brow .bf .warn{color:var(--warn);font-weight:600}
+.brow input[type=checkbox]{width:1.15rem;height:1.15rem;accent-color:var(--accent);grid-row:1/3}
+.brow .inp{min-height:2.3rem;font-size:13.5px}
+.brow.off .inp{opacity:.45}
+@media (max-width:720px){.brow{grid-template-columns:auto 1fr}.brow .inp{grid-column:2}.brow .bf{grid-column:2}}
+.linkbtn.del{color:#f97066}
+.vers>.who{padding:.7em .8em}
+dialog{background:var(--card);color:var(--fg);border:1px solid var(--line-light);border-radius:14px;padding:0;width:min(760px,calc(100% - 32px));max-height:calc(100% - 32px);box-shadow:0 12px 48px rgba(0,0,0,.6)}
+dialog.sm{width:min(520px,calc(100% - 32px))}
+dialog::backdrop{background:rgba(5,12,24,.7)}
+.dlg{padding:1.4rem 1.5rem 1.3rem;display:flex;flex-direction:column;gap:.9rem}
+.dlg h2{margin:0;font:700 1.15em/1.25 var(--f)}
+.dlg textarea.inp{min-height:4.6rem;resize:vertical;font-family:var(--f)}
+.dlg .g{display:grid;grid-template-columns:repeat(auto-fit,minmax(11em,1fr));gap:.8em}
+.dlg .row{display:flex;gap:.6em;justify-content:flex-end;flex-wrap:wrap}
+.dlg .segm{flex-wrap:wrap}
+.dlg .who{font-size:.85em;color:var(--faint)}
+.dlg .hist{border-top:1px solid var(--line);padding-top:.7em;display:flex;flex-direction:column;gap:.45em;max-height:11em;overflow:auto}
+.dlg .hist div{font-size:.92em;white-space:pre-line}.dlg .hist b{color:var(--muted);font-weight:600;margin-right:.5em}
+.dlg ul{margin:0;padding-left:1.2em;color:var(--muted);line-height:1.6}
+</style>
+</head>
+<body>
+<noscript><p style="padding:1rem">This tool needs JavaScript turned on.</p></noscript>
+
+<!-- SIGN-IN GATE -->
+<section id="gate" class="gate gut" aria-label="Sign in">
+  <div class="gate-card">
+    <div class="gate-head"><img src="../assets/ceva-logo-whitered.png" alt="CEVA Logistics"><div class="gate-site">Training documents</div></div>
+    <div class="gate-body">
+      <h1 class="gate-title">Sign in</h1>
+      <p class="gate-p" id="gateWait">Connecting…</p>
+      <button type="button" class="btn ghost" id="wOut" hidden>Sign out</button>
+      <p class="gate-p" id="gateSetup" hidden>This tool isn’t connected to its database yet. Add the Firebase web config to <code>training-docs/firebase-config.js</code> in the repository.</p>
+      <form id="gateLogin" novalidate hidden>
+        <p class="gate-p">Sign in with the same account you use on the other CEVA tools.</p>
+        <div class="fld"><label for="lEmail">Email</label><input class="inp" id="lEmail" type="email" autocomplete="username" inputmode="email"></div>
+        <div class="fld"><label for="lPass">Password</label><input class="inp" id="lPass" type="password" autocomplete="current-password"></div>
+        <div class="err" id="lErr" role="alert" hidden></div>
+        <button class="btn primary" type="submit" id="lGo">Sign in</button>
+        <button class="btn ghost" type="button" id="lForgot">Forgot password? Email me a reset link</button>
+        <div class="gate-alt"><button class="btn" type="button" id="lRequest">New here? Request access</button></div>
+      </form>
+      <form id="gateRequest" novalidate hidden>
+        <p class="gate-p">Tell us who you are and create a password. An admin approves requests, and you’re let in automatically once approved.</p>
+        <div class="fld"><label for="qName">Your name</label><input class="inp" id="qName" maxlength="40" autocomplete="name"></div>
+        <div class="fld"><label for="qEmail">Work email</label><input class="inp" id="qEmail" type="email" autocomplete="username" inputmode="email"></div>
+        <div class="fld"><label for="qPass">Create a password (8+ characters)</label><input class="inp" id="qPass" type="password" autocomplete="new-password" minlength="8"></div>
+        <div class="fld"><label for="qNote">Role or site (optional)</label><input class="inp" id="qNote" maxlength="120" autocomplete="off"></div>
+        <div class="err" id="qErr" role="alert" hidden></div>
+        <button class="btn primary" type="submit" id="qGo">Send request</button>
+        <button class="btn ghost" type="button" id="qBack">Back to sign in</button>
+      </form>
+      <div id="gateDenied" hidden>
+        <p class="gate-p" id="dPending" hidden><b>Request sent.</b> Signed in as <b id="dEmailP"></b>, waiting for an admin to approve. Keep this page open or come back later; it opens on its own once approved.</p>
+        <div id="dNone" hidden>
+          <p class="gate-p">Signed in as <b id="dEmail"></b>, but this account hasn’t been added to the tools yet. Ask for access and an admin will approve it.</p>
+          <form id="dRequest" novalidate style="margin-top:.7rem">
+            <div class="fld"><label for="dName">Your name</label><input class="inp" id="dName" maxlength="40" autocomplete="name"></div>
+            <div class="fld"><label for="dNote">Role or site (optional)</label><input class="inp" id="dNote" maxlength="120" autocomplete="off"></div>
+            <div class="err" id="dReqErr" role="alert" hidden></div>
+            <button class="btn primary" type="submit" id="dReqGo">Request access</button>
+          </form>
+        </div>
+        <button type="button" class="btn ghost" id="dOut" style="margin-top:.7rem">Sign out</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TOOL -->
+<div id="app" class="app gut" hidden>
+  <header class="top">
+    <div class="brand">
+      <div class="logo-plate"><img src="../assets/ceva-logo-whitered.png" alt="CEVA Logistics"></div>
+      <div><h1 class="b-title">Training documents</h1><div class="status-line" id="status"></div></div>
+    </div>
+    <div class="controls">
+      <a class="btn ghost" href="../">All tools</a>
+      <button type="button" class="btn" id="catBtn" hidden>Categories</button>
+      <label class="btn" id="bulkBtn" hidden>Add several<input type="file" id="bFiles" multiple></label>
+      <button type="button" class="btn primary" id="newBtn" hidden>Add document</button>
+      <button type="button" class="btn ghost" id="signOut">Sign out</button>
+    </div>
+  </header>
+  <dl class="b-stats" id="stats"></dl>
+  <div class="msg" id="msg" hidden></div>
+
+  <div class="tools">
+    <input class="inp" id="q" type="search" placeholder="Search title, number, category, owner" aria-label="Search">
+    <div class="chips" id="catChips" role="group" aria-label="Category"></div>
+  </div>
+  <section class="b-panel"><header class="p-head"><h2 id="listTitle">Documents</h2><span class="p-count" id="cDoc"></span><span class="p-page">Select a document to open it</span></header>
+    <div class="p-body scroll"><table id="tDoc"></table><div id="noDoc" class="empty" hidden></div></div></section>
+
+  <div class="note" id="note"></div>
+</div>
+
+<!-- one document -->
+<dialog id="dd" aria-labelledby="ddTitle"><form method="dialog" class="dlg">
+  <div class="dhead"><span class="pill" id="ddType"></span><span class="pill" id="ddArch" hidden>Archived</span><span class="dno" id="ddNo"></span></div>
+  <h2 id="ddTitle"></h2>
+  <p class="gate-p" id="ddDesc"></p>
+  <div class="meta" id="ddMeta"></div>
+  <div class="row left">
+    <button class="btn primary" type="button" id="ddView" hidden>View</button>
+    <button class="btn" type="button" id="ddGet"></button>
+    <button class="btn" type="button" id="ddVer" hidden>Upload new version</button>
+    <button class="btn" type="button" id="ddEdit" hidden>Edit details</button>
+  </div>
+  <div class="who" id="ddBusy" role="status"></div>
+  <div class="fld"><label>Version history</label><div class="vers" id="ddVers"></div></div>
+  <div class="err" id="ddErr" role="alert" hidden></div>
+  <div class="row"><button class="btn ghost" type="button" id="ddDel" hidden style="margin-right:auto">Delete</button><button class="btn ghost" type="button" id="ddArc" hidden></button><button class="btn ghost" value="cancel" type="submit" formnovalidate>Close</button></div>
+</form></dialog>
+
+<!-- add document / edit details / new version -->
+<dialog id="ed" aria-labelledby="edTitle"><form method="dialog" class="dlg" id="edForm">
+  <h2 id="edTitle"></h2>
+  <div id="edDetails">
+    <div class="fld"><label for="eTitle">Title</label><input class="inp" id="eTitle" maxlength="150" autocomplete="off"></div>
+    <div class="g">
+      <div class="fld"><label for="eNo">Document number (optional)</label><input class="inp" id="eNo" maxlength="30" autocomplete="off" placeholder="WI-001"></div>
+      <div class="fld"><label for="eCat">Category</label><select class="inp" id="eCat"></select></div>
+      <div class="fld"><label for="eOwn">Owner (optional)</label><input class="inp" id="eOwn" maxlength="60" autocomplete="off"></div>
+      <div class="fld"><label for="eRev">Review by (optional)</label><input class="inp" id="eRev" type="date"></div>
+    </div>
+    <div class="fld"><label for="eDesc">What it covers (optional)</label><textarea class="inp" id="eDesc" maxlength="1000"></textarea></div>
+  </div>
+  <div id="edSource">
+    <div class="fld"><label>Document</label><div class="segm" id="eKind" role="group" aria-label="File or link"><button type="button" data-k="file">Upload a file</button><button type="button" data-k="link">Link to a file</button></div></div>
+    <div class="fld" id="eFileFld"><label for="eFile">File (up to 20 MB)</label><input class="inp" id="eFile" type="file"><span class="who" id="eFileHint">PDF, Word, Excel, PowerPoint, images and short video. For anything larger, use a link.</span></div>
+    <div class="fld" id="eUrlFld" hidden><label for="eUrl">Link (https://…)</label><input class="inp" id="eUrl" type="url" maxlength="1000" autocomplete="off" placeholder="https://"><span class="who">For large files and video kept in SharePoint, OneDrive or Teams. People need their own access to that location.</span></div>
+    <div class="fld"><label for="eNote" id="eNoteLbl">Change note</label><input class="inp" id="eNote" maxlength="500" autocomplete="off"></div>
+  </div>
+  <div class="who" id="edBusy" role="status"></div>
+  <div class="err" id="edErr" role="alert" hidden></div>
+  <div class="row"><button class="btn ghost" value="cancel" type="submit" formnovalidate id="edClose">Close</button><button class="btn primary" type="button" id="edSave">Save</button></div>
+</form></dialog>
+
+<!-- add several documents at once -->
+<dialog id="bd" class="wide" aria-labelledby="bdTitle"><form method="dialog" class="dlg" id="bdForm">
+  <h2 id="bdTitle">Add several documents</h2>
+  <p class="gate-p">Each file becomes its own document. The title, number and category are read from the file name; check them and correct any that are off before adding.</p>
+  <div class="brows" id="bRows"></div>
+  <div class="who" id="bdBusy" role="status"></div>
+  <div class="err" id="bdErr" role="alert" hidden></div>
+  <div class="row"><button class="btn ghost" value="cancel" type="submit" formnovalidate id="bdClose">Close</button><button class="btn primary" type="button" id="bdSave"></button></div>
+</form></dialog>
+
+<dialog id="cd" class="sm" aria-labelledby="cdTitle"><form method="dialog" class="dlg">
+  <h2 id="cdTitle">Categories</h2>
+  <p class="gate-p">One category per line, in the order they should appear. Documents already filed under a category you remove keep it until they are edited.</p>
+  <div class="fld"><label for="cList">Categories</label><textarea class="inp" id="cList" style="min-height:16rem"></textarea></div>
+  <div class="err" id="cdErr" role="alert" hidden></div>
+  <div class="row"><button class="btn ghost" value="cancel" type="submit" formnovalidate>Close</button><button class="btn primary" type="button" id="cdSave">Save</button></div>
+</form></dialog>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script src="firebase-config.js"></script>
+<script src="../assets/access.js"></script>
+<script type="module">
+const FB='https://www.gstatic.com/firebasejs/10.14.1/';
+const ROLE_LABEL={viewer:'Viewer',supervisor:'Supervisor',user:'User',admin:'Admin'};
+const DEF_CATS=["Safety","Onboarding","Inbound and receiving","Putaway","Picking","Outbound and shipping","Inventory control","Quality","Equipment (PIT)","SAP EWM","Other"];
+// Files are stored in Firestore in pieces (a Firestore document holds at most 1 MiB), so the size is capped.
+const MAX=20*1024*1024,CH=720*1024;
+// Only these types are opened in a browser tab; everything else is download only. The type comes from the file name, never from stored data.
+const VIEW={pdf:"application/pdf",png:"image/png",jpg:"image/jpeg",jpeg:"image/jpeg",gif:"image/gif",webp:"image/webp"};
+const BLOCK=/\.(exe|msi|bat|cmd|com|scr|js|mjs|jse|vbs|vbe|ps1|jar|html?|xhtml|xml|svg|hta|lnk|dll|sh|php|app|apk)$/i;
+const S={docs:null,cats:DEF_CATS,q:"",cat:"",sort:"title",dir:1,cur:null,vers:null,verUnsub:null,ed:null,busy:false,
+  fb:null,authUser:null,role:null,myName:"",canEdit:false,isAdmin:false,pendingReq:null,unsubs:[]};
+const $=id=>document.getElementById(id),p2=n=>String(n).padStart(2,"0");
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const str=(v,n)=>typeof v==="string"?v.trim().slice(0,n||200):"";
+const norm=s=>String(s==null?"":s).toLowerCase().replace(/\s+/g," ").trim();
+const todayIso=()=>{const d=new Date();return d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate())};
+const isIso=s=>/^\d{4}-\d{2}-\d{2}$/.test(s||"");
+const dayNo=s=>Math.round(Date.UTC(+s.slice(0,4),+s.slice(5,7)-1,+s.slice(8,10))/864e5);
+const mdy=s=>isIso(s)?s.slice(5,7)+"/"+s.slice(8,10)+"/"+s.slice(0,4):"";
+const dt=ms=>ms?new Date(ms).toLocaleDateString("en-US",{month:"numeric",day:"numeric",year:"numeric"}):"";
+const newId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,10);
+const ext=n=>{const m=/\.([a-z0-9]{1,8})$/i.exec(n||"");return m?m[1].toLowerCase():""};
+const size=b=>b>=1048576?(b/1048576).toFixed(1)+" MB":Math.max(1,Math.round(b/1024))+" KB";
+const okUrl=u=>/^https:\/\/[^\s"<>]+$/i.test(u||"")&&u.length<=1000;
+const kindLabel=(kind,name)=>kind==="link"?"Link":(ext(name)||"file").toUpperCase();
+const revDays=d=>isIso(d.review)&&d.status!=="archived"?dayNo(d.review)-dayNo(todayIso()):null;
+const who=()=>({by:S.authUser.uid,byName:S.myName||S.authUser.email||"",at:Date.now()});
+let toastT;function toast(t,keep){const e=$("toast");e.textContent=t;e.hidden=false;clearTimeout(toastT);if(!keep)toastT=setTimeout(()=>e.hidden=true,6000)}
+const saveErr=e=>e&&e.code==="permission-denied"?"Firebase refused the change. Your user group may be view only, or the latest security rules have not been published yet.":"Couldn’t save. Check the connection and try again.";
+function showErr(id,t){const e=$(id);e.textContent=t||"";e.hidden=!t}
+
+/* ---------- shared data ----------
+   tdocs/{id}                       one document: title, number, category, description, owner, review date, status (active | archived)
+                                    and a copy of the current version's details (cur*), so the list needs one read per document
+   tdocs/{id}/vers/{verId}          one version: number, file name and size or link, change note, who and when. Never edited.
+   tdocs/{id}/vers/{verId}/chunks/{i}  the file itself in pieces of up to 720 KB
+   tdoccfg/settings                 the category list (admins) */
+function startData(){
+  const {Fs,fs}=S.fb;
+  S.unsubs.push(Fs.onSnapshot(Fs.collection(fs,"tdocs"),snap=>{S.docs=snap.docs.map(x=>({...(x.data()||{}),id:x.id}));
+    if(S.cur){const c=S.docs.find(d=>d.id===S.cur.id);if(c){S.cur=c;drawDoc()}else if($("dd").open)$("dd").close()}render()},
+    e=>{S.docs=S.docs||[];S.loadErr=e&&e.code==="permission-denied";render()}));
+  S.unsubs.push(Fs.onSnapshot(Fs.doc(fs,"tdoccfg","settings"),snap=>{const c=snap.exists()?snap.data().cats:null;
+    S.cats=Array.isArray(c)&&c.length?c.map(x=>str(x,60)).filter(Boolean):DEF_CATS;render()},()=>{}));
+}
+function stopData(){S.unsubs.forEach(u=>{try{u()}catch(_){}});S.unsubs=[];stopVers();S.docs=null;S.cats=DEF_CATS;S.loadErr=false}
+function stopVers(){if(S.verUnsub){try{S.verUnsub()}catch(_){}S.verUnsub=null}S.vers=null}
+
+/* ---------- list ---------- */
+function shown(){
+  const q=norm(S.q),arch=S.cat==="__arch";
+  const R=(S.docs||[]).filter(d=>(arch?d.status==="archived":d.status!=="archived"&&(!S.cat||d.cat===S.cat))
+    &&(!q||norm([d.no,d.title,d.cat,d.desc,d.own,d.curName].join(" ")).includes(q)));
+  const K={no:d=>norm(d.no)||"~",title:d=>norm(d.title),cat:d=>norm(d.cat),v:d=>d.cur||0,at:d=>d.curAt||0,by:d=>norm(d.curByName),rev:d=>d.review||"9"},f=K[S.sort]||K.title;
+  return R.sort((a,b)=>{const x=f(a),y=f(b);return (x<y?-1:x>y?1:norm(a.title)<norm(b.title)?-1:1)*S.dir});
+}
+function render(){
+  if(!S.role)return;
+  const D=S.docs||[],A=D.filter(d=>d.status!=="archived"),arc=D.length-A.length,now=Date.now();
+  const due=A.filter(d=>{const r=revDays(d);return r!=null&&r<0}).length,soon=A.filter(d=>{const r=revDays(d);return r!=null&&r>=0&&r<=30}).length;
+  $("status").innerHTML=[`<span><span class="dot ${S.docs?"ok":""}"></span>${S.docs?"Live":"Loading…"}</span>`,
+    `<span>Signed in as <b>${esc(S.myName||(S.authUser&&S.authUser.email)||"")}</b> · ${(S.who||ROLE_LABEL[S.role])}</span>`].join("");
+  $("newBtn").hidden=$("bulkBtn").hidden=!S.canEdit;$("catBtn").hidden=!S.isAdmin;
+  $("msg").hidden=!S.loadErr;$("msg").textContent=S.loadErr?"The documents can’t be read yet. An admin needs to publish the latest security rules (firestore.rules) in the Firebase console.":"";
+  $("stats").innerHTML=[["Documents",A.length,""],["Categories in use",new Set(A.map(d=>d.cat)).size,""],["Updated, 30 days",A.filter(d=>now-(d.curAt||0)<30*864e5).length,""],
+    ["Review due in 30 days",soon,soon?"warn":""],["Review overdue",due,due?"hot":""]].map(t=>`<div class="${t[2]}"><dt>${t[0]}</dt><dd>${t[1]}</dd></div>`).join("");
+  const n=new Map();A.forEach(d=>n.set(d.cat,(n.get(d.cat)||0)+1));
+  const used=[...S.cats.filter(c=>n.has(c)),...[...n.keys()].filter(c=>!S.cats.includes(c)).sort()];
+  if(S.cat&&S.cat!=="__arch"&&!n.has(S.cat))S.cat="";if(S.cat==="__arch"&&!arc)S.cat="";
+  const chip=(v,l)=>`<button type="button" class="tab" data-c="${esc(v)}" aria-pressed="${S.cat===v}">${esc(l)}</button>`;
+  $("catChips").innerHTML=chip("","All "+A.length)+used.map(c=>chip(c,c+" "+n.get(c))).join("")+(arc?chip("__arch","Archived "+arc):"");
+  const R=shown(),base=S.cat==="__arch"?arc:A.length;
+  $("listTitle").textContent=S.cat==="__arch"?"Archived documents":S.cat||"Documents";$("cDoc").textContent=R.length===base||S.cat&&!S.q?R.length:R.length+" of "+base;
+  $("tDoc").hidden=!R.length;$("noDoc").hidden=!!R.length;
+  if(!R.length)$("noDoc").innerHTML=!S.docs?"<strong>Loading…</strong>":D.length?"<strong>No documents match</strong><span>Clear the search or choose another category.</span>"
+    :"<strong>No documents yet</strong><span>"+(S.canEdit?"Use Add document to upload the first one.":"Nobody with edit access has added any documents yet.")+"</span>";
+  else{
+    const H=[["no","Number"],["title","Document"],["cat","Category"],["v","Version"],["at","Updated"],["by","Updated by"],["rev","Review by"]];
+    $("tDoc").innerHTML="<thead><tr>"+H.map(h=>`<th class="s" data-s="${h[0]}">${h[1]}${S.sort===h[0]?(S.dir>0?" ▲":" ▼"):""}</th>`).join("")+"<th>Type</th></tr></thead><tbody>"+R.map(d=>{
+      const r=revDays(d);
+      return `<tr class="click" data-id="${esc(d.id)}" tabindex="0"><td class="no">${esc(d.no)}</td><td class="item"><b>${esc(d.title)}</b>${d.desc?`<span>${esc(d.desc)}</span>`:""}</td><td>${esc(d.cat)}</td>
+        <td class="n">v${esc(d.cur||1)}</td><td>${dt(d.curAt)}</td><td>${esc(d.curByName)}</td><td class="${r==null?"":r<0?"late":r<=30?"soon":""}">${mdy(d.review)}</td><td><span class="pill${d.curKind==="link"?" lk":""}">${esc(kindLabel(d.curKind,d.curName))}</span></td></tr>`}).join("")+"</tbody>";
+  }
+  $("note").textContent="Every document keeps its full version history: the newest version is the one in the list, and older versions stay available inside the document. "
+    +(S.canEdit?"Use Add document for something new, or open a document and select Upload new version to replace it. Files up to 20 MB are stored here; add larger files and video as a link.":"Your user group can open and download documents. Supervisors and admins add and update them.");
+}
+
+/* ---------- one document ---------- */
+function openDoc(id){
+  const d=(S.docs||[]).find(x=>x.id===id);if(!d)return;S.cur=d;stopVers();showErr("ddErr","");$("ddBusy").textContent="";
+  const {Fs,fs}=S.fb;
+  S.verUnsub=Fs.onSnapshot(Fs.collection(fs,"tdocs",id,"vers"),snap=>{S.vers=snap.docs.map(x=>({...(x.data()||{}),id:x.id})).sort((a,b)=>(b.v||0)-(a.v||0));drawDoc()},()=>{S.vers=[];drawDoc()});
+  drawDoc();$("dd").showModal();
+}
+function drawDoc(){
+  const d=S.cur;if(!d)return;const link=d.curKind==="link",r=revDays(d);
+  $("ddType").textContent=kindLabel(d.curKind,d.curName);$("ddArch").hidden=d.status!=="archived";$("ddNo").textContent=d.no||"";
+  $("ddTitle").textContent=d.title||"";$("ddDesc").textContent=d.desc||"";$("ddDesc").hidden=!d.desc;
+  $("ddMeta").innerHTML=[["Category",esc(d.cat)],["Current version","v"+esc(d.cur||1)],["Updated",dt(d.curAt)+(d.curByName?" by "+esc(d.curByName):"")],["Owner",esc(d.own)],
+    ["Review by",mdy(d.review)?`<span class="${r==null?"":r<0?"late":r<=30?"soon":""}">${mdy(d.review)}${r!=null&&r<0?" (overdue)":""}</span>`:""],[link?"Link":"File",link?"Opens in a new tab":esc(d.curName)+" · "+size(d.curSize||0)]]
+    .filter(m=>m[1]).map(m=>`<div><span>${m[0]}</span><b>${m[1]}</b></div>`).join("");
+  $("ddView").hidden=link||!VIEW[ext(d.curName)];$("ddGet").textContent=link?"Open link":"Download";$("ddGet").className="btn"+($("ddView").hidden?" primary":"");
+  $("ddVer").hidden=$("ddEdit").hidden=!S.canEdit;$("ddArc").hidden=$("ddDel").hidden=!S.isAdmin;$("ddArc").textContent=d.status==="archived"?"Restore":"Archive";
+  if(!$("ddDel").dataset.sure)$("ddDel").textContent="Delete";
+  const V=S.vers;
+  $("ddVers").innerHTML=!V?"<div class='who'>Loading…</div>":!V.length?"<div class='who'>No versions found.</div>":V.map(v=>{
+    const cur=v.id===d.curId;
+    return `<div class="ver${cur?" cur":""}"><div class="vn">v${esc(v.v)}${cur?"<i>Current</i>":""}</div><div class="vi"><b>${dt(v.at)}${v.byName?" · "+esc(v.byName):""}</b>
+      <span>${v.kind==="link"?"Link":esc(v.name)+" · "+size(v.sz||0)}</span>${v.note?`<span class="vnote">${esc(v.note)}</span>`:""}</div>
+      <div class="va">${cur?"":`<button type="button" class="linkbtn" data-get="${esc(v.id)}">${v.kind==="link"?"Open link":"Download"}</button>`}${S.isAdmin&&!cur?`<button type="button" class="linkbtn del" data-rm="${esc(v.id)}">Remove</button>`:""}</div></div>`}).join("");
+}
+$("dd").addEventListener("close",()=>{stopVers();S.cur=null;delete $("ddDel").dataset.sure});
+const curVer=()=>{const d=S.cur;return d?{id:d.curId,kind:d.curKind,name:d.curName,sz:d.curSize,url:d.curUrl,n:d.curN}:null};
+async function fetchBytes(docId,v,say){
+  const {Fs,fs}=S.fb,n=v.n||Math.ceil((v.sz||0)/CH),parts=new Array(n);let next=0,done=0;
+  async function worker(){while(next<n){const i=next++,s=await Fs.getDoc(Fs.doc(fs,"tdocs",docId,"vers",v.id,"chunks",String(i)));
+    if(!s.exists())throw new Error("missing");parts[i]=s.data().d.toUint8Array();say(Math.round(++done/n*100))}}
+  await Promise.all([0,1,2,3].map(worker));
+  const total=parts.reduce((t,p)=>t+p.length,0);if(total!==v.sz)throw new Error("size");
+  const out=new Uint8Array(total);let o=0;parts.forEach(p=>{out.set(p,o);o+=p.length});return out;
+}
+// view=true opens the file in a tab (PDF and images only); otherwise it is saved as a download.
+async function getVer(v,view){
+  const d=S.cur;if(!d||!v||S.busy)return;showErr("ddErr","");
+  if(v.kind==="link"){if(okUrl(v.url))window.open(v.url,"_blank","noopener");else showErr("ddErr","This link is not a valid https address.");return}
+  const type=VIEW[ext(v.name)],tab=view&&type?window.open("","_blank"):null,busy=$("ddBusy");S.busy=true;
+  try{
+    const bytes=await fetchBytes(d.id,v,p=>busy.textContent="Getting the file… "+p+"%"),url=URL.createObjectURL(new Blob([bytes],{type:view&&type?type:"application/octet-stream"}));
+    if(tab)tab.location.href=url;
+    else{const a=document.createElement("a");a.href=url;a.download=v.name||"document";document.body.appendChild(a);a.click();a.remove()}
+    setTimeout(()=>URL.revokeObjectURL(url),tab?600000:5000);busy.textContent="";
+  }catch(e){if(tab)tab.close();busy.textContent="";showErr("ddErr",e&&e.code==="permission-denied"?"Firebase refused the download. The latest security rules may not be published yet.":"Couldn’t get the file. Check the connection and try again.")}
+  finally{S.busy=false}
+}
+$("ddView").addEventListener("click",()=>getVer(curVer(),true));$("ddGet").addEventListener("click",()=>getVer(curVer(),false));
+$("ddVers").addEventListener("click",e=>{const g=e.target.closest("[data-get]"),r=e.target.closest("[data-rm]");
+  if(g){const v=(S.vers||[]).find(x=>x.id===g.dataset.get);if(v)getVer(v,false)}
+  if(r)removeVer(r)});
+async function dropVer(docId,v){const {Fs,fs}=S.fb,b=Fs.writeBatch(fs);
+  for(let i=0;i<(v.n||0);i++)b.delete(Fs.doc(fs,"tdocs",docId,"vers",v.id,"chunks",String(i)));
+  b.delete(Fs.doc(fs,"tdocs",docId,"vers",v.id));await b.commit()}
+async function removeVer(btn){
+  const d=S.cur,v=(S.vers||[]).find(x=>x.id===btn.dataset.rm);if(!d||!v||!S.isAdmin||v.id===d.curId)return;
+  if(!btn.dataset.sure){btn.dataset.sure="1";btn.textContent="Select again to remove v"+v.v;return}
+  try{await dropVer(d.id,v);toast("Version "+v.v+" removed")}catch(e){showErr("ddErr",saveErr(e))}
+}
+$("ddArc").addEventListener("click",async()=>{const d=S.cur;if(!d||!S.isAdmin)return;const to=d.status==="archived"?"active":"archived";
+  try{await S.fb.Fs.updateDoc(S.fb.Fs.doc(S.fb.fs,"tdocs",d.id),{status:to,...who()});toast(to==="archived"?"Archived. It is under the Archived filter.":"Restored")}catch(e){showErr("ddErr",saveErr(e))}});
+$("ddDel").addEventListener("click",async()=>{const d=S.cur,b=$("ddDel");if(!d||!S.isAdmin||!S.vers)return;
+  if(!b.dataset.sure){b.dataset.sure="1";b.textContent="Select again to delete every version";return}
+  b.disabled=true;
+  try{for(const v of S.vers.slice())await dropVer(d.id,v);await S.fb.Fs.deleteDoc(S.fb.Fs.doc(S.fb.fs,"tdocs",d.id));$("dd").close();toast("Document deleted")}
+  catch(e){showErr("ddErr",saveErr(e))}finally{b.disabled=false;delete b.dataset.sure}});
+
+/* ---------- add document, edit details, new version ---------- */
+function openEd(mode){
+  if(!S.canEdit)return;const d=mode==="new"?{}:S.cur;if(!d)return;S.ed={mode,id:d.id||null,kind:"file"};
+  $("edTitle").textContent=mode==="new"?"Add document":mode==="edit"?"Edit details":"New version of “"+(d.title||"")+"” · v"+((d.cur||1)+1);
+  $("edDetails").hidden=mode==="ver";$("edSource").hidden=mode==="edit";
+  $("eTitle").value=d.title||"";$("eNo").value=d.no||"";$("eOwn").value=d.own||"";$("eRev").value=d.review||"";$("eDesc").value=d.desc||"";
+  const cats=S.cats.concat(d.cat&&!S.cats.includes(d.cat)?[d.cat]:[]);
+  $("eCat").innerHTML=cats.map(c=>`<option${c===d.cat?" selected":""}>${esc(c)}</option>`).join("");
+  $("eFile").value="";$("eUrl").value="";$("eNote").value="";$("eNoteLbl").textContent=mode==="ver"?"What changed":"Note for this version (optional)";
+  if(mode==="ver"&&d.curKind==="link")S.ed.kind="link";
+  drawKind();showErr("edErr","");$("edBusy").textContent="";$("edSave").disabled=false;$("edSave").textContent=mode==="edit"?"Save":mode==="ver"?"Save new version":"Add document";
+  $("ed").showModal();
+}
+function drawKind(){const k=S.ed.kind;$("eKind").querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.k===k));$("eFileFld").hidden=k!=="file";$("eUrlFld").hidden=k!=="link"}
+$("eKind").addEventListener("click",e=>{const b=e.target.closest("button[data-k]");if(b&&S.ed&&!S.busy){S.ed.kind=b.dataset.k;drawKind()}});
+$("ed").addEventListener("cancel",e=>{if(S.busy)e.preventDefault()});
+$("edForm").addEventListener("submit",e=>{if(S.busy)e.preventDefault()});
+// Stores one version: the file in pieces first, then the version record and the document's current-version details together.
+async function saveVersion(docId,det,src,isNew,say){
+  const {Fs,fs}=S.fb,verId=newId();let name="",bytes=null,n=0;
+  if(src.kind==="file"){
+    bytes=new Uint8Array(await src.file.arrayBuffer());name=str(src.file.name.replace(/[\\/:*?"<>|\u0000-\u001f]/g,"_"),200);n=Math.ceil(bytes.length/CH);
+    let next=0,done=0;say(0);
+    const worker=async()=>{while(next<n){const i=next++;await Fs.setDoc(Fs.doc(fs,"tdocs",docId,"vers",verId,"chunks",String(i)),{i,d:Fs.Bytes.fromUint8Array(bytes.subarray(i*CH,(i+1)*CH))});say(Math.round(++done/n*100))}};
+    await Promise.all([0,1,2].map(worker));
+  }
+  say(-1);
+  // The version number is taken inside a transaction so two people adding a version at once get different numbers.
+  return Fs.runTransaction(fs,async tx=>{
+    const ref=Fs.doc(fs,"tdocs",docId),snap=await tx.get(ref),w=who(),num=snap.exists()?(snap.data().cur||0)+1:1;
+    if(!isNew&&!snap.exists())throw new Error("gone");
+    tx.set(Fs.doc(fs,"tdocs",docId,"vers",verId),{v:num,kind:src.kind,name,sz:bytes?bytes.length:0,url:src.url||"",note:src.note,n,...w});
+    const head={cur:num,curId:verId,curKind:src.kind,curName:name,curSize:bytes?bytes.length:0,curUrl:src.url||"",curN:n,curAt:w.at,curByName:w.byName,...w};
+    if(snap.exists())tx.update(ref,head);else tx.set(ref,{...det,status:"active",created:w.at,...head});
+    return num;
+  });
+}
+const fileBad=f=>!f?"Choose a file.":!f.size?"That file is empty.":BLOCK.test(f.name)?"That file type can’t be stored here. Save it as a PDF or an Office file.":f.size>MAX?"That file is "+size(f.size)+". The limit is 20 MB, so add it as a link instead.":"";
+function readDetails(){return {title:str($("eTitle").value,150),no:str($("eNo").value,30),cat:str($("eCat").value,60),own:str($("eOwn").value,60),review:isIso($("eRev").value)?$("eRev").value:"",desc:str($("eDesc").value,1000)}}
+$("edSave").addEventListener("click",async()=>{
+  const m=S.ed;if(!m||!S.canEdit||S.busy)return;showErr("edErr","");
+  const {Fs,fs}=S.fb,det=m.mode==="ver"?null:readDetails(),busy=$("edBusy");
+  if(det&&!det.title){showErr("edErr","Enter a title.");$("eTitle").focus();return}
+  let src=null;
+  if(m.mode!=="edit"){
+    const note=str($("eNote").value,500);
+    if(m.kind==="link"){const url=$("eUrl").value.trim();if(!okUrl(url)){showErr("edErr","Enter a link that starts with https://");$("eUrl").focus();return}src={kind:"link",url,note}}
+    else{const f=$("eFile").files[0];
+      const bad=fileBad(f);
+      if(bad){showErr("edErr",bad);return}src={kind:"file",file:f,note}}
+    if(m.mode==="ver"&&!note){showErr("edErr","Say what changed in this version.");$("eNote").focus();return}
+  }
+  S.busy=true;$("edSave").disabled=$("edClose").disabled=true;
+  try{
+    if(m.mode==="edit"){await Fs.updateDoc(Fs.doc(fs,"tdocs",m.id),{...det,...who()});$("ed").close();toast("Saved");return}
+    const v=await saveVersion(m.id||newId(),det,src,m.mode!=="ver",pc=>busy.textContent=pc<0?"Saving…":"Uploading… "+pc+"%");
+    $("ed").close();toast(m.mode==="ver"?"Version "+v+" saved":"Document added");
+  }catch(e){showErr("edErr",e&&e.message==="gone"?"This document was deleted while you were working.":saveErr(e))}
+  finally{S.busy=false;busy.textContent="";$("edSave").disabled=$("edClose").disabled=false}
+});
+$("ddVer").addEventListener("click",()=>openEd("ver"));$("ddEdit").addEventListener("click",()=>openEd("edit"));$("newBtn").addEventListener("click",()=>openEd("new"));
+
+/* ---------- add several at once ---------- */
+// Title, document number and category are guessed from the file name, e.g. "WI LNV NC-0003 PUTAWAY.docx".
+const ACR=/^(PI|DAS|SAP|EWM|RF|HU|PPE|POPP|ASN|GR|GI|PIT|QA|5S|WI|SOP|HSE|MHE|KPI|UOM|SKU|FIFO|LPN|BOL|WMS)$/i;
+const CAT_HINT=[[/putaway|put away/,"Putaway"],[/unload|receiv|inbound|\bdas\b|slot|dock/,"Inbound and receiving"],[/pick/,"Picking"],[/outbound|ship|load/,"Outbound and shipping"],
+  [/cycle count|inventory|\bbins?\b/,"Inventory control"],[/quality|meridian|audit|\bqa\b/,"Quality"],[/safety|\bppe\b|lockout|\bhse\b/,"Safety"],[/forklift|\bpit\b|reach truck/,"Equipment (PIT)"],[/\bsap\b|\bewm\b|\brf\b/,"SAP EWM"],[/onboard|new hire|orientation/,"Onboarding"]];
+function guess(fileName){
+  const base=fileName.replace(/\.[a-z0-9]{1,8}$/i,"").replace(/_/g," ").replace(/\s+/g," ").trim();let no="",title=base;
+  const m=/^((?:WI|SOP|JA|POL|FRM)(?:[ -][A-Z]{2,4}){1,3}[ -]\d{2,5})\b[ -]*(.*)$/i.exec(base),k=/^(?:WI|SOP|JA|POL|FRM)(?:-[A-Z0-9]{2,6}){2,4}$/i.test(base);
+  if(m){no=m[1].toUpperCase().replace(/ /g,"-");title=m[2]||base}else if(k)no=base.toUpperCase();
+  const draft=/\bdraft\b/i.test(title);if(draft)title=title.replace(/[\s\-(]*\bdraft\b\)?/i,"").trim()||base;
+  if(title===title.toUpperCase()&&/[A-Z]/.test(title)&&title!==no){title=title.split(" ").map(w=>ACR.test(w)?w.toUpperCase():w.toLowerCase()).join(" ");title=title.charAt(0).toUpperCase()+title.slice(1)}
+  if(draft)title+=" (draft)";
+  const t=title.toLowerCase(),hit=CAT_HINT.find(h=>h[0].test(t)&&S.cats.includes(h[1]));
+  return {title:str(title,150),no:str(no,30),cat:hit?hit[1]:S.cats.includes("Other")?"Other":S.cats[0]};
+}
+function openBulk(files){
+  if(!S.canEdit||!files.length)return;const key=x=>norm(x).replace(/[^a-z0-9]/g,"");
+  const have=new Set((S.docs||[]).filter(d=>d.status!=="archived").flatMap(d=>[d.no&&"n"+key(d.no),"t"+key(d.title)]).filter(Boolean));
+  S.bulk=[...files].sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true})).map(f=>{const g=guess(f.name),bad=fileBad(f),dup=!bad&&(g.no&&have.has("n"+key(g.no))||have.has("t"+key(g.title)));
+    return {f,...g,bad,dup,on:!bad&&!dup,state:""}});
+  showErr("bdErr","");$("bdBusy").textContent="";drawBulk();$("bd").showModal();
+}
+function drawBulk(){
+  const B=S.bulk||[],n=B.filter(r=>r.on&&r.state!=="done").length;
+  $("bRows").innerHTML=B.map((r,i)=>{const lock=r.bad||r.state==="done"||S.busy;
+    return `<div class="brow${r.on?"":" off"}" data-i="${i}"><input type="checkbox" aria-label="Include ${esc(r.f.name)}"${r.on?" checked":""}${lock?" disabled":""}>
+    <input class="inp" data-f="title" maxlength="150" aria-label="Title" placeholder="Title" value="${esc(r.title)}"${lock?" disabled":""}>
+    <input class="inp" data-f="no" maxlength="30" aria-label="Document number" placeholder="Number (optional)" value="${esc(r.no)}"${lock?" disabled":""}>
+    <select class="inp" data-f="cat" aria-label="Category"${lock?" disabled":""}>${S.cats.map(c=>`<option${c===r.cat?" selected":""}>${esc(c)}</option>`).join("")}</select>
+    <div class="bf"><b>${esc(r.f.name)}</b> · ${size(r.f.size)}${r.bad?` · <span class="bad">${esc(r.bad)}</span>`:r.state==="done"?` · <span class="ok">Added</span>`:r.state==="fail"?` · <span class="bad">Not added. ${esc(r.msg||"")}</span>`
+      :r.state?` · <span class="warn">${esc(r.state)}</span>`:r.dup?` · <span class="warn">A document with this number or title is already in the library. Tick the box to add it anyway.</span>`:""}</div></div>`}).join("");
+  $("bdSave").textContent=n?"Add "+n+" document"+(n===1?"":"s"):"Nothing to add";$("bdSave").disabled=!n||S.busy;$("bdClose").disabled=S.busy;
+}
+$("bFiles").addEventListener("change",e=>{const f=[...e.target.files];e.target.value="";openBulk(f)});
+$("bRows").addEventListener("input",e=>{const row=e.target.closest(".brow"),r=row&&S.bulk[+row.dataset.i];if(!r||e.target.type==="checkbox")return;r[e.target.dataset.f]=e.target.value});
+$("bRows").addEventListener("change",e=>{const row=e.target.closest(".brow"),r=row&&S.bulk[+row.dataset.i];if(!r)return;if(e.target.type==="checkbox"){r.on=e.target.checked;drawBulk()}else r[e.target.dataset.f]=e.target.value});
+$("bd").addEventListener("cancel",e=>{if(S.busy)e.preventDefault()});$("bdForm").addEventListener("submit",e=>{if(S.busy)e.preventDefault()});
+$("bdSave").addEventListener("click",async()=>{
+  const B=(S.bulk||[]).filter(r=>r.on&&r.state!=="done");if(!B.length||!S.canEdit||S.busy)return;showErr("bdErr","");
+  const blank=B.find(r=>!str(r.title,150));if(blank){showErr("bdErr","Give “"+blank.f.name+"” a title, or untick it.");return}
+  S.busy=true;let ok=0,fail=0;
+  for(const r of B){
+    r.state="Uploading…";drawBulk();$("bdBusy").textContent="Adding "+(ok+fail+1)+" of "+B.length+": "+r.f.name;
+    try{await saveVersion(newId(),{title:str(r.title,150),no:str(r.no,30),cat:str(r.cat,60),own:"",review:"",desc:""},{kind:"file",file:r.f,note:""},true,()=>{});r.state="done";ok++}
+    catch(e){r.state="fail";r.msg=saveErr(e);fail++}
+  }
+  S.busy=false;$("bdBusy").textContent="";drawBulk();
+  if(fail)showErr("bdErr",fail+" of "+B.length+" could not be added. Select the button again to retry them.");else{$("bd").close();toast(ok+" document"+(ok===1?"":"s")+" added")}
+});
+
+/* ---------- categories (admins) ---------- */
+$("catBtn").addEventListener("click",()=>{if(!S.isAdmin)return;$("cList").value=S.cats.join("\n");showErr("cdErr","");$("cd").showModal()});
+$("cdSave").addEventListener("click",async()=>{if(!S.isAdmin)return;
+  const cats=[...new Set($("cList").value.split(/\n+/).map(x=>str(x,60)).filter(Boolean))];
+  if(!cats.length||cats.length>40){showErr("cdErr",cats.length?"Keep the list to 40 categories or fewer.":"Enter at least one category.");return}
+  try{await S.fb.Fs.setDoc(S.fb.Fs.doc(S.fb.fs,"tdoccfg","settings"),{cats,by:S.authUser.uid,at:Date.now()});$("cd").close();toast("Categories saved")}catch(e){showErr("cdErr",saveErr(e))}});
+
+/* ---------- controls ---------- */
+$("catChips").addEventListener("click",e=>{const b=e.target.closest("button[data-c]");if(b){S.cat=b.dataset.c;render()}});
+let qT;$("q").addEventListener("input",e=>{clearTimeout(qT);qT=setTimeout(()=>{S.q=e.target.value;render()},150)});
+$("tDoc").addEventListener("click",e=>{const th=e.target.closest("th[data-s]");if(th){const k=th.dataset.s;if(S.sort===k)S.dir=-S.dir;else{S.sort=k;S.dir=k==="at"?-1:1}render();return}
+  const tr=e.target.closest("tr[data-id]");if(tr)openDoc(tr.dataset.id)});
+$("tDoc").addEventListener("keydown",e=>{if(e.key!=="Enter")return;const tr=e.target.closest("tr[data-id]");if(tr)openDoc(tr.dataset.id)});
+
+/* ---------- sign-in gate (same accounts, roles and access requests as the other CEVA tools) ---------- */
+function showGate(mode,waitText){
+  const ready=mode==="ready";$("gate").hidden=ready;$("app").hidden=!ready;
+  $("gateWait").hidden=mode!=="wait";if(mode!=="wait")$("wOut").hidden=true;if(waitText)$("gateWait").textContent=waitText;
+  $("gateSetup").hidden=mode!=="setup";$("gateLogin").hidden=mode!=="login";$("gateRequest").hidden=mode!=="request";$("gateDenied").hidden=mode!=="denied";
+  if(mode==="denied")renderDenied();
+}
+function renderDenied(){const em=S.authUser?S.authUser.email||"":"";$("dEmail").textContent=em;$("dEmailP").textContent=em;$("dPending").hidden=!S.myReq;$("dNone").hidden=!!S.myReq}
+function reqErrMsg(c){return c==="auth/email-already-in-use"?"That email already has a login. Go back and sign in, or use Forgot password."
+  :c==="auth/invalid-email"?"That doesn’t look like an email address.":c==="auth/weak-password"?"Use a password of at least 8 characters."
+  :c==="auth/network-request-failed"?"No connection. Check the network and try again.":"Couldn’t send the request. Try again in a moment."}
+function fileRequest(user,name,note){const {Fs,fs}=S.fb;return Fs.setDoc(Fs.doc(fs,"requests",user.uid),{name:str(name,40),email:str(user.email||"",80),company:"ceva",note:str(note,120),at:Date.now()})}
+$("gateLogin").addEventListener("submit",async e=>{e.preventDefault();const email=$("lEmail").value.trim(),pass=$("lPass").value,err=$("lErr");err.hidden=true;
+  if(!email||!pass){err.textContent="Enter your email and password.";err.hidden=false;return}
+  if(!S.fb)return;$("lGo").disabled=true;
+  try{await S.fb.F.signInWithEmailAndPassword(S.fb.auth,email,pass);$("lPass").value=""}
+  catch(x){const c=x&&x.code;err.textContent=c==="auth/too-many-requests"?"Too many tries. Wait a few minutes, then try again.":c==="auth/network-request-failed"?"No connection. Check the network and try again.":"That email and password don’t match an account on this tool.";err.hidden=false}
+  finally{$("lGo").disabled=false}});
+$("lForgot").addEventListener("click",async()=>{const email=$("lEmail").value.trim(),err=$("lErr");err.hidden=true;
+  if(!email){err.textContent="Type your email above first, then select this again.";err.hidden=false;$("lEmail").focus();return}
+  if(!S.fb)return;
+  try{await S.fb.F.sendPasswordResetEmail(S.fb.auth,email);toast("Reset link sent to "+email+". Check spam too; the link expires, so use it soon.")}
+  catch(x){err.textContent="Couldn’t send the reset link. Check the email address and the connection, then try again.";err.hidden=false}});
+$("lRequest").addEventListener("click",()=>{$("qEmail").value=$("lEmail").value;showGate("request");setTimeout(()=>$("qName").focus(),30)});
+$("qBack").addEventListener("click",()=>showGate("login"));
+$("gateRequest").addEventListener("submit",async e=>{e.preventDefault();const name=str($("qName").value,40),email=$("qEmail").value.trim(),pass=$("qPass").value,note=str($("qNote").value,120),err=$("qErr");err.hidden=true;
+  const bad=!name?"Enter your name so the admin knows who is asking.":!email?"Enter your work email.":pass.length<8?"Use a password of at least 8 characters.":"";
+  if(bad){err.textContent=bad;err.hidden=false;return}
+  if(!S.fb)return;$("qGo").disabled=true;S.pendingReq={name,note};
+  try{await S.fb.F.createUserWithEmailAndPassword(S.fb.auth,email,pass);$("qPass").value=""}
+  catch(x){S.pendingReq=null;err.textContent=reqErrMsg(x&&x.code);err.hidden=false}
+  finally{$("qGo").disabled=false}});
+$("dRequest").addEventListener("submit",async e=>{e.preventDefault();const name=str($("dName").value,40),note=str($("dNote").value,120),err=$("dReqErr");err.hidden=true;
+  if(!name){err.textContent="Enter your name so the admin knows who is asking.";err.hidden=false;return}
+  if(!S.fb||!S.authUser)return;$("dReqGo").disabled=true;
+  try{await fileRequest(S.authUser,name,note);toast("Request sent")}catch(x){err.textContent=reqErrMsg(x&&x.code);err.hidden=false}finally{$("dReqGo").disabled=false}});
+const signOut=()=>{if(S.fb)S.fb.F.signOut(S.fb.auth)};
+$("dOut").addEventListener("click",signOut);$("wOut").addEventListener("click",signOut);$("signOut").addEventListener("click",signOut);
+
+(async function connect(){
+  const cfg=window.FIREBASE_CONFIG;
+  if(!cfg||!cfg.apiKey||/PASTE/i.test(cfg.apiKey+cfg.projectId)){showGate("setup");return}
+  let A,F,Fs;
+  try{[A,F,Fs]=await Promise.all([import(FB+"firebase-app.js"),import(FB+"firebase-auth.js"),import(FB+"firebase-firestore.js")])}
+  catch(_){showGate("wait","Can’t reach Firebase from this network. Ask IT to allow gstatic.com, googleapis.com and firebaseapp.com, then reload.");return}
+  // No offline cache on this page: it would keep a copy of every file opened, and an upload must reach the server to count.
+  const app=A.initializeApp(cfg),auth=F.getAuth(app),fs=Fs.getFirestore(app);
+  S.fb={auth,F,Fs,fs};
+  let roleUnsub=null,reqUnsub=null;
+  F.onAuthStateChanged(auth,user=>{
+    if(roleUnsub){roleUnsub();roleUnsub=null}if(reqUnsub){reqUnsub();reqUnsub=null}
+    stopData();S.authUser=user;S.role=null;S.canEdit=S.isAdmin=false;S.myReq=null;$("wOut").hidden=true;
+    if(!user){showGate("login");return}
+    if(S.pendingReq){const q=S.pendingReq;S.pendingReq=null;fileRequest(user,q.name,q.note).then(()=>toast("Request sent. An admin will approve it."),()=>toast("Signed up, but the request didn’t send. Fill in the form below."))}
+    showGate("wait","Checking access…");
+    reqUnsub=Fs.onSnapshot(Fs.doc(fs,"requests",user.uid),s=>{S.myReq=s.exists();if(!S.role&&!$("gateDenied").hidden)renderDenied()},()=>{});
+    roleUnsub=CevaAccess.watch(Fs,fs,user.uid,"training",snap=>{
+      const d=snap.exists()?(snap.data()||{}):{},role=d.role;
+      if(d.noAccess){S.role=null;stopData();showGate("wait",CevaAccess.NO_ACCESS);$("wOut").hidden=false;return}
+      if(!ROLE_LABEL[role]){S.role=null;stopData();showGate("denied");return}
+      const first=!S.role;S.role=role;S.myName=str(d.name,40);S.canEdit=role==="supervisor"||role==="admin";S.who=d.groupName+" · "+CevaAccess.LEVEL_LABEL[d.level];S.isAdmin=role==="admin";
+      if(first){startData();showGate("ready")}
+      render();
+    },()=>{S.role=null;stopData();showGate("denied")});
+  });
+})();
+</script>
+</body>
+</html>
