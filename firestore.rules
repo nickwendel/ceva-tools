@@ -280,7 +280,7 @@ service cloud.firestore {
         && d.curId is string && d.curId.size() <= 40
         && d.curKind in ['file', 'link']
         && d.curName is string && d.curName.size() <= 200
-        && d.curSize is int && d.curSize >= 0 && d.curSize <= 10485760
+        && d.curSize is int && d.curSize >= 0 && d.curSize <= 20971520
         && d.curUrl is string && d.curUrl.size() <= 1000
         && d.size() <= 24;
     }
@@ -311,11 +311,11 @@ service cloud.firestore {
           && request.resource.data.v is int && request.resource.data.v >= 1
           && request.resource.data.kind in ['file', 'link']
           && request.resource.data.name is string && request.resource.data.name.size() <= 200
-          && request.resource.data.sz is int && request.resource.data.sz >= 0 && request.resource.data.sz <= 10485760
+          && request.resource.data.sz is int && request.resource.data.sz >= 0 && request.resource.data.sz <= 20971520
           && request.resource.data.url is string && request.resource.data.url.size() <= 1000
           && (request.resource.data.kind == 'file' || request.resource.data.url.matches('https://.+'))
           && request.resource.data.note is string && request.resource.data.note.size() <= 500
-          && request.resource.data.n is int && request.resource.data.n >= 0 && request.resource.data.n <= 15
+          && request.resource.data.n is int && request.resource.data.n >= 0 && request.resource.data.n <= 30
           && request.resource.data.size() <= 12;
         allow delete: if isAdmin();
 
@@ -323,7 +323,7 @@ service cloud.firestore {
         match /chunks/{chunkId} {
           allow read: if isViewer() && isCeva();
           allow create: if isSupervisor() && isCeva()
-            && request.resource.data.i is int && request.resource.data.i >= 0 && request.resource.data.i < 15
+            && request.resource.data.i is int && request.resource.data.i >= 0 && request.resource.data.i < 30
             && request.resource.data.d is bytes && request.resource.data.d.size() <= 800000
             && request.resource.data.size() == 2;
           allow delete: if isAdmin();
