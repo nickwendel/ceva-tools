@@ -27,6 +27,13 @@
   .search::placeholder{color:var(--faint)}
   h2{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--faint);font-weight:700;margin:26px 0 10px}
   h2 small{text-transform:none;letter-spacing:0;font-weight:500;color:var(--faint);margin-left:6px}
+  .jump{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 2px}
+  .jump a{font-size:12px;font-weight:600;color:var(--muted);text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:5px 11px;transition:border-color .15s,color .15s}
+  .jump a:hover,.jump a:focus-visible{border-color:var(--info);color:var(--fg)}
+  h2.major{font-size:15px;text-transform:none;letter-spacing:.2px;color:var(--fg);margin:30px 0 0;padding-bottom:8px;border-bottom:1px solid var(--line)}
+  h2.major small{font-size:12px;color:var(--muted)}
+  section[data-sec]{scroll-margin-top:12px}
+  section[data-sec]>h2{margin-top:18px}
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
   .tool{display:flex;flex-direction:column;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px 16px;color:inherit;text-decoration:none;position:relative;overflow:hidden;transition:border-color .15s,box-shadow .15s}
   .tool::before{content:"";position:absolute;top:0;left:0;width:3px;height:100%;background:var(--accent)}
@@ -58,25 +65,59 @@
   </header>
 
   <input class="search" id="q" type="search" placeholder="Find a tool (dock, 8D, transactions, staff meeting…)" aria-label="Find a tool" autocomplete="off">
+  <nav class="jump" id="jump" aria-label="Jump to a group">
+    <a href="#inbound">Inbound</a>
+    <a href="#inventory">Inventory</a>
+    <a href="#audits">Audits</a>
+    <a href="#reporting">Reporting and training</a>
+    <a href="#admin">Admin</a>
+    <a href="#templates">Templates</a>
+    <a href="#workbooks">Site workbooks</a>
+  </nav>
 
-  <section data-sec>
-    <h2>Web tools <small>open in the browser, sign in once</small></h2>
-    <div class="grid">
-      <a class="tool alt" href="dock-board/" data-tags="receiving dock board tv trucks appointments drop"><div class="k">Receiving</div><b>Receiving dock board</b><span class="d">Floor TV display of the drop and today's appointments, updated by supervisors from a phone.</span><span class="go">Open →</span></a>
-      <a class="tool" href="nci-inbound/" data-tags="inbound nci grief exceptions shortage overage damage asn issues"><div class="k">Inbound · NCI / Grief</div><b>Inbound exceptions</b><span class="d">Shared log of error shipments worked by CEVA and NCI/Grief: raise, update, hand off and resolve, with an open-items board and alerts.</span><span class="go">Open →</span></a>
-      <a class="tool alt" href="transactions/" data-tags="transactions sap ewm warehouse tasks productivity open tasks trends powerpoint"><div class="k">Operations · SAP EWM</div><b>Warehouse transactions</b><span class="d">Confirmed warehouse tasks by hour, activity and associate, open task aging and trends. A supervisor loads the SAP export and everyone sees it.</span><span class="go">Open →</span></a>
-      <a class="tool" href="inventory-differences/" data-tags="inventory differences sap ewm count cycle count bin variance short pick over pick shortage action"><div class="k">Inventory · SAP EWM</div><b>Inventory differences</b><span class="d">Pulls the short and over picks out of the SAP warehouse task export and keeps a running list by bin, product and associate, with status, owner and notes on each one.</span><span class="go">Open →</span></a>
-      <a class="tool alt" href="putaway-audit/" data-tags="putaway audit gr-zone goods receipt receiving sap ewm errors associate accuracy print audit sheet bin check"><div class="k">Inbound · SAP EWM</div><b>Putaway audit</b><span class="d">Lists every putaway out of the GR-ZONE from the SAP warehouse task export, prints an audit sheet, and tracks the errors found by associate.</span><span class="go">Open →</span></a>
-      <a class="tool" href="picking-audit/" data-tags="picking pick audit outbound stock removal sap ewm errors associate accuracy print audit sheet bin location check"><div class="k">Outbound · SAP EWM</div><b>Picking audit</b><span class="d">Lists every pick out of a storage bin from the SAP warehouse task export, prints an audit sheet, and tracks the errors found by associate.</span><span class="go">Open →</span></a>
-      <a class="tool alt" href="consolidation/" data-tags="hu handling unit consolidation consolidate merge location bin storage stock inventory sap ewm space pallets print work sheet"><div class="k">Inventory · SAP EWM</div><b>HU consolidation</b><span class="d">Finds every location holding more than one handling unit in the SAP stock export, shows which to keep and which to merge into it, prints a work sheet and tracks what is done.</span><span class="go">Open →</span></a>
-      <a class="tool" href="action-tracker/" data-tags="action tracker inventory actions owner due date status overdue update log excel export import"><div class="k">Inventory · Actions</div><b>Inventory action tracker</b><span class="d">The Inventory Action Tracker as a shared page: actions with owner, priority, dates, status and percent complete, plus the update log. Exports to the Excel workbook and imports it back.</span><span class="go">Open →</span></a>
-      <a class="tool alt" href="training-docs/" data-tags="training documents documentation quality qms sop work instruction procedure policy safety onboarding upload version library"><div class="k">Quality · Training</div><b>Training documents</b><span class="d">The site's training library: work instructions, procedures and guides by category, with every version kept. Supervisors upload and update; everyone can open and download.</span><span class="go">Open →</span></a>
-      <a class="tool" href="data/" data-tags="data upload load sap ewm export warehouse task stock update all tools refresh"><div class="k">Data · SAP EWM</div><b>Data upload</b><span class="d">Load the SAP warehouse task export once and every tool that uses it is updated: warehouse transactions, inventory differences, putaway audit and picking audit. Also takes the SAP stock export for HU consolidation.</span><span class="go">Open →</span></a>
-      <a class="tool access" href="access/" data-tags="access sign in login request approve people roles password admin"><div class="k">Access</div><b>Access and people</b><span class="d">Sign in, request access, see which tools your role opens and change your password. Admins approve requests and manage people here.</span><span class="go">Open →</span></a>
-    </div>
-  </section>
+  <div data-major>
+    <h2 class="major">Web tools <small>open in the browser, sign in once</small></h2>
+    <section data-sec id="inbound">
+      <h2>Inbound <small>receiving and inbound exceptions</small></h2>
+      <div class="grid">
+        <a class="tool" href="dock-board/" data-tags="receiving dock board tv trucks appointments drop"><div class="k">Receiving</div><b>Receiving dock board</b><span class="d">Floor TV display of the drop and today's appointments, updated by supervisors from a phone.</span><span class="go">Open →</span></a>
+        <a class="tool alt" href="nci-inbound/" data-tags="inbound nci grief exceptions shortage overage damage asn issues"><div class="k">Inbound · NCI / Grief</div><b>Inbound exceptions</b><span class="d">Shared log of error shipments worked by CEVA and NCI/Grief: raise, update, hand off and resolve, with an open-items board and alerts.</span><span class="go">Open →</span></a>
+      </div>
+    </section>
+    <section data-sec id="inventory">
+      <h2>Inventory <small>differences, consolidation and actions</small></h2>
+      <div class="grid">
+        <a class="tool" href="inventory-differences/" data-tags="inventory differences sap ewm count cycle count bin variance short pick over pick shortage action"><div class="k">Inventory · SAP EWM</div><b>Inventory differences</b><span class="d">Pulls the short and over picks out of the SAP warehouse task export and keeps a running list by bin, product and associate, with status, owner and notes on each one.</span><span class="go">Open →</span></a>
+        <a class="tool alt" href="consolidation/" data-tags="hu handling unit consolidation consolidate merge location bin storage stock inventory sap ewm space pallets print work sheet"><div class="k">Inventory · SAP EWM</div><b>HU consolidation</b><span class="d">Finds every location holding more than one handling unit in the SAP stock export, shows which to keep and which to merge into it, prints a work sheet and tracks what is done.</span><span class="go">Open →</span></a>
+        <a class="tool" href="action-tracker/" data-tags="action tracker inventory actions owner due date status overdue update log excel export import"><div class="k">Inventory · Actions</div><b>Inventory action tracker</b><span class="d">The Inventory Action Tracker as a shared page: actions with owner, priority, dates, status and percent complete, plus the update log. Exports to the Excel workbook and imports it back.</span><span class="go">Open →</span></a>
+      </div>
+    </section>
+    <section data-sec id="audits">
+      <h2>Audits <small>putaway and picking accuracy checks</small></h2>
+      <div class="grid">
+        <a class="tool" href="putaway-audit/" data-tags="putaway audit gr-zone goods receipt receiving sap ewm errors associate accuracy print audit sheet bin check"><div class="k">Inbound · SAP EWM</div><b>Putaway audit</b><span class="d">Lists every putaway out of the GR-ZONE from the SAP warehouse task export, prints an audit sheet, and tracks the errors found by associate.</span><span class="go">Open →</span></a>
+        <a class="tool alt" href="picking-audit/" data-tags="picking pick audit outbound stock removal sap ewm errors associate accuracy print audit sheet bin location check"><div class="k">Outbound · SAP EWM</div><b>Picking audit</b><span class="d">Lists every pick out of a storage bin from the SAP warehouse task export, prints an audit sheet, and tracks the errors found by associate.</span><span class="go">Open →</span></a>
+      </div>
+    </section>
+    <section data-sec id="reporting">
+      <h2>Reporting and training <small>site numbers and the training library</small></h2>
+      <div class="grid">
+        <a class="tool" href="transactions/" data-tags="transactions sap ewm warehouse tasks productivity open tasks trends powerpoint"><div class="k">Operations · SAP EWM</div><b>Warehouse transactions</b><span class="d">Confirmed warehouse tasks by hour, activity and associate, open task aging and trends. A supervisor loads the SAP export and everyone sees it.</span><span class="go">Open →</span></a>
+        <a class="tool alt" href="training-docs/" data-tags="training documents documentation quality qms sop work instruction procedure policy safety onboarding upload version library"><div class="k">Quality · Training</div><b>Training documents</b><span class="d">The site's training library: work instructions, procedures and guides by category, with every version kept. Supervisors upload and update; everyone can open and download.</span><span class="go">Open →</span></a>
+      </div>
+    </section>
+    <section data-sec id="admin">
+      <h2>Admin <small>load the SAP data, manage sign-in and people</small></h2>
+      <div class="grid">
+        <a class="tool" href="data/" data-tags="data upload load sap ewm export warehouse task stock update all tools refresh"><div class="k">Data · SAP EWM</div><b>Data upload</b><span class="d">Load the SAP warehouse task export once and every tool that uses it is updated: warehouse transactions, inventory differences, putaway audit and picking audit. Also takes the SAP stock export for HU consolidation.</span><span class="go">Open →</span></a>
+        <a class="tool access" href="access/" data-tags="access sign in login request approve people roles password admin"><div class="k">Access</div><b>Access and people</b><span class="d">Sign in, request access, see which tools your role opens and change your password. Admins approve requests and manage people here.</span><span class="go">Open →</span></a>
+      </div>
+    </section>
+  </div>
 
-  <section data-sec>
+  <div data-major>
+  <h2 class="major">Downloads and workbooks <small>files to fill in or ask for</small></h2>
+  <section data-sec id="templates">
     <h2>Templates <small>download, fill in, save your own copy</small></h2>
     <div class="grid">
       <div class="tool" data-tags="8d problem solving corrective action root cause quality report word excel"><div class="k">Quality · Problem solving</div><b>8D report</b><span class="d">D0 to D8 corrective action report for logistics and inventory problems, with a worksheet version in Excel.</span>
@@ -88,7 +129,7 @@
     </div>
   </section>
 
-  <section data-sec>
+  <section data-sec id="workbooks">
     <h2>Site workbooks <small>kept private because they hold site data</small></h2>
     <div class="grid">
       <div class="tool private" data-tags="headcount head count tracker fte contract sow lenovo excel"><div class="k">People</div><b>Head count tracker</b><span class="d">Contractual baseline by role and shift, roster, open reqs and weekly trend.</span><span class="go">Ask your site lead for the current copy</span></div>
@@ -97,6 +138,7 @@
       <div class="tool private" data-tags="a2 move analysis bin moves sap ewm excel"><div class="k">Inventory · SAP EWM</div><b>A2 move analysis</b><span class="d">Who moved stock in and out of A2 bins, and when, from a task export.</span><span class="go">Ask your site lead for the current copy</span></div>
     </div>
   </section>
+  </div>
 
   <p class="empty" id="none" hidden>No tool matches that. Try another word.</p>
 
@@ -115,6 +157,10 @@
       });
       sec.hidden = !shown; if(shown) any = true;
     });
+    document.querySelectorAll('[data-major]').forEach(function(m){
+      m.hidden = !m.querySelector('[data-sec]:not([hidden])');
+    });
+    document.getElementById('jump').hidden = !!t;
     none.hidden = any;
   });
 })();
