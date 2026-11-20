@@ -293,6 +293,7 @@ dialog::backdrop{background:rgba(5,12,24,.7)}
 <div class="toast" id="toast" role="status" hidden></div>
 
 <script src="firebase-config.js"></script>
+<script src="../assets/access.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="../assets/sap-export.js"></script>
 <script type="module">
@@ -337,7 +338,7 @@ function startData(){
 function stopData(){S.unsubs.forEach(u=>{try{u()}catch(_){}});S.unsubs=[];S.rows=null;S.days=new Map();S.acts=new Map();S.cfg={...DEF_CFG}}
 function load(f){
   if(!f)return;
-  if(!S.canLoad){toast("Only supervisors and admins can load an export.");return}
+  if(!S.canLoad){toast("Your user group cannot load an export.");return}
   if(S.busy)return;
   const rd=new FileReader();rd.onload=async()=>{
     S.busy=true;$("loadBtn").classList.add("busy");$("msg").hidden=true;toast("Reading the export…",true);
@@ -381,7 +382,7 @@ function render(){
   $("loadBtn").hidden=!S.canLoad;$("cfgBtn").hidden=!S.isAdmin;
   let newest=null;for(const d of S.days.values())if(!newest||d.at>newest.at)newest=d;
   const live=S.rows===null?"Loading…":newest?`${nf(S.rows.length,0)} differences kept over ${S.days.size} ${S.days.size===1?"day":"days"} · last load <b>${esc(newest.file)}</b> ${esc(new Date(newest.at).toLocaleString("en-US",{month:"numeric",day:"numeric",hour:"numeric",minute:"2-digit"}))}${newest.byName?" by "+esc(newest.byName):""}`:"No export loaded yet";
-  $("status").innerHTML=`<span><span class="dot ok"></span>${esc(S.myName||"")}${S.myName?" · ":""}${ROLE_LABEL[S.role]}</span><span>${live}</span>`;
+  $("status").innerHTML=`<span><span class="dot ok"></span>${esc(S.myName||"")}${S.myName?" · ":""}${(S.who||ROLE_LABEL[S.role])}</span><span>${live}</span>`;
   $("noData").hidden=has||S.rows===null;
   const hide=()=>["vList","vGroup","vDay"].forEach(id=>$(id).hidden=true);
   if(!has){$("noData").innerHTML=S.rows===null?"":`<strong>No differences loaded</strong><span>${S.canLoad?"Load the SAP warehouse task export with <b>Load SAP export</b>, or drag the file onto this page. The page picks out the lines with a difference and keeps them.":"A supervisor loads the SAP warehouse task export here. Once it is loaded, everyone signed in sees the differences."}</span>`;
@@ -452,7 +453,7 @@ $("dSave").addEventListener("click",async()=>{
   const r=S.cur;if(!r||!S.canEdit)return;const {Fs,fs}=S.fb,k=keyOf(r);$("dSave").disabled=true;
   try{await Fs.setDoc(Fs.doc(fs,"invact",docId(k)),{k:k.slice(0,600),status:S.dStatus,owner:str($("dOwner").value,40),note:str($("dNoteIn").value,500),p:r.p.slice(0,60),b:r.b.slice(0,60),
       by:S.authUser.uid,byName:S.myName||S.authUser.email||"",at:Date.now()});$("dlg").close();toast("Saved")}
-  catch(e){$("dErr").textContent=e&&e.code==="permission-denied"?"Firebase refused the change. Your role may be view only, or the latest security rules have not been published yet.":"Couldn’t save. Check the connection and try again.";$("dErr").hidden=false}
+  catch(e){$("dErr").textContent=e&&e.code==="permission-denied"?"Firebase refused the change. Your user group may be view only, or the latest security rules have not been published yet.":"Couldn’t save. Check the connection and try again.";$("dErr").hidden=false}
   finally{$("dSave").disabled=false}});
 
 /* ---------- thresholds (admins) ---------- */
@@ -542,10 +543,11 @@ $("dOut").addEventListener("click",signOut);$("signOut").addEventListener("click
     if(S.pendingReq){const q=S.pendingReq;S.pendingReq=null;fileRequest(user,q.name,q.note).then(()=>toast("Request sent. An admin will approve it."),()=>toast("Signed up, but the request didn’t send. Fill in the form below."))}
     showGate("wait","Checking access…");
     reqUnsub=Fs.onSnapshot(Fs.doc(fs,"requests",user.uid),s=>{S.myReq=s.exists();if(!S.role&&!$("gateDenied").hidden)renderDenied()},()=>{});
-    roleUnsub=Fs.onSnapshot(Fs.doc(fs,"roles",user.uid),{includeMetadataChanges:true},snap=>{
+    roleUnsub=CevaAccess.watch(Fs,fs,user.uid,"differences",snap=>{
       const d=snap.exists()?(snap.data()||{}):{},role=d.role;
+      if(d.noAccess){S.role=null;stopData();showGate("wait",CevaAccess.NO_ACCESS);return}
       if(!ROLE_LABEL[role]){if(snap.metadata.fromCache){showGate("wait","Waiting for the network…");return}S.role=null;stopData();showGate("denied");return}
-      const first=!S.role;S.role=role;S.myName=str(d.name,40);S.canLoad=S.canEdit=role==="supervisor"||role==="admin";S.isAdmin=role==="admin";
+      const first=!S.role;S.role=role;S.myName=str(d.name,40);S.canLoad=!!d.canLoad;S.canEdit=role==="supervisor"||role==="admin";S.who=d.groupName+" · "+CevaAccess.LEVEL_LABEL[d.level];S.isAdmin=role==="admin";
       if(first){startData();showGate("ready")}
       render();
     },()=>{S.role=null;stopData();showGate("denied")});

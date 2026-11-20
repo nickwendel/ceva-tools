@@ -346,6 +346,7 @@ dialog::backdrop{background:rgba(5,12,24,.7)}
 <div class="toast" id="toast" role="status" hidden></div>
 
 <script src="firebase-config.js"></script>
+<script src="../assets/access.js"></script>
 <script type="module">
 const FB='https://www.gstatic.com/firebasejs/10.14.1/';
 const ROLE_LABEL={viewer:'Viewer',supervisor:'Supervisor',user:'User',admin:'Admin'};
@@ -374,7 +375,7 @@ const kindLabel=(kind,name)=>kind==="link"?"Link":(ext(name)||"file").toUpperCas
 const revDays=d=>isIso(d.review)&&d.status!=="archived"?dayNo(d.review)-dayNo(todayIso()):null;
 const who=()=>({by:S.authUser.uid,byName:S.myName||S.authUser.email||"",at:Date.now()});
 let toastT;function toast(t,keep){const e=$("toast");e.textContent=t;e.hidden=false;clearTimeout(toastT);if(!keep)toastT=setTimeout(()=>e.hidden=true,6000)}
-const saveErr=e=>e&&e.code==="permission-denied"?"Firebase refused the change. Your role may be view only, or the latest security rules have not been published yet.":"Couldn’t save. Check the connection and try again.";
+const saveErr=e=>e&&e.code==="permission-denied"?"Firebase refused the change. Your user group may be view only, or the latest security rules have not been published yet.":"Couldn’t save. Check the connection and try again.";
 function showErr(id,t){const e=$(id);e.textContent=t||"";e.hidden=!t}
 
 /* ---------- shared data ----------
@@ -407,7 +408,7 @@ function render(){
   const D=S.docs||[],A=D.filter(d=>d.status!=="archived"),arc=D.length-A.length,now=Date.now();
   const due=A.filter(d=>{const r=revDays(d);return r!=null&&r<0}).length,soon=A.filter(d=>{const r=revDays(d);return r!=null&&r>=0&&r<=30}).length;
   $("status").innerHTML=[`<span><span class="dot ${S.docs?"ok":""}"></span>${S.docs?"Live":"Loading…"}</span>`,
-    `<span>Signed in as <b>${esc(S.myName||(S.authUser&&S.authUser.email)||"")}</b> · ${ROLE_LABEL[S.role]}</span>`].join("");
+    `<span>Signed in as <b>${esc(S.myName||(S.authUser&&S.authUser.email)||"")}</b> · ${(S.who||ROLE_LABEL[S.role])}</span>`].join("");
   $("newBtn").hidden=$("bulkBtn").hidden=!S.canEdit;$("catBtn").hidden=!S.isAdmin;
   $("msg").hidden=!S.loadErr;$("msg").textContent=S.loadErr?"The documents can’t be read yet. An admin needs to publish the latest security rules (firestore.rules) in the Firebase console.":"";
   $("stats").innerHTML=[["Documents",A.length,""],["Categories in use",new Set(A.map(d=>d.cat)).size,""],["Updated, 30 days",A.filter(d=>now-(d.curAt||0)<30*864e5).length,""],
@@ -421,7 +422,7 @@ function render(){
   $("listTitle").textContent=S.cat==="__arch"?"Archived documents":S.cat||"Documents";$("cDoc").textContent=R.length===base||S.cat&&!S.q?R.length:R.length+" of "+base;
   $("tDoc").hidden=!R.length;$("noDoc").hidden=!!R.length;
   if(!R.length)$("noDoc").innerHTML=!S.docs?"<strong>Loading…</strong>":D.length?"<strong>No documents match</strong><span>Clear the search or choose another category.</span>"
-    :"<strong>No documents yet</strong><span>"+(S.canEdit?"Use Add document to upload the first one.":"A supervisor or admin has not added any documents yet.")+"</span>";
+    :"<strong>No documents yet</strong><span>"+(S.canEdit?"Use Add document to upload the first one.":"Nobody with edit access has added any documents yet.")+"</span>";
   else{
     const H=[["no","Number"],["title","Document"],["cat","Category"],["v","Version"],["at","Updated"],["by","Updated by"],["rev","Review by"]];
     $("tDoc").innerHTML="<thead><tr>"+H.map(h=>`<th class="s" data-s="${h[0]}">${h[1]}${S.sort===h[0]?(S.dir>0?" ▲":" ▼"):""}</th>`).join("")+"<th>Type</th></tr></thead><tbody>"+R.map(d=>{
@@ -430,7 +431,7 @@ function render(){
         <td class="n">v${esc(d.cur||1)}</td><td>${dt(d.curAt)}</td><td>${esc(d.curByName)}</td><td class="${r==null?"":r<0?"late":r<=30?"soon":""}">${mdy(d.review)}</td><td><span class="pill${d.curKind==="link"?" lk":""}">${esc(kindLabel(d.curKind,d.curName))}</span></td></tr>`}).join("")+"</tbody>";
   }
   $("note").textContent="Every document keeps its full version history: the newest version is the one in the list, and older versions stay available inside the document. "
-    +(S.canEdit?"Use Add document for something new, or open a document and select Upload new version to replace it. Files up to 20 MB are stored here; add larger files and video as a link.":"Your role can open and download documents. Supervisors and admins add and update them.");
+    +(S.canEdit?"Use Add document for something new, or open a document and select Upload new version to replace it. Files up to 20 MB are stored here; add larger files and video as a link.":"Your user group can open and download documents. Supervisors and admins add and update them.");
 }
 
 /* ---------- one document ---------- */
@@ -682,12 +683,11 @@ $("dOut").addEventListener("click",signOut);$("wOut").addEventListener("click",s
     if(S.pendingReq){const q=S.pendingReq;S.pendingReq=null;fileRequest(user,q.name,q.note).then(()=>toast("Request sent. An admin will approve it."),()=>toast("Signed up, but the request didn’t send. Fill in the form below."))}
     showGate("wait","Checking access…");
     reqUnsub=Fs.onSnapshot(Fs.doc(fs,"requests",user.uid),s=>{S.myReq=s.exists();if(!S.role&&!$("gateDenied").hidden)renderDenied()},()=>{});
-    roleUnsub=Fs.onSnapshot(Fs.doc(fs,"roles",user.uid),snap=>{
+    roleUnsub=CevaAccess.watch(Fs,fs,user.uid,"training",snap=>{
       const d=snap.exists()?(snap.data()||{}):{},role=d.role;
+      if(d.noAccess){S.role=null;stopData();showGate("wait",CevaAccess.NO_ACCESS);$("wOut").hidden=false;return}
       if(!ROLE_LABEL[role]){S.role=null;stopData();showGate("denied");return}
-      // Training documents are internal: partner (NCI/Grief) accounts are kept out here and in the security rules.
-      if(d.company==="partner"){S.role=null;stopData();showGate("wait","Training documents are open to CEVA accounts only. Ask an admin if you need them.");$("wOut").hidden=false;return}
-      const first=!S.role;S.role=role;S.myName=str(d.name,40);S.canEdit=role==="supervisor"||role==="admin";S.isAdmin=role==="admin";
+      const first=!S.role;S.role=role;S.myName=str(d.name,40);S.canEdit=role==="supervisor"||role==="admin";S.who=d.groupName+" · "+CevaAccess.LEVEL_LABEL[d.level];S.isAdmin=role==="admin";
       if(first){startData();showGate("ready")}
       render();
     },()=>{S.role=null;stopData();showGate("denied")});

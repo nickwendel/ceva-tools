@@ -268,6 +268,7 @@ a.btn{text-decoration:none}
 <div class="toast" id="toast" role="status" hidden></div>
 
 <script src="firebase-config.js"></script>
+<script src="../assets/access.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="../assets/sap-export.js"></script>
 <script type="module">
@@ -294,7 +295,7 @@ function startData(){
 function stopData(){S.unsubs.forEach(u=>{try{u()}catch(_){}});S.unsubs=[];S.wt=S.open=S.inv=S.put=S.pick=S.hu=undefined;S.last=null}
 function load(f){
   if(!f)return;
-  if(!S.canLoad){toast("Only supervisors and admins can load an export.");return}
+  if(!S.canLoad){toast("Your user group cannot load an export.");return}
   if(S.busy)return;
   const rd=new FileReader();rd.onload=async()=>{
     S.busy=true;$("loadBtn").classList.add("busy");$("msg").hidden=true;toast("Reading the export…",true);
@@ -311,10 +312,10 @@ W.addEventListener("drop",e=>load(e.dataTransfer.files[0]));
 /* ---------- drawing ---------- */
 function render(){
   if(!S.role)return;
-  $("status").innerHTML=`<span>Signed in as <b>${esc(S.myName||S.authUser.email||"")}</b></span><span>${ROLE_LABEL[S.role]}</span>`;
+  $("status").innerHTML=`<span>Signed in as <b>${esc(S.myName||S.authUser.email||"")}</b></span><span>${(S.who||ROLE_LABEL[S.role])}</span>`;
   $("loadBtn").hidden=!S.canLoad;
   $("dzText").textContent=S.canLoad?"Choose the SAP warehouse task export (.xlsx) or drag it onto this page. It is read once and saved for Warehouse transactions, Inventory differences, Putaway audit and Picking audit together. The SAP stock export goes here too: the page tells the two files apart and updates HU consolidation from it."
-    :"A supervisor or admin loads the SAP warehouse task export here. Every tool updates on its own when they do.";
+    :"Someone with edit access loads the SAP warehouse task export here. Every tool updates on its own when they do.";
   $("pRes").hidden=!S.last;
   if(S.last){$("resFile").textContent=S.last.file;
     $("res").innerHTML=SapExport.describe(S.last).map(x=>`<li class="${x.ok?(x.skipped?"skip":""):"bad"}"><b>${esc(x.tool)}</b><span>${esc(x.text)}</span></li>`).join("")}
@@ -385,10 +386,11 @@ $("dOut").addEventListener("click",signOut);$("signOut").addEventListener("click
     if(S.pendingReq){const q=S.pendingReq;S.pendingReq=null;fileRequest(user,q.name,q.note).then(()=>toast("Request sent. An admin will approve it."),()=>toast("Signed up, but the request didn’t send. Fill in the form below."))}
     showGate("wait","Checking access…");
     reqUnsub=Fs.onSnapshot(Fs.doc(fs,"requests",user.uid),s=>{S.myReq=s.exists();if(!S.role&&!$("gateDenied").hidden)renderDenied()},()=>{});
-    roleUnsub=Fs.onSnapshot(Fs.doc(fs,"roles",user.uid),{includeMetadataChanges:true},snap=>{
+    roleUnsub=CevaAccess.watch(Fs,fs,user.uid,"data",snap=>{
       const d=snap.exists()?(snap.data()||{}):{},role=d.role;
+      if(d.noAccess){S.role=null;stopData();showGate("wait",CevaAccess.NO_ACCESS);return}
       if(!ROLE_LABEL[role]){if(snap.metadata.fromCache){showGate("wait","Waiting for the network…");return}S.role=null;stopData();showGate("denied");return}
-      const first=!S.role;S.role=role;S.myName=str(d.name,40);S.canLoad=role==="supervisor"||role==="admin";
+      const first=!S.role;S.role=role;S.myName=str(d.name,40);S.canLoad=!!d.canLoad;S.who=d.groupName+" · "+CevaAccess.LEVEL_LABEL[d.level];
       if(first){startData();showGate("ready")}
       render();
     },()=>{S.role=null;stopData();showGate("denied")});

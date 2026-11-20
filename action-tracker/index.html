@@ -328,6 +328,7 @@ dialog::backdrop{background:rgba(5,12,24,.7)}
 <div class="toast" id="toast" role="status" hidden></div>
 
 <script src="firebase-config.js"></script>
+<script src="../assets/access.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script type="module">
@@ -354,7 +355,7 @@ const owners=a=>String(a.own||"").split(/\n+/).map(s=>s.trim()).filter(Boolean);
 const newId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,10);
 const pill=st=>`<span class="pill st-${ST_CLS[st]||"ns"}">${esc(st||"Not Started")}</span>`;
 let toastT;function toast(t,keep){const e=$("toast");e.textContent=t;e.hidden=false;clearTimeout(toastT);if(!keep)toastT=setTimeout(()=>e.hidden=true,typeof keep==="number"?keep:6000)}
-const saveErr=e=>e&&e.code==="permission-denied"?"Firebase refused the change. Your role may be view only, or the latest security rules have not been published yet.":"Couldn’t save. Check the connection and try again.";
+const saveErr=e=>e&&e.code==="permission-denied"?"Firebase refused the change. Your user group may be view only, or the latest security rules have not been published yet.":"Couldn’t save. Check the connection and try again.";
 
 /* ---------- shared data ----------
    atrk/{id}          one action: number, category, action item, details, owner, frequency, priority, start and due date, status,
@@ -391,7 +392,7 @@ function render(){
   const A=S.acts||[],m=summary(A),last=Math.max(0,...A.map(a=>a.at||0),...S.logs.map(l=>l.at||0));
   $("status").innerHTML=[`<span><span class="dot ${S.acts?"ok":""}"></span>${S.acts?"Live":"Loading…"}</span>`,S.site?`<span>Site <b>${esc(S.site)}</b></span>`:"",
     last?`<span>Last updated <b>${esc(new Date(last).toLocaleString("en-US",{month:"numeric",day:"numeric",year:"numeric",hour:"numeric",minute:"2-digit"}))}</b></span>`:"",
-    `<span>Signed in as <b>${esc(S.myName||(S.authUser&&S.authUser.email)||"")}</b> · ${ROLE_LABEL[S.role]}</span>`].join("");
+    `<span>Signed in as <b>${esc(S.myName||(S.authUser&&S.authUser.email)||"")}</b> · ${(S.who||ROLE_LABEL[S.role])}</span>`].join("");
   $("newBtn").hidden=$("impBtn").hidden=$("logBtn").hidden=!S.canEdit;$("siteBtn").hidden=!S.isAdmin;
   $("stats").innerHTML=[["Total actions",m.total,""],["Not started",m.ns,""],["In progress",m.ip,""],["Complete",m.co,""],["On hold / blocked",m.hold,m.hold?"warn":""],["Overdue",m.late,m.late?"hot":""],["% complete (overall)",Math.round(m.pct)+"%",""]]
     .map(t=>`<div class="${t[2]}"><dt>${t[0]}</dt><dd>${t[1]}</dd></div>`).join("");
@@ -399,7 +400,7 @@ function render(){
   $("vAct").hidden=S.view!=="act";$("vLog").hidden=S.view!=="log";
   if(S.view==="act")renderActs(A,m);else renderLog();
   $("note").textContent="This is the Inventory Action Tracker workbook as a shared page. Export Excel downloads it in the original workbook layout (Action Tracker and Update Log sheets, with the totals, colours and dropdowns), and Import Excel reads that workbook back in. "
-    +(S.canEdit?"Select an action to update it.":"Your role can view the tracker. Supervisors and admins update it.");
+    +(S.canEdit?"Select an action to update it.":"Your user group can view the tracker. Groups with edit access update it.");
 }
 function chip(val,label){return `<button type="button" class="tab" data-st="${esc(val)}" aria-pressed="${S.st===val}">${label}</button>`}
 function opts(el,first,list,cur){el.innerHTML=`<option value="">${first}</option>`+list.map(x=>`<option${x===cur?" selected":""}>${esc(x)}</option>`).join("")}
@@ -412,7 +413,7 @@ function renderActs(A,m){
   const H=[["n","#","c"],["cat","Category",""],["item","Action item",""],["own","Owner",""],["freq","Frequency","c"],["pri","Priority","c"],["start","Start","c"],["due","Due","c"],["st","Status","c"],["pct","% complete",""],["dl","Days left","c"],["","Notes / updates",""]];
   $("tAct").hidden=!R.length;$("noAct").hidden=!!R.length;
   if(!R.length){$("noAct").innerHTML=A.length?"<strong>No actions match</strong><span>Clear the search or the filters to see the full list.</span>"
-    :S.acts?"<strong>No actions yet</strong><span>"+(S.canEdit?"Use Import Excel to load the Inventory Action Tracker workbook, or New action to start one here.":"A supervisor or admin has not added any actions yet.")+"</span>":"<strong>Loading…</strong>";return}
+    :S.acts?"<strong>No actions yet</strong><span>"+(S.canEdit?"Use Import Excel to load the Inventory Action Tracker workbook, or New action to start one here.":"Nobody with edit access has added any actions yet.")+"</span>":"<strong>Loading…</strong>";return}
   $("tAct").innerHTML="<thead><tr>"+H.map(h=>h[0]?`<th class="s ${h[2]}" data-s="${h[0]}">${h[1]}${S.sort===h[0]?(S.dir>0?" ▲":" ▼"):""}</th>`:`<th>${h[1]}</th>`).join("")+"</tr></thead><tbody>"+R.map(a=>{
     const d=daysLeft(a),late=d!=null&&d<0;
     return `<tr class="click${isClosed(a)?" done":""}" data-id="${esc(a.id)}"><td class="c n">${esc(a.n)}</td><td>${esc(a.cat)}</td><td class="item"><b>${esc(a.item)}</b>${a.det?`<span>${esc(a.det)}</span>`:""}</td><td class="own">${esc(owners(a).join("\n"))}</td>
@@ -627,10 +628,11 @@ $("dOut").addEventListener("click",signOut);$("signOut").addEventListener("click
     if(S.pendingReq){const q=S.pendingReq;S.pendingReq=null;fileRequest(user,q.name,q.note).then(()=>toast("Request sent. An admin will approve it."),()=>toast("Signed up, but the request didn’t send. Fill in the form below."))}
     showGate("wait","Checking access…");
     reqUnsub=Fs.onSnapshot(Fs.doc(fs,"requests",user.uid),s=>{S.myReq=s.exists();if(!S.role&&!$("gateDenied").hidden)renderDenied()},()=>{});
-    roleUnsub=Fs.onSnapshot(Fs.doc(fs,"roles",user.uid),{includeMetadataChanges:true},snap=>{
+    roleUnsub=CevaAccess.watch(Fs,fs,user.uid,"tracker",snap=>{
       const d=snap.exists()?(snap.data()||{}):{},role=d.role;
+      if(d.noAccess){S.role=null;stopData();showGate("wait",CevaAccess.NO_ACCESS);return}
       if(!ROLE_LABEL[role]){if(snap.metadata.fromCache){showGate("wait","Waiting for the network…");return}S.role=null;stopData();showGate("denied");return}
-      const first=!S.role;S.role=role;S.myName=str(d.name,40);S.canLoad=S.canEdit=role==="supervisor"||role==="admin";S.isAdmin=role==="admin";
+      const first=!S.role;S.role=role;S.myName=str(d.name,40);S.canLoad=S.canEdit=role==="supervisor"||role==="admin";S.who=d.groupName+" · "+CevaAccess.LEVEL_LABEL[d.level];S.isAdmin=role==="admin";
       if(first){startData();showGate("ready")}
       render();
     },()=>{S.role=null;stopData();showGate("denied")});

@@ -463,6 +463,10 @@ textarea.inp{min-height:5.2rem;resize:vertical;line-height:1.45}
           <div class="row-btns"><button type="button" class="btn" id="sNotif">Turn alerts on</button><button type="button" class="btn ghost" id="sNotifTest">Send a test</button></div>
           <p id="sNotifState"></p>
         </div>
+        <div class="set" id="setAccess" hidden>
+          <h3>People and access</h3>
+          <p>People, user groups and access requests for every tool are managed on the <a href="../access/">Access page</a>.</p>
+        </div>
         <div class="set" id="setRequests" hidden>
           <h3>Access requests</h3>
           <p>People who tapped “Request access” on the sign-in screen. Approving creates their login’s role right away; they’re let in on their next refresh. Declining removes the request and leaves them without access.</p>
@@ -600,6 +604,7 @@ textarea.inp{min-height:5.2rem;resize:vertical;line-height:1.45}
 </div>
 
 <script src="firebase-config.js"></script>
+<script src="../assets/access.js"></script>
 <script type="module">
 (function(){
 'use strict';
@@ -880,8 +885,9 @@ function renderEdit(){
 function setVal(el, v, force){ if(force || (document.activeElement !== el && !el.dataset.dirty)) el.value = v; }
 function fillSettings(force){
   const admin = S.canAdmin && S.conn !== 'none';
-  $('#setAdmin').hidden = !admin; $('#setPeople').hidden = !admin; $('#setClear').hidden = !admin;
-  $('#setRequests').hidden = !(admin && S.requests.length);
+  $('#setAdmin').hidden = !admin; $('#setPeople').hidden = true; $('#setClear').hidden = !admin;
+  $('#setRequests').hidden = true; // people are managed on the Access page
+  $('#setAccess').hidden = !S.isAdmin;
   if(admin){
     renderRequests();
     const em = S.settings.emails || {};
@@ -893,7 +899,7 @@ function fillSettings(force){
     setVal($('#sSla'), S.settings.sla ? String(S.settings.sla) : '', force);
     renderPeople();
   }
-  $('#acctLine').textContent = S.authUser ? 'Signed in as ' + (S.authUser.email || 'this device') + ' · ' + (S.myName ? S.myName + ' · ' : '') + coName(S.company) + ' · ' + (ROLE_LABEL[S.role] || 'no role') : '';
+  $('#acctLine').textContent = S.authUser ? 'Signed in as ' + (S.authUser.email || 'this device') + ' · ' + (S.myName ? S.myName + ' · ' : '') + coName(S.company) + ' · ' + (S.who || ROLE_LABEL[S.role] || 'no role') : '';
   $('#sNotif').textContent = S.notif ? 'Turn alerts off' : 'Turn alerts on';
   $('#sNotifState').textContent = !('Notification' in window) ? 'This browser can’t show notifications.'
     : Notification.permission === 'denied' ? 'Notifications are blocked for this site in the browser settings.'
@@ -1525,7 +1531,7 @@ function startData(){
     const id = issueFromHash(); if(id && !S.open && S.view === 'edit') openDetail(id, false);
   }, () => { S.conn = 'error'; render(); }));
   S.unsubs.push(Fs.onSnapshot(Fs.doc(fs, 'admin', 'settings'), s => { S.settings = s.exists() ? (s.data() || {}) : {}; applyTheme(); render(); }, () => {}));
-  if(S.role === 'admin'){
+  if(false){ // people are managed on the Access page
     S.unsubs.push(Fs.onSnapshot(Fs.collection(fs, 'roles'), snap => {
       S.people = snap.docs.map(d => Object.assign({}, d.data(), {id:d.id}));
       if(S.view === 'edit' && S.tab === 'settings') renderPeople();
@@ -1568,9 +1574,10 @@ function startData(){
     if(!user){ showGate(S.resetCode ? 'reset' : 'login'); if(S.resetCode) setTimeout(() => $('#rPass').focus(), 30); return; }
     if(S.pendingReq){ const q = S.pendingReq; S.pendingReq = null; fileRequest(user, q.name, q.company, q.note).then(() => toast('Request sent. An admin will approve it.'), () => toast('Signed up, but the request didn’t send. Fill in the form below.')); }
     showGate('wait', 'Checking access…');
-    S.roleUnsub = Fs.onSnapshot(Fs.doc(fs, 'roles', user.uid), {includeMetadataChanges:true}, snap => {
+    S.roleUnsub = CevaAccess.watch(Fs, fs, user.uid, 'inbound', snap => {
       const d = snap.exists() ? (snap.data() || {}) : {};
       const role = d.role;
+      if(d.noAccess){ S.role = null; S.ready = false; stopData(); showGate('wait', CevaAccess.NO_ACCESS); return; }
       if(!ROLE_LABEL[role]){
         if(snap.metadata.fromCache){ showGate('wait', 'Waiting for the network…'); return; }
         S.role = null; S.ready = false; stopData(); showGate('denied'); return;
@@ -1578,7 +1585,7 @@ function startData(){
       const company = d.company === 'partner' ? 'partner' : 'ceva';
       const changed = !S.ready || role !== S.role || company !== S.company;
       S.role = role; S.company = company; S.myName = str(d.name, 40);
-      S.canWrite = role !== 'viewer'; S.canAdmin = role === 'admin';
+      S.canWrite = role !== 'viewer'; S.canAdmin = role === 'admin'; S.isAdmin = !!d.isAdmin; S.who = d.groupName + ' · ' + CevaAccess.LEVEL_LABEL[d.level];
       if(changed){ S.ready = true; startData(); showGate('ready'); }
       render();
     }, () => { S.ready = false; stopData(); showGate('denied'); });
