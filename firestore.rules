@@ -2,8 +2,8 @@ rules_version = '2';
 
 // CEVA tools — Firestore security rules for the shared Firebase project (ceva-tools).
 // Covers every tool: the receiving dock board, the NCI/Grief inbound exceptions tool, the
-// warehouse transactions dashboard, the inventory differences tool, the putaway audit tool, the picking audit tool and the
-// inventory action tracker.
+// warehouse transactions dashboard, the inventory differences tool, the putaway audit tool, the picking audit tool, the
+// inventory action tracker and the training documents library.
 // Deployed with `firebase deploy --only firestore:rules`, or paste into
 // Firebase console → Firestore Database → Rules → Publish.
 //
@@ -261,6 +261,81 @@ service cloud.firestore {
     match /atrkcfg/{docId} {
       allow read: if isViewer();
       allow write: if isAdmin() && request.resource.data.size() <= 6;
+    }
+
+    // ───────── Training documents ─────────
+
+    // Training documents are internal to CEVA: partner (NCI/Grief) accounts cannot read them.
+    function isCeva() { return me().get('company', 'ceva') != 'partner'; }
+    function validTdoc(d) {
+      return d.by == request.auth.uid
+        && d.title is string && d.title.size() > 0 && d.title.size() <= 150
+        && d.no is string && d.no.size() <= 30
+        && d.cat is string && d.cat.size() <= 60
+        && d.own is string && d.own.size() <= 60
+        && d.review is string && d.review.size() <= 10
+        && d.desc is string && d.desc.size() <= 1000
+        && d.status in ['active', 'archived']
+        && d.cur is int && d.cur >= 1
+        && d.curId is string && d.curId.size() <= 40
+        && d.curKind in ['file', 'link']
+        && d.curName is string && d.curName.size() <= 200
+        && d.curSize is int && d.curSize >= 0 && d.curSize <= 10485760
+        && d.curUrl is string && d.curUrl.size() <= 1000
+        && d.size() <= 24;
+    }
+
+    // tdocs/{id} is one training document: title, number, category, owner, review date, status and a
+    // copy of the current version's details. Anyone at CEVA with a role reads; supervisors and admins
+    // add documents, edit details and add versions (the version number can only go up); only admins
+    // archive, restore and delete.
+    match /tdocs/{docId} {
+      allow read: if isViewer() && isCeva();
+      allow create: if isSupervisor() && isCeva()
+        && validTdoc(request.resource.data)
+        && request.resource.data.status == 'active'
+        && request.resource.data.cur == 1;
+      allow update: if isSupervisor() && isCeva()
+        && validTdoc(request.resource.data)
+        && request.resource.data.cur >= resource.data.cur
+        && request.resource.data.cur <= resource.data.cur + 1
+        && (isAdmin() || request.resource.data.status == resource.data.status);
+      allow delete: if isAdmin();
+
+      // One version of the document. Written once and never edited, so the history can be trusted.
+      // A link must be an https address.
+      match /vers/{verId} {
+        allow read: if isViewer() && isCeva();
+        allow create: if isSupervisor() && isCeva()
+          && request.resource.data.by == request.auth.uid
+          && request.resource.data.v is int && request.resource.data.v >= 1
+          && request.resource.data.kind in ['file', 'link']
+          && request.resource.data.name is string && request.resource.data.name.size() <= 200
+          && request.resource.data.sz is int && request.resource.data.sz >= 0 && request.resource.data.sz <= 10485760
+          && request.resource.data.url is string && request.resource.data.url.size() <= 1000
+          && (request.resource.data.kind == 'file' || request.resource.data.url.matches('https://.+'))
+          && request.resource.data.note is string && request.resource.data.note.size() <= 500
+          && request.resource.data.n is int && request.resource.data.n >= 0 && request.resource.data.n <= 15
+          && request.resource.data.size() <= 12;
+        allow delete: if isAdmin();
+
+        // The file itself, in pieces of up to 720 KB (a Firestore document holds at most 1 MiB).
+        match /chunks/{chunkId} {
+          allow read: if isViewer() && isCeva();
+          allow create: if isSupervisor() && isCeva()
+            && request.resource.data.i is int && request.resource.data.i >= 0 && request.resource.data.i < 15
+            && request.resource.data.d is bytes && request.resource.data.d.size() <= 800000
+            && request.resource.data.size() == 2;
+          allow delete: if isAdmin();
+        }
+      }
+    }
+
+    // tdoccfg/settings holds the category list for the training documents.
+    match /tdoccfg/{docId} {
+      allow read: if isViewer() && isCeva();
+      allow write: if isAdmin() && request.resource.data.cats is list && request.resource.data.cats.size() <= 40
+        && request.resource.data.size() <= 4;
     }
 
     // ───────── Shared ─────────

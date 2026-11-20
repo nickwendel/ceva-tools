@@ -256,6 +256,7 @@ const TOOLS = [
   {href:'../putaway-audit/', name:'Putaway audit', can:{viewer:'View putaways and errors', user:'View putaways and errors', supervisor:'Load SAP exports, print and enter audit results', admin:'Load SAP exports, print and enter audit results'}},
   {href:'../picking-audit/', name:'Picking audit', can:{viewer:'View picks and errors', user:'View picks and errors', supervisor:'Load SAP exports, print and enter audit results', admin:'Load SAP exports, print and enter audit results'}},
   {href:'../action-tracker/', name:'Inventory action tracker', can:{viewer:'View actions and export Excel', user:'View actions and export Excel', supervisor:'Add and update actions, import Excel', admin:'Update, import, delete, set the site name'}},
+  {href:'../training-docs/', name:'Training documents', ceva:true, can:{viewer:'Open and download documents', user:'Open and download documents', supervisor:'Add documents and upload new versions', admin:'Add, update, archive, delete, set categories'}},
   {href:'../data/', name:'Data upload', can:{viewer:'See what is loaded', user:'See what is loaded', supervisor:'Load the SAP export for every tool', admin:'Load the SAP export for every tool'}}
 ];
 const S = {fb:null, user:null, role:null, me:{}, myReq:undefined, people:[], requests:[], unsubs:[], roleUnsub:null, reqUnsub:null, pendingReq:null, gate:'wait'};
@@ -297,7 +298,7 @@ function render(){
   $('#meRole').textContent = ROLE_LABEL[role] || role; $('#meRole').className = 'chip' + (role === 'admin' ? ' admin' : '');
   $('#meCo').textContent = CO_LABEL[co]; $('#meCo').className = 'chip' + (co === 'partner' ? ' partner' : '');
   $('#myTools').innerHTML = TOOLS.map(t => {
-    const can = t.can[role];
+    const can = t.ceva && co === 'partner' ? '' : t.can[role];
     return '<a class="tl' + (can ? '' : ' off') + '" href="' + t.href + '"><b>' + esc(t.name) + '</b><span class="lvl">' + esc(can || 'No access') + '</span><span>Open →</span></a>';
   }).join('');
   const admin = role === 'admin';
