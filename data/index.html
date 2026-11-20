@@ -263,11 +263,12 @@ a.btn{text-decoration:none}
     <section class="b-panel"><header class="p-head"><h2>What each tool has now</h2><span class="p-page">Updates on its own</span></header>
       <div class="p-body scroll"><table id="tHas"></table></div></section>
   </div>
-  <div class="note">The SAP warehouse task export uses the same layout for every pull. Loading it here, or with the load button inside Warehouse transactions, Inventory differences, Putaway audit or Picking audit, does the same thing: the file is read once and every tool that uses it is updated. Days already loaded are refreshed, not doubled, and the inventory differences, putaway and pick lists only grow. The receiving dock board and inbound exceptions are entered by hand and do not use the export.</div>
+  <div class="note">The SAP warehouse task export uses the same layout for every pull. Loading it here, or with the load button inside Warehouse transactions, Inventory differences, Putaway audit or Picking audit, does the same thing: the file is read once and every tool that uses it is updated. Days already loaded are refreshed, not doubled, and the inventory differences, putaway and pick lists only grow. HU consolidation uses a second file, the SAP stock export (stock by storage bin and handling unit); load it here or on its own page and each load replaces the one before. The receiving dock board and inbound exceptions are entered by hand and do not use the export.</div>
 </div>
 <div class="toast" id="toast" role="status" hidden></div>
 
 <script src="firebase-config.js"></script>
+<script src="../assets/access.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="../assets/sap-export.js"></script>
 <script type="module">
@@ -288,17 +289,18 @@ function startData(){
   const {Fs,fs}=S.fb,newest=(col,set)=>S.unsubs.push(Fs.onSnapshot(Fs.query(Fs.collection(fs,col),Fs.orderBy("date","desc"),Fs.limit(1)),
     snap=>{set(snap.docs.length?snap.docs[0].data()||{}:null);render()},()=>{set(null);render()}));
   newest("wtdays",x=>S.wt=x);newest("invdays",x=>S.inv=x);newest("putdays",x=>S.put=x);newest("pickdays",x=>S.pick=x);
+  S.unsubs.push(Fs.onSnapshot(Fs.doc(fs,"hucons","current"),snap=>{S.hu=snap.exists()?snap.data():null;render()},()=>{S.hu=null;render()}));
   S.unsubs.push(Fs.onSnapshot(Fs.doc(fs,"wt","open"),snap=>{S.open=snap.exists()?snap.data():null;render()},()=>{S.open=null;render()}));
 }
-function stopData(){S.unsubs.forEach(u=>{try{u()}catch(_){}});S.unsubs=[];S.wt=S.open=S.inv=S.put=S.pick=undefined;S.last=null}
+function stopData(){S.unsubs.forEach(u=>{try{u()}catch(_){}});S.unsubs=[];S.wt=S.open=S.inv=S.put=S.pick=S.hu=undefined;S.last=null}
 function load(f){
   if(!f)return;
-  if(!S.canLoad){toast("Only supervisors and admins can load an export.");return}
+  if(!S.canLoad){toast("Your user group cannot load an export.");return}
   if(S.busy)return;
   const rd=new FileReader();rd.onload=async()=>{
     S.busy=true;$("loadBtn").classList.add("busy");$("msg").hidden=true;toast("Reading the export…",true);
     try{S.last=await SapExport.loadAll({Fs:S.fb.Fs,fs:S.fb.fs,uid:S.authUser.uid,byName:S.myName||S.authUser.email||""},new Uint8Array(rd.result),f.name,t=>toast(t,true));
-      const bad=SapExport.describe(S.last).filter(x=>!x.ok||x.skipped).length;toast(bad?"Loaded, but "+bad+" tool"+(bad===1?" was":"s were")+" not updated. See the list on this page.":"Loaded. Every tool is updated.");render()}
+      const bad=SapExport.describe(S.last).filter(x=>!x.ok||x.skipped).length;toast(bad?"Loaded, but "+bad+" tool"+(bad===1?" was":"s were")+" not updated. See the list on this page.":S.last.stock?"Loaded. HU consolidation is updated.":"Loaded. Every tool that uses the warehouse task export is updated.");render()}
     catch(e){$("msg").textContent=e.message;$("msg").hidden=false;$("toast").hidden=true}
     finally{S.busy=false;$("loadBtn").classList.remove("busy")}
   };rd.readAsArrayBuffer(f)}
@@ -310,10 +312,10 @@ W.addEventListener("drop",e=>load(e.dataTransfer.files[0]));
 /* ---------- drawing ---------- */
 function render(){
   if(!S.role)return;
-  $("status").innerHTML=`<span>Signed in as <b>${esc(S.myName||S.authUser.email||"")}</b></span><span>${ROLE_LABEL[S.role]}</span>`;
+  $("status").innerHTML=`<span>Signed in as <b>${esc(S.myName||S.authUser.email||"")}</b></span><span>${(S.who||ROLE_LABEL[S.role])}</span>`;
   $("loadBtn").hidden=!S.canLoad;
-  $("dzText").textContent=S.canLoad?"Choose the SAP warehouse task export (.xlsx) or drag it onto this page. It is read once and saved for Warehouse transactions, Inventory differences, Putaway audit and Picking audit together."
-    :"A supervisor or admin loads the SAP warehouse task export here. Every tool updates on its own when they do.";
+  $("dzText").textContent=S.canLoad?"Choose the SAP warehouse task export (.xlsx) or drag it onto this page. It is read once and saved for Warehouse transactions, Inventory differences, Putaway audit and Picking audit together. The SAP stock export goes here too: the page tells the two files apart and updates HU consolidation from it."
+    :"Someone with edit access loads the SAP warehouse task export here. Every tool updates on its own when they do.";
   $("pRes").hidden=!S.last;
   if(S.last){$("resFile").textContent=S.last.file;
     $("res").innerHTML=SapExport.describe(S.last).map(x=>`<li class="${x.ok?(x.skipped?"skip":""):"bad"}"><b>${esc(x.tool)}</b><span>${esc(x.text)}</span></li>`).join("")}
@@ -324,7 +326,8 @@ function render(){
     +`<tr><td><a href="../transactions/">Warehouse transactions</a>, open tasks</td>${cells(S.open,S.open?nf(S.open.count)+" open as of "+asOfFmt(+S.open.asOf):"")}</tr>`
     +`<tr><td><a href="../inventory-differences/">Inventory differences</a></td>${cells(S.inv,S.inv?mdy(S.inv.date)+", "+nf(S.inv.n)+(+S.inv.n===1?" difference":" differences")+" that day":"")}</tr>`
     +`<tr><td><a href="../putaway-audit/">Putaway audit</a></td>${cells(S.put,S.put?mdy(S.put.date)+", "+nf(S.put.n)+(+S.put.n===1?" putaway":" putaways")+" that day":"")}</tr>`
-    +`<tr><td><a href="../picking-audit/">Picking audit</a></td>${cells(S.pick,S.pick?mdy(S.pick.date)+", "+nf(S.pick.n)+(+S.pick.n===1?" pick":" picks")+" that day":"")}</tr></tbody>`;
+    +`<tr><td><a href="../picking-audit/">Picking audit</a></td>${cells(S.pick,S.pick?mdy(S.pick.date)+", "+nf(S.pick.n)+(+S.pick.n===1?" pick":" picks")+" that day":"")}</tr>`
+    +`<tr><td><a href="../consolidation/">HU consolidation</a>, from the stock export</td>${cells(S.hu,S.hu?nf(S.hu.n)+(+S.hu.n===1?" location":" locations")+" over one HU, of "+nf(S.hu.bins)+" with stock":"")}</tr></tbody>`;
 }
 
 /* ---------- sign-in gate (same accounts, roles and access requests as the other CEVA tools) ---------- */
@@ -383,10 +386,11 @@ $("dOut").addEventListener("click",signOut);$("signOut").addEventListener("click
     if(S.pendingReq){const q=S.pendingReq;S.pendingReq=null;fileRequest(user,q.name,q.note).then(()=>toast("Request sent. An admin will approve it."),()=>toast("Signed up, but the request didn’t send. Fill in the form below."))}
     showGate("wait","Checking access…");
     reqUnsub=Fs.onSnapshot(Fs.doc(fs,"requests",user.uid),s=>{S.myReq=s.exists();if(!S.role&&!$("gateDenied").hidden)renderDenied()},()=>{});
-    roleUnsub=Fs.onSnapshot(Fs.doc(fs,"roles",user.uid),{includeMetadataChanges:true},snap=>{
+    roleUnsub=CevaAccess.watch(Fs,fs,user.uid,"data",snap=>{
       const d=snap.exists()?(snap.data()||{}):{},role=d.role;
+      if(d.noAccess){S.role=null;stopData();showGate("wait",CevaAccess.NO_ACCESS);return}
       if(!ROLE_LABEL[role]){if(snap.metadata.fromCache){showGate("wait","Waiting for the network…");return}S.role=null;stopData();showGate("denied");return}
-      const first=!S.role;S.role=role;S.myName=str(d.name,40);S.canLoad=role==="supervisor"||role==="admin";
+      const first=!S.role;S.role=role;S.myName=str(d.name,40);S.canLoad=!!d.canLoad;S.who=d.groupName+" · "+CevaAccess.LEVEL_LABEL[d.level];
       if(first){startData();showGate("ready")}
       render();
     },()=>{S.role=null;stopData();showGate("denied")});

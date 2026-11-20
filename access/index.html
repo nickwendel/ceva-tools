@@ -107,6 +107,19 @@ header .grow{flex:1;min-width:180px}
 .filter{margin-bottom:.6rem}
 .legend{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:12px;color:var(--muted);margin-top:12px}
 .legend b{color:var(--fg);font-weight:600}
+.gwrap{overflow-x:auto;border:1px solid var(--line-light);border-radius:8px;background:var(--bg-alt)}
+.gtab{border-collapse:collapse;width:100%;font-size:12.5px}
+.gtab th,.gtab td{padding:.5rem .6rem;border-top:1px solid rgba(255,255,255,.05);text-align:left;vertical-align:middle;white-space:nowrap}
+.gtab thead th{border-top:0;vertical-align:bottom;font-weight:600}
+.gtab tbody th{font-weight:600;position:sticky;left:0;background:var(--bg-alt);z-index:1}
+.gtab thead th:first-child{position:sticky;left:0;background:var(--bg-alt);z-index:1}
+.gtab select.inp{width:auto;min-width:7.2rem;min-height:2.1rem;padding-block:.2rem;font-size:12.5px}
+.gtab select.lv-none{color:var(--faint)}
+.gtab select.lv-edit,.gtab select.lv-full{border-color:var(--good)}
+.gtab .gname{min-width:9rem;min-height:2.1rem;padding-block:.2rem;font-size:12.5px;font-weight:600}
+.gtab .gsub{display:flex;align-items:center;gap:.4rem;margin-top:.3rem;font-size:11.5px;color:var(--faint);font-weight:400}
+.gtab .gsub .btn{min-height:1.7rem;padding:0 .5rem;font-size:11px}
+.gtab .fixed{color:var(--amber);font-weight:600}
 .toast{position:fixed;left:50%;bottom:calc(1.2rem + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:30;background:var(--card);color:var(--fg);border:1px solid var(--line-light);padding:.75rem 1.1rem;border-radius:8px;font:600 13px/1.35 var(--f);box-shadow:0 8px 24px rgba(0,0,0,.45);max-width:calc(100% - 32px)}
 </style>
 </head>
@@ -121,7 +134,7 @@ header .grow{flex:1;min-width:180px}
       <h1 class="gate-title" id="gTitle">Sign in</h1>
       <p class="gate-p" id="gateWait">Connecting…</p>
       <form id="gateLogin" novalidate hidden>
-        <p class="gate-p">One account opens every CEVA web tool your role allows.</p>
+        <p class="gate-p">One account opens every CEVA web tool your user group allows.</p>
         <div class="fld"><label for="lEmail">Email</label><input class="inp" id="lEmail" type="email" autocomplete="username" inputmode="email"></div>
         <div class="fld"><label for="lPass">Password</label><input class="inp" id="lPass" type="password" autocomplete="current-password"></div>
         <div class="err" id="lErr" role="alert" hidden></div>
@@ -188,19 +201,19 @@ header .grow{flex:1;min-width:180px}
 
   <div class="panel">
     <h2>Your tools</h2>
-    <p>What your role can do in each tool. Templates are on the <a href="../">tools page</a> and need no sign-in.</p>
+    <p>What your user group can do in each tool. Templates are on the <a href="../">tools page</a> and need no sign-in.</p>
     <div class="tools" id="myTools"></div>
   </div>
 
   <div class="panel" id="pReq" hidden>
     <h2>Access requests <span class="chip count" id="reqCount"></span></h2>
-    <p>People who tapped “Request access” on any tool. Pick a role and approve; they’re let in right away, even if they left the page open. Decline removes the request.</p>
+    <p>People who tapped “Request access” on any tool. Pick a user group and approve; they’re let in right away, even if they left the page open. Decline removes the request.</p>
     <div class="people" id="reqList"></div>
   </div>
 
   <div class="panel" id="pPeople" hidden>
     <h2>People</h2>
-    <p>Everyone with access. Change a role or company and it takes effect on every tool at once.</p>
+    <p>Everyone with access. A person’s user group decides what they can do in each tool. Change it here and it takes effect at once. Company is only used by the inbound exceptions tool, to show which side the person is on.</p>
     <input class="inp filter" id="pFilter" type="search" placeholder="Find a person" aria-label="Find a person" autocomplete="off">
     <div class="people" id="peopleList"></div>
     <details style="margin-top:12px"><summary>Add someone by hand (TV screens, shared logins)</summary>
@@ -208,12 +221,23 @@ header .grow{flex:1;min-width:180px}
       <div class="grid2">
         <div class="fld"><label for="aUid">User UID</label><input class="inp" id="aUid" maxlength="128" autocomplete="off" spellcheck="false"></div>
         <div class="fld"><label for="aName">Name</label><input class="inp" id="aName" maxlength="40" autocomplete="off" placeholder="Dock TV 1"></div>
-        <div class="fld"><label for="aRole">Role</label><select class="inp" id="aRole"></select></div>
+        <div class="fld"><label for="aRole">User group</label><select class="inp" id="aRole"></select></div>
         <div class="fld"><label for="aCo">Company</label><select class="inp" id="aCo"><option value="ceva">CEVA</option><option value="partner">NCI/Grief</option></select></div>
       </div>
       <div class="err" id="aErr" role="alert" hidden style="margin-top:.6rem"></div>
       <div class="row-btns"><button type="button" class="btn primary" id="aSave">Add person</button></div>
     </details>
+  </div>
+
+  <div class="panel" id="pGroups" hidden>
+    <h2>User groups</h2>
+    <p>Set what each group can do in each tool. Changes save as you make them and apply to everyone in the group at once. The Admin group always has full access and is the only group that can change this page.</p>
+    <div class="err" id="gErr" role="alert" hidden style="margin-bottom:.6rem"></div>
+    <div class="gwrap"><table class="gtab" id="gTab"></table></div>
+    <div class="row-btns">
+      <input class="inp" id="gNew" maxlength="40" autocomplete="off" placeholder="New group name" aria-label="New group name" style="max-width:16rem">
+      <button type="button" class="btn" id="gAdd">Add group</button>
+    </div>
     <div class="legend" id="legend"></div>
   </div>
 
@@ -232,44 +256,42 @@ header .grow{flex:1;min-width:180px}
 <div class="toast" id="toast" role="status" hidden></div>
 
 <script src="firebase-config.js"></script>
+<script src="../assets/access.js"></script>
 <script type="module">
 (() => {
 const FB = 'https://www.gstatic.com/firebasejs/10.14.1/';
+const AX = window.CevaAccess;
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const str = (v, n) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, n);
-const ROLES = ['viewer', 'user', 'supervisor', 'admin'];
-const ROLE_LABEL = {viewer:'Viewer', user:'User', supervisor:'Supervisor', admin:'Admin'};
-const ROLE_HELP = {
-  viewer:'Sees every tool. Use for TVs and people who only need to look.',
-  user:'Works inbound issues (raise, update, hand off, resolve). Sees the dock board and transactions.',
-  supervisor:'Also updates trucks on the dock board and loads SAP exports into transactions.',
-  admin:'Everything, plus tool settings and this people list.'
-};
+const ROLE_LABEL = AX.ROLE_LABEL;
 const CO_LABEL = {ceva:'CEVA', partner:'NCI/Grief'};
-/* What each role can do in each tool. Keep in step with firestore.rules. */
-const TOOLS = [
-  {href:'../dock-board/', name:'Receiving dock board', can:{viewer:'View the board', user:'View the board', supervisor:'Update trucks and notices', admin:'Update, settings and people'}},
-  {href:'../nci-inbound/', name:'Inbound exceptions', can:{viewer:'Read issues and the board', user:'Raise and work issues', supervisor:'Raise and work issues', admin:'Work issues, settings and people'}},
-  {href:'../transactions/', name:'Warehouse transactions', can:{viewer:'View the dashboard', user:'View the dashboard', supervisor:'View and load SAP exports', admin:'View, load exports, remove days'}},
-  {href:'../inventory-differences/', name:'Inventory differences', can:{viewer:'View the differences', user:'View the differences', supervisor:'Load SAP exports and work differences', admin:'Load, work differences, set thresholds'}},
-  {href:'../putaway-audit/', name:'Putaway audit', can:{viewer:'View putaways and errors', user:'View putaways and errors', supervisor:'Load SAP exports, print and enter audit results', admin:'Load SAP exports, print and enter audit results'}},
-  {href:'../picking-audit/', name:'Picking audit', can:{viewer:'View picks and errors', user:'View picks and errors', supervisor:'Load SAP exports, print and enter audit results', admin:'Load SAP exports, print and enter audit results'}},
-  {href:'../action-tracker/', name:'Inventory action tracker', can:{viewer:'View actions and export Excel', user:'View actions and export Excel', supervisor:'Add and update actions, import Excel', admin:'Update, import, delete, set the site name'}},
-  {href:'../training-docs/', name:'Training documents', ceva:true, can:{viewer:'Open and download documents', user:'Open and download documents', supervisor:'Add documents and upload new versions', admin:'Add, update, archive, delete, set categories'}},
-  {href:'../data/', name:'Data upload', can:{viewer:'See what is loaded', user:'See what is loaded', supervisor:'Load the SAP export for every tool', admin:'Load the SAP export for every tool'}}
-];
-const S = {fb:null, user:null, role:null, me:{}, myReq:undefined, people:[], requests:[], unsubs:[], roleUnsub:null, reqUnsub:null, pendingReq:null, gate:'wait'};
+const LEVEL_HELP = {
+  none:'The tool does not open for this group.',
+  view:'See the tool. Nothing can be changed.',
+  edit:'Also change things: update trucks, work issues, enter audit results, add documents.',
+  full:'Also delete, and change the tool’s own settings.'
+};
+/* The tools, their keys and what each level means live in assets/access.js. Keep in step with firestore.rules. */
+const TOOLS = AX.TOOLS;
+const S = {fb:null, user:null, ok:false, admin:false, me:{}, myReq:undefined, people:[], requests:[], groups:[], groupsLoaded:false, seeded:false, unsubs:[], roleUnsub:null, reqUnsub:null, pendingReq:null, gate:'wait'};
 
 let toastT;
 function toast(t){ const el = $('#toast'); el.textContent = t; el.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { el.hidden = true; }, 3000); }
 function showErr(id, t){ const e = $(id); e.textContent = t || ''; e.hidden = !t; }
 function writeErr(e){
-  return (e && e.code) === 'permission-denied' ? 'Not allowed. Only admins can change access.' : 'Couldn’t save. Check the connection and try again.';
+  return (e && e.code) === 'permission-denied' ? 'Not allowed. Only the Admin group can change access. If you are an admin, publish the latest firestore.rules first.' : 'Couldn’t save. Check the connection and try again.';
 }
 function commit(p){ if(p && typeof p.catch === 'function') p.catch(e => toast(writeErr(e))); return true; }
-function roleOpts(sel){ return ROLES.map(r => '<option value="' + r + '"' + (r === sel ? ' selected' : '') + '>' + ROLE_LABEL[r] + '</option>').join(''); }
 function coOpts(sel){ return Object.keys(CO_LABEL).map(c => '<option value="' + c + '"' + (c === sel ? ' selected' : '') + '>' + CO_LABEL[c] + '</option>').join(''); }
+const sortedGroups = () => S.groups.slice().sort((a,b) => (a.order||0) - (b.order||0) || String(a.name||'').localeCompare(String(b.name||'')));
+const groupName = id => id === AX.ADMIN ? AX.ADMIN_NAME : (S.groups.find(g => g.id === id) || {}).name || '';
+/* Options for a user group picker. `first` is an extra unselectable first line (for people with no group yet). */
+function groupOpts(sel, first){
+  return (first ? '<option value="" selected disabled>' + esc(first) + '</option>' : '') +
+    sortedGroups().map(g => '<option value="' + esc(g.id) + '"' + (g.id === sel ? ' selected' : '') + '>' + esc(str(g.name,40) || g.id) + '</option>').join('') +
+    '<option value="' + AX.ADMIN + '"' + (sel === AX.ADMIN ? ' selected' : '') + '>' + AX.ADMIN_NAME + '</option>';
+}
 
 /* ---------- gate ---------- */
 function showGate(state, msg){
@@ -292,19 +314,19 @@ function showGate(state, msg){
 
 /* ---------- signed-in view ---------- */
 function render(){
-  const me = S.me || {}, role = S.role, co = me.company === 'partner' ? 'partner' : 'ceva';
-  $('#meName').textContent = str(me.name, 40) || 'Signed in';
+  const me = S.me || {}, raw = me.raw || {}, co = raw.company === 'partner' ? 'partner' : 'ceva';
+  $('#meName').textContent = str(raw.name, 40) || 'Signed in';
   $('#meEmail').textContent = (S.user && S.user.email) || '';
-  $('#meRole').textContent = ROLE_LABEL[role] || role; $('#meRole').className = 'chip' + (role === 'admin' ? ' admin' : '');
+  $('#meRole').textContent = me.groupName || 'No group'; $('#meRole').className = 'chip' + (S.admin ? ' admin' : '');
   $('#meCo').textContent = CO_LABEL[co]; $('#meCo').className = 'chip' + (co === 'partner' ? ' partner' : '');
+  const mine = {tools:me.groupTools || {}};
   $('#myTools').innerHTML = TOOLS.map(t => {
-    const can = t.ceva && co === 'partner' ? '' : t.can[role];
-    return '<a class="tl' + (can ? '' : ' off') + '" href="' + t.href + '"><b>' + esc(t.name) + '</b><span class="lvl">' + esc(can || 'No access') + '</span><span>Open →</span></a>';
+    const lvl = AX.levelOf(raw, mine, t.key), on = lvl !== 'none';
+    return '<a class="tl' + (on ? '' : ' off') + '" href="../' + t.href + '"><b>' + esc(t.name) + '</b><span class="lvl">' + esc(on ? t[lvl] : 'No access') + '</span><span>' + (on ? 'Open →' : 'Ask an admin if you need it') + '</span></a>';
   }).join('');
-  const admin = role === 'admin';
-  $('#pPeople').hidden = !admin;
-  $('#pReq').hidden = !(admin && S.requests.length);
-  if(admin){ renderRequests(); renderPeople(); }
+  $('#pPeople').hidden = !S.admin; $('#pGroups').hidden = !S.admin;
+  $('#pReq').hidden = !(S.admin && S.requests.length);
+  if(S.admin){ renderRequests(); renderPeople(); renderGroups(); }
 }
 function when(ms){ return ms ? new Date(ms).toLocaleString(undefined, {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}) : ''; }
 function renderRequests(){
@@ -312,7 +334,7 @@ function renderRequests(){
   $('#reqList').innerHTML = S.requests.slice().sort((a,b) => (a.at||0) - (b.at||0)).map(r => {
     const co = r.company === 'partner' ? 'partner' : 'ceva';
     return '<div class="person"><div class="who"><b>' + esc(str(r.name,40) || 'No name') + '</b><span>' + esc(str(r.email,80)) + ' · ' + CO_LABEL[co] + (r.note ? ' · ' + esc(str(r.note,120)) : '') + (r.at ? ' · ' + esc(when(r.at)) : '') + '</span></div>' +
-      '<select class="inp" data-reqrole="' + esc(r.id) + '" aria-label="Role">' + roleOpts(co === 'partner' ? 'user' : 'supervisor') + '</select>' +
+      '<select class="inp" data-reqgroup="' + esc(r.id) + '" aria-label="User group">' + groupOpts('', 'Choose a group') + '</select>' +
       '<select class="inp" data-reqco="' + esc(r.id) + '" aria-label="Company">' + coOpts(co) + '</select>' +
       '<button type="button" class="btn go" data-approve="' + esc(r.id) + '">Approve</button>' +
       '<button type="button" class="btn danger" data-decline="' + esc(r.id) + '">Decline</button></div>';
@@ -320,31 +342,75 @@ function renderRequests(){
 }
 function renderPeople(){
   const el = $('#peopleList'), me = S.user && S.user.uid, f = $('#pFilter').value.trim().toLowerCase();
-  const rank = p => ({admin:0, supervisor:1, user:2, viewer:3}[p.role] ?? 4);
-  const list = S.people.filter(p => !f || (str(p.name,40) + ' ' + str(p.email,80) + ' ' + p.id + ' ' + (ROLE_LABEL[p.role]||'')).toLowerCase().includes(f))
+  const order = new Map(sortedGroups().map((g, i) => [g.id, i + 1]));
+  const rank = p => p.group === AX.ADMIN ? 0 : p.group ? (order.get(p.group) || 998) : 999;
+  const label = p => p.group ? (groupName(p.group) || 'Unknown group') : 'No group yet';
+  const list = S.people.filter(p => !f || (str(p.name,40) + ' ' + str(p.email,80) + ' ' + p.id + ' ' + label(p)).toLowerCase().includes(f))
     .sort((a,b) => rank(a) - rank(b) || String(a.name||'').localeCompare(String(b.name||'')));
   if(!list.length){ el.innerHTML = '<div class="person"><div class="who"><span>' + (S.people.length ? 'Nobody matches.' : 'Nobody added yet.') + '</span></div></div>'; }
   else el.innerHTML = list.map(p => {
-    const self = p.id === me;
+    const self = p.id === me, known = p.group === AX.ADMIN || S.groups.some(g => g.id === p.group);
+    const first = known ? '' : p.group ? 'Group was removed' : 'No group yet' + (ROLE_LABEL[p.role] ? ' (old role: ' + ROLE_LABEL[p.role] + ')' : '');
     return '<div class="person"><div class="who"><b>' + esc(str(p.name,40) || 'Unnamed') + (self ? ' (you)' : '') + '</b><span>' + esc(str(p.email,80) || p.id) + '</span></div>' +
-      '<select class="inp" data-prole="' + esc(p.id) + '" aria-label="Role"' + (self ? ' disabled title="Ask another admin to change your own role"' : '') + '>' + roleOpts(p.role) + '</select>' +
+      '<select class="inp" data-pgroup="' + esc(p.id) + '" aria-label="User group"' + (self && p.group ? ' disabled title="Ask another admin to change your own group"' : '') + '>' + groupOpts(known ? p.group : '', first) + '</select>' +
       '<select class="inp" data-pco="' + esc(p.id) + '" aria-label="Company">' + coOpts(p.company === 'partner' ? 'partner' : 'ceva') + '</select>' +
       (self ? '' : '<button type="button" class="btn danger" data-pdel="' + esc(p.id) + '">Remove</button>') + '</div>';
   }).join('');
-  $('#legend').innerHTML = ROLES.map(r => '<b>' + ROLE_LABEL[r] + '</b><span>' + esc(ROLE_HELP[r]) + '</span>').join('');
+  const keep = $('#aRole').value; $('#aRole').innerHTML = groupOpts(keep, keep ? '' : 'Choose a group');
 }
-$('#aRole').innerHTML = roleOpts('viewer');
 $('#pFilter').addEventListener('input', renderPeople);
+
+/* ---------- user groups (admin) ---------- */
+function renderGroups(){
+  const tab = $('#gTab'), gs = sortedGroups();
+  if(tab.contains(document.activeElement) && document.activeElement.classList.contains('gname')) return; // don't redraw while a name is being typed
+  const count = id => S.people.filter(p => p.group === id).length;
+  const ppl = n => n === 1 ? '1 person' : n + ' people';
+  const head = '<thead><tr><th scope="col">Tool</th>' + gs.map(g => {
+    const n = count(g.id);
+    return '<th scope="col"><input class="inp gname" data-gname="' + esc(g.id) + '" maxlength="40" value="' + esc(str(g.name,40)) + '" aria-label="Group name">' +
+      '<div class="gsub"><span>' + ppl(n) + '</span>' + (n ? '' : '<button type="button" class="btn danger" data-gdel="' + esc(g.id) + '">Delete</button>') + '</div></th>';
+  }).join('') + '<th scope="col"><span class="fixed">' + AX.ADMIN_NAME + '</span><div class="gsub"><span>' + ppl(count(AX.ADMIN)) + '</span></div></th></tr></thead>';
+  const body = '<tbody>' + TOOLS.map(t => '<tr><th scope="row">' + esc(t.name) + '</th>' + gs.map(g => {
+    const cur = AX.levelOf({group:g.id}, g, t.key);
+    return '<td><select class="inp lv-' + cur + '" data-glevel="' + esc(g.id) + '" data-tool="' + t.key + '" aria-label="' + esc(str(g.name,40) + ', ' + t.name) + '">' +
+      AX.LEVELS.map(l => '<option value="' + l + '"' + (l === cur ? ' selected' : '') + ' title="' + esc(l === 'none' ? LEVEL_HELP.none : t[l]) + '">' + AX.LEVEL_LABEL[l] + '</option>').join('') + '</select></td>';
+  }).join('') + '<td><span class="fixed">Full</span></td></tr>').join('') + '</tbody>';
+  tab.innerHTML = head + body;
+  $('#legend').innerHTML = AX.LEVELS.map(l => '<b>' + AX.LEVEL_LABEL[l] + '</b><span>' + esc(LEVEL_HELP[l]) + '</span>').join('') +
+    '<b>Data upload</b><span>Loading a SAP export fills several tools at once, so it follows the Data upload row. Give Edit there to the groups that load exports.</span>';
+}
+function saveGroup(g, patch){
+  const {Fs, fs} = S.fb, d = Object.assign({name:str(g.name,40), order:g.order || 0, tools:Object.assign({}, g.tools || {})}, patch, {updatedAt:Date.now()});
+  return commit(Fs.setDoc(Fs.doc(fs, 'groups', g.id), d));
+}
+function seedGroups(){
+  if(S.seeded) return; S.seeded = true;
+  const {Fs, fs} = S.fb, b = Fs.writeBatch(fs);
+  AX.DEFAULT_GROUPS.forEach(g => b.set(Fs.doc(fs, 'groups', g.id), {name:g.name, order:g.order, tools:g.tools, updatedAt:Date.now()}));
+  b.commit().then(() => toast('Starting groups created: ' + AX.DEFAULT_GROUPS.map(g => g.name).join(', ')),
+    e => showErr('#gErr', (e && e.code) === 'permission-denied' ? 'The user groups can’t be saved yet. Publish the latest firestore.rules in the Firebase console (Firestore Database → Rules), then reload this page.' : 'Couldn’t create the starting groups. Check the connection and reload.'));
+}
+$('#gAdd').addEventListener('click', () => {
+  const name = str($('#gNew').value, 40); if(!name || !S.fb) return;
+  let id = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 30);
+  if(id.length < 2) id = 'group-' + (id || 'x');
+  if(id === AX.ADMIN || S.groups.some(g => g.id === id || str(g.name,40).toLowerCase() === name.toLowerCase())) return showErr('#gErr', 'There is already a group with that name.');
+  showErr('#gErr', '');
+  const tools = {}; TOOLS.forEach(t => { tools[t.key] = 'none'; });
+  saveGroup({id, name, order:S.groups.reduce((m, g) => Math.max(m, g.order || 0), 0) + 1, tools}, {});
+  $('#gNew').value = ''; toast(name + ' added. Set its access in the table.');
+});
 
 function approve(id){
   const r = S.requests.find(x => x.id === id); if(!r || !S.fb) return;
-  const role = (document.querySelector('[data-reqrole="' + CSS.escape(id) + '"]') || {}).value;
+  const group = (document.querySelector('[data-reqgroup="' + CSS.escape(id) + '"]') || {}).value;
   const company = (document.querySelector('[data-reqco="' + CSS.escape(id) + '"]') || {}).value === 'partner' ? 'partner' : 'ceva';
-  if(!ROLE_LABEL[role]) return;
+  if(!group || !groupName(group)) return toast('Choose a user group first.');
   const {Fs, fs} = S.fb, b = Fs.writeBatch(fs);
-  b.set(Fs.doc(fs, 'roles', id), {role, company, name:str(r.name,40), email:str(r.email,80), updatedAt:Date.now()});
+  b.set(Fs.doc(fs, 'roles', id), {role:group === AX.ADMIN ? 'admin' : 'viewer', group, company, name:str(r.name,40), email:str(r.email,80), updatedAt:Date.now()});
   b.delete(Fs.doc(fs, 'requests', id));
-  commit(b.commit()); toast((str(r.name,40) || r.email || 'Person') + ' approved as ' + ROLE_LABEL[role] + ' · ' + CO_LABEL[company]);
+  commit(b.commit()); toast((str(r.name,40) || r.email || 'Person') + ' approved in ' + groupName(group));
 }
 function patchPerson(id, patch){
   const {Fs, fs} = S.fb;
@@ -356,27 +422,48 @@ function arm(btn, again){
   setTimeout(again, 4000); return false;
 }
 $('#main').addEventListener('click', e => {
-  const t = e.target.closest('[data-approve],[data-decline],[data-pdel]'); if(!t || !S.fb) return;
+  const t = e.target.closest('[data-approve],[data-decline],[data-pdel],[data-gdel]'); if(!t || !S.fb) return;
   const {Fs, fs} = S.fb;
   if(t.dataset.approve) return approve(t.dataset.approve);
   if(t.dataset.decline){ if(!arm(t, renderRequests)) return; commit(Fs.deleteDoc(Fs.doc(fs, 'requests', t.dataset.decline))); toast('Request declined'); return; }
-  if(t.dataset.pdel){ if(!arm(t, renderPeople)) return; commit(Fs.deleteDoc(Fs.doc(fs, 'roles', t.dataset.pdel))); toast('Access removed from every tool'); }
+  if(t.dataset.pdel){ if(!arm(t, renderPeople)) return; commit(Fs.deleteDoc(Fs.doc(fs, 'roles', t.dataset.pdel))); toast('Access removed from every tool'); return; }
+  if(t.dataset.gdel){
+    if(S.people.some(p => p.group === t.dataset.gdel)) return toast('Move its people to another group first.');
+    if(!arm(t, renderGroups)) return; commit(Fs.deleteDoc(Fs.doc(fs, 'groups', t.dataset.gdel))); toast('Group deleted');
+  }
 });
 $('#main').addEventListener('change', e => {
   const t = e.target; if(!S.fb) return;
-  if(t.dataset.prole && ROLE_LABEL[t.value]){ patchPerson(t.dataset.prole, {role:t.value}); toast('Role changed to ' + ROLE_LABEL[t.value]); }
+  if(t.dataset.pgroup && groupName(t.value)){
+    const p = S.people.find(x => x.id === t.dataset.pgroup) || {};
+    if(S.user && t.dataset.pgroup === S.user.uid && t.value !== AX.ADMIN){ renderPeople(); return toast('You can only place your own account in the Admin group.'); }
+    // `role` is the old way and no longer counts once a group is set; it is kept valid for the rules.
+    patchPerson(t.dataset.pgroup, {group:t.value, role:t.value === AX.ADMIN ? 'admin' : (p.role === 'admin' || !ROLE_LABEL[p.role] ? 'viewer' : p.role)});
+    toast('Moved to ' + groupName(t.value));
+  }
   if(t.dataset.pco){ patchPerson(t.dataset.pco, {company:t.value === 'partner' ? 'partner' : 'ceva'}); toast('Company changed to ' + CO_LABEL[t.value]); }
+  if(t.dataset.glevel && AX.LEVELS.includes(t.value)){
+    const g = S.groups.find(x => x.id === t.dataset.glevel); if(!g) return;
+    saveGroup(g, {tools:Object.assign({}, g.tools || {}, {[t.dataset.tool]:t.value})});
+    t.className = 'inp lv-' + t.value;
+    toast(str(g.name,40) + ': ' + (TOOLS.find(x => x.key === t.dataset.tool) || {}).name + ' set to ' + AX.LEVEL_LABEL[t.value]);
+  }
+  if(t.dataset.gname){
+    const g = S.groups.find(x => x.id === t.dataset.gname), name = str(t.value, 40); if(!g) return;
+    if(!name){ t.value = str(g.name,40); return; }
+    if(name !== str(g.name,40)){ saveGroup(g, {name}); toast('Group renamed to ' + name); }
+  }
 });
 $('#aSave').addEventListener('click', () => {
-  const uid = $('#aUid').value.trim(), name = str($('#aName').value, 40), role = $('#aRole').value, company = $('#aCo').value === 'partner' ? 'partner' : 'ceva';
+  const uid = $('#aUid').value.trim(), name = str($('#aName').value, 40), group = $('#aRole').value, company = $('#aCo').value === 'partner' ? 'partner' : 'ceva';
   if(!/^[A-Za-z0-9_-]{6,128}$/.test(uid)) return showErr('#aErr', 'Paste the User UID from Firebase: Authentication → Users, UID column.');
   if(S.user && uid === S.user.uid) return showErr('#aErr', 'That’s your own account. Ask another admin to change it.');
-  if(!ROLE_LABEL[role]) return;
+  if(!group || !groupName(group)) return showErr('#aErr', 'Choose a user group.');
   showErr('#aErr', '');
   const {Fs, fs} = S.fb;
-  commit(Fs.setDoc(Fs.doc(fs, 'roles', uid), {role, company, name, updatedAt:Date.now()}));
+  commit(Fs.setDoc(Fs.doc(fs, 'roles', uid), {role:group === AX.ADMIN ? 'admin' : 'viewer', group, company, name, updatedAt:Date.now()}));
   $('#aUid').value = ''; $('#aName').value = '';
-  toast((name || 'Person') + ' added as ' + ROLE_LABEL[role]);
+  toast((name || 'Person') + ' added to ' + groupName(group));
 });
 
 /* ---------- sign in, request, password ---------- */
@@ -459,7 +546,7 @@ $('#cSave').addEventListener('click', async () => {
 });
 
 /* ---------- Firebase ---------- */
-function stopData(){ S.unsubs.forEach(u => { try{ u(); }catch(_){} }); S.unsubs = []; S.people = []; S.requests = []; }
+function stopData(){ S.unsubs.forEach(u => { try{ u(); }catch(_){} }); S.unsubs = []; S.people = []; S.requests = []; S.groups = []; S.groupsLoaded = false; }
 function startAdminData(){
   const {Fs, fs} = S.fb;
   stopData();
@@ -469,6 +556,12 @@ function startAdminData(){
   S.unsubs.push(Fs.onSnapshot(Fs.collection(fs, 'requests'), snap => {
     S.requests = snap.docs.map(d => Object.assign({}, d.data(), {id:d.id})); if(S.gate === 'ready') render();
   }, () => {}));
+  S.unsubs.push(Fs.onSnapshot(Fs.collection(fs, 'groups'), snap => {
+    S.groups = snap.docs.map(d => Object.assign({}, d.data(), {id:d.id})); S.groupsLoaded = true;
+    // First time: create Lenovo, CEVA White Collar and CEVA Blue Collar.
+    if(!S.groups.length && !(snap.metadata && snap.metadata.fromCache)) seedGroups();
+    if(S.gate === 'ready') render();
+  }, () => { showErr('#gErr', 'The user groups can’t be read yet. Publish the latest firestore.rules in the Firebase console (Firestore Database → Rules), then reload this page.'); }));
 }
 function watchMyRequest(user){
   if(S.reqUnsub){ S.reqUnsub(); S.reqUnsub = null; }
@@ -492,20 +585,23 @@ function watchMyRequest(user){
   F.onAuthStateChanged(auth, user => {
     if(S.roleUnsub){ S.roleUnsub(); S.roleUnsub = null; }
     stopData();
-    S.user = user; S.role = null; S.me = {};
+    S.user = user; S.ok = false; S.admin = false; S.me = {};
     watchMyRequest(user);
     if(!user){ if(S.gate !== 'request') showGate('login'); return; }
     if(S.pendingReq){ const q = S.pendingReq; S.pendingReq = null; fileRequest(user, q.name, q.company, q.note).then(() => toast('Request sent. An admin will approve it.'), () => toast('Signed up, but the request didn’t send. Fill in the form below.')); }
     showGate('wait', 'Checking access…');
-    S.roleUnsub = Fs.onSnapshot(Fs.doc(fs, 'roles', user.uid), snap => {
+    S.roleUnsub = AX.watch(Fs, fs, user.uid, 'data', snap => {
       const d = snap.exists() ? (snap.data() || {}) : null;
-      if(!d || !ROLE_LABEL[d.role]){ S.role = null; stopData(); showGate('denied'); return; }
-      const wasAdmin = S.role === 'admin';
-      S.role = d.role; S.me = d;
-      if(d.role === 'admin' && !wasAdmin) startAdminData();
-      if(d.role !== 'admin' && wasAdmin) stopData();
+      if(!d || !AX.hasAccount(d.raw)){
+        if(snap.metadata && snap.metadata.fromCache){ showGate('wait', 'Waiting for the network…'); return; }
+        S.ok = false; S.admin = false; stopData(); showGate('denied'); return;
+      }
+      const wasAdmin = S.admin;
+      S.ok = true; S.me = d; S.admin = !!d.isAdmin;
+      if(S.admin && !wasAdmin) startAdminData();
+      if(!S.admin && wasAdmin) stopData();
       showGate('ready');
-    }, () => { S.role = null; stopData(); showGate('denied'); });
+    }, () => { S.ok = false; S.admin = false; stopData(); showGate('denied'); });
   });
 })();
 })();

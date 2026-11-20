@@ -311,6 +311,7 @@ select.sel{max-width:15rem;min-height:2.4rem;padding:.3rem .6rem;font-size:13.5p
 <div class="toast" id="toast" role="status" hidden></div>
 
 <script src="firebase-config.js"></script>
+<script src="../assets/access.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="../assets/sap-export.js"></script>
 <script type="module">
@@ -353,7 +354,7 @@ function startData(){
 function stopData(){S.unsubs.forEach(u=>{try{u()}catch(_){}});S.unsubs=[];S.rows=null;S.days=new Map();S.auds=new Map()}
 function load(f){
   if(!f)return;
-  if(!S.canLoad){toast("Only supervisors and admins can load an export.");return}
+  if(!S.canLoad){toast("Your user group cannot load an export.");return}
   if(S.busy)return;
   const rd=new FileReader();rd.onload=async()=>{
     S.busy=true;$("loadBtn").classList.add("busy");$("msg").hidden=true;toast("Reading the export…",true);
@@ -395,7 +396,7 @@ function render(){
   $("loadBtn").hidden=!S.canLoad;
   let newest=null;for(const d of S.days.values())if(!newest||d.at>newest.at)newest=d;
   const live=S.rows===null?"Loading…":newest?`${nf(S.rows.length,0)} putaways kept over ${S.days.size} ${S.days.size===1?"day":"days"} · last load <b>${esc(newest.file)}</b> ${esc(stamp(newest.at))}${newest.byName?" by "+esc(newest.byName):""}`:"No export loaded yet";
-  $("status").innerHTML=`<span><span class="dot ok"></span>${esc(S.myName||"")}${S.myName?" · ":""}${ROLE_LABEL[S.role]}</span><span>${live}</span>`;
+  $("status").innerHTML=`<span><span class="dot ok"></span>${esc(S.myName||"")}${S.myName?" · ":""}${(S.who||ROLE_LABEL[S.role])}</span><span>${live}</span>`;
   $("noData").hidden=has||S.rows===null;
   if(!has){$("noData").innerHTML=S.rows===null?"":`<strong>No putaways loaded</strong><span>${S.canLoad?"Load the SAP warehouse task export with <b>Load SAP export</b>, on the <a href=\"../data/\" style=\"color:var(--info)\">Data upload</a> page, or drag the file onto this page. The page picks out the putaways that left the GR-ZONE and keeps them.":"A supervisor loads the SAP warehouse task export. Once it is loaded, everyone signed in sees the putaways."}</span>`;
     ["vList","vUser"].forEach(id=>$(id).hidden=true);$("stats").innerHTML="";$("views").innerHTML="";$("rangeBtns").innerHTML="";$("dayIn").hidden=true;renderNote();return}
@@ -476,7 +477,7 @@ async function saveDlg(next){
   try{await Fs.setDoc(Fs.doc(fs,"putaud",docId(k)),{k:k.slice(0,600),res:S.dRes,type:S.dRes==="error"?S.dType:"",note:str($("dNoteIn").value,500),who:String(r.by||"").slice(0,40),
       p:String(r.p||"").slice(0,60),b:String(r.b||"").slice(0,60),dt:r.dt,by:S.authUser.uid,byName:S.myName||S.authUser.email||"",at:Date.now()});
     if(nk&&CUR.some(x=>keyOf(x)===nk)){toast("Saved");enrich(CUR);openDlg(nk)}else{$("dlg").close();toast(next?"Saved. That was the last line in the list.":"Saved")}}
-  catch(e){err.textContent=e&&e.code==="permission-denied"?"Firebase refused the change. Your role may be view only, or the latest security rules have not been published yet.":"Couldn’t save. Check the connection and try again.";err.hidden=false}
+  catch(e){err.textContent=e&&e.code==="permission-denied"?"Firebase refused the change. Your user group may be view only, or the latest security rules have not been published yet.":"Couldn’t save. Check the connection and try again.";err.hidden=false}
   finally{$("dSave").disabled=$("dNext").disabled=false}}
 $("dSave").addEventListener("click",()=>saveDlg(false));$("dNext").addEventListener("click",()=>saveDlg(true));
 
@@ -573,10 +574,11 @@ $("dOut").addEventListener("click",signOut);$("signOut").addEventListener("click
     if(S.pendingReq){const q=S.pendingReq;S.pendingReq=null;fileRequest(user,q.name,q.note).then(()=>toast("Request sent. An admin will approve it."),()=>toast("Signed up, but the request didn’t send. Fill in the form below."))}
     showGate("wait","Checking access…");
     reqUnsub=Fs.onSnapshot(Fs.doc(fs,"requests",user.uid),s=>{S.myReq=s.exists();if(!S.role&&!$("gateDenied").hidden)renderDenied()},()=>{});
-    roleUnsub=Fs.onSnapshot(Fs.doc(fs,"roles",user.uid),{includeMetadataChanges:true},snap=>{
+    roleUnsub=CevaAccess.watch(Fs,fs,user.uid,"putaway",snap=>{
       const d=snap.exists()?(snap.data()||{}):{},role=d.role;
+      if(d.noAccess){S.role=null;stopData();showGate("wait",CevaAccess.NO_ACCESS);return}
       if(!ROLE_LABEL[role]){if(snap.metadata.fromCache){showGate("wait","Waiting for the network…");return}S.role=null;stopData();showGate("denied");return}
-      const first=!S.role;S.role=role;S.myName=str(d.name,40);S.canLoad=S.canEdit=role==="supervisor"||role==="admin";S.isAdmin=role==="admin";
+      const first=!S.role;S.role=role;S.myName=str(d.name,40);S.canLoad=!!d.canLoad;S.canEdit=role==="supervisor"||role==="admin";S.who=d.groupName+" · "+CevaAccess.LEVEL_LABEL[d.level];S.isAdmin=role==="admin";
       if(first){startData();showGate("ready")}
       render();
     },()=>{S.role=null;stopData();showGate("denied")});

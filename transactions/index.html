@@ -262,6 +262,7 @@ svg text{font-family:var(--f);font-size:11px;fill:var(--muted)}svg .tl{fill:var(
 <div class="toast" id="toast" role="status" hidden></div>
 
 <script src="firebase-config.js"></script>
+<script src="../assets/access.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="../assets/sap-export.js"></script>
 <script type="module">
@@ -338,7 +339,7 @@ function stopData(){S.unsubs.forEach(u=>{try{u()}catch(_){}});S.unsubs=[];if(S.d
   S.subStart=null;S.days=new Map();S.daysReady=false;S.open=null;S.openMeta=null;S.openVer=null;S.pickedRange=false;S.view="done";S.tmode="day";S.trend=null;S.range="today";S.day=null;S.type="All";S.user=null}
 function load(f){
   if(!f)return;
-  if(!S.canLoad){toast("Only supervisors and admins can load an export.");return}
+  if(!S.canLoad){toast("Your user group cannot load an export.");return}
   if(S.busy)return;
   const rd=new FileReader();rd.onload=async()=>{
     S.busy=true;$("loadBtn").classList.add("busy");$("msg").hidden=true;toast("Reading the export…",true);
@@ -425,7 +426,7 @@ function render(){
   if(!S.daysReady){$("stats").hidden=true;$("noData").hidden=false;$("noData").innerHTML="<strong>Loading…</strong>";return}
   if(S.view==="trends")return renderTrends(all,TYPES);
   if(!ds.length){$("stats").hidden=true;$("noData").hidden=false;const latest=all.length?all[all.length-1].date:null;
-    $("noData").innerHTML=`<strong>Nothing loaded for ${single?mdy(a):"this range"}</strong><span>${S.canLoad?"Select “Load export” and choose the SAP warehouse task export (.xlsx), or drop the file on this page. A file can hold one day or many; every day in it is saved.":"A supervisor or admin loads the SAP warehouse task export. This page updates on its own when they do."}${latest?` The most recent day with data in view is <button type="button" class="linkbtn" data-day="${latest}">${mdy(latest)}</button>.`:""}</span>`;return}
+    $("noData").innerHTML=`<strong>Nothing loaded for ${single?mdy(a):"this range"}</strong><span>${S.canLoad?"Select “Load export” and choose the SAP warehouse task export (.xlsx), or drop the file on this page. A file can hold one day or many; every day in it is saved.":"Someone with edit access loads the SAP warehouse task export. This page updates on its own when they do."}${latest?` The most recent day with data in view is <button type="button" class="linkbtn" data-day="${latest}">${mdy(latest)}</button>.`:""}</span>`;return}
   $("vDone").hidden=false;
   const diff=ds.every(d=>d.excKind==="diff"),A=total(ds,S.type,S.user),ex=excOf(ds,S.type,S.user),mx=Math.max(1,...A.H.map(h=>h.n)),pk=A.H.findIndex(h=>h.n===mx);
   $("stats").innerHTML=[["Confirmed",nf(A.n),""],["Units",nf(A.u),""],["Associates",A.users.size,""],[diff?"Qty differences":"Exceptions",nf(ex.length),ex.length?"warn":""],["Peak hour",A.n?p2(pk)+":00":"—",""],[single?"Lines per assoc. hour":"Days with data",single?(A.hrs>=.5?(A.n/A.hrs).toFixed(1):"—"):ds.length,""],
@@ -647,10 +648,11 @@ $("dOut").addEventListener("click",signOut);$("signOut").addEventListener("click
     if(S.pendingReq){const q=S.pendingReq;S.pendingReq=null;fileRequest(user,q.name,q.note).then(()=>toast("Request sent. An admin will approve it."),()=>toast("Signed up, but the request didn’t send. Fill in the form below."))}
     showGate("wait","Checking access…");
     reqUnsub=Fs.onSnapshot(Fs.doc(fs,"requests",user.uid),s=>{S.myReq=s.exists();if(!S.role&&!$("gateDenied").hidden)renderDenied()},()=>{});
-    roleUnsub=Fs.onSnapshot(Fs.doc(fs,"roles",user.uid),{includeMetadataChanges:true},snap=>{
+    roleUnsub=CevaAccess.watch(Fs,fs,user.uid,"transactions",snap=>{
       const d=snap.exists()?(snap.data()||{}):{},role=d.role;
+      if(d.noAccess){S.role=null;stopData();showGate("wait",CevaAccess.NO_ACCESS);return}
       if(!ROLE_LABEL[role]){if(snap.metadata.fromCache){showGate("wait","Waiting for the network…");return}S.role=null;stopData();showGate("denied");return}
-      const first=!S.role;S.role=role;S.myName=str(d.name,40);S.canLoad=role==="supervisor"||role==="admin";
+      const first=!S.role;S.role=role;S.myName=str(d.name,40);S.canLoad=!!d.canLoad;S.who=d.groupName+" · "+CevaAccess.LEVEL_LABEL[d.level];
       if(first){startData();showGate("ready")}
       render();
     },()=>{S.role=null;stopData();showGate("denied")});

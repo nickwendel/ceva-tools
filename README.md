@@ -10,9 +10,10 @@ Operational tools for CEVA sites, served with GitHub Pages.
 | Inventory differences | [`inventory-differences/`](inventory-differences/) | Pulls the lines with a quantity difference (short and over picks) out of the SAP warehouse task export, keeps them as a running list by bin, product and associate, and tracks status, owner and notes on each one. Exports an action list for the Inventory Action Tracker. |
 | Putaway audit | [`putaway-audit/`](putaway-audit/) | Lists every putaway out of the GR-ZONE from the SAP warehouse task export, prints an audit sheet, takes the audit results and tracks the errors by associate. |
 | Picking audit | [`picking-audit/`](picking-audit/) | Lists every pick out of a storage bin from the SAP warehouse task export, prints an audit sheet, takes the audit results and tracks the errors by associate. |
+| HU consolidation | [`consolidation/`](consolidation/) | Finds every location that holds more than one handling unit in the SAP stock export, shows which handling unit to keep and which to merge into it, prints a work sheet and tracks what has been consolidated. |
 | Training documents | [`training-docs/`](training-docs/) | The site's training library: work instructions, procedures and guides by category, uploaded as files (up to 20 MB) or links, with every version kept. Supervisors and admins add and update; everyone at CEVA with a login can open and download. |
-| Data upload | [`data/`](data/) | One place to load the SAP warehouse task export. The file is read once and every tool that uses it (warehouse transactions, inventory differences, putaway audit, picking audit) is updated together. Shows what each tool holds now. |
-| Access and people | [`access/`](access/) | One page to sign in, request access, see what your role opens in each tool and change your password. Admins approve requests and manage the people list for every tool here. |
+| Data upload | [`data/`](data/) | One place to load the SAP warehouse task export. The file is read once and every tool that uses it (warehouse transactions, inventory differences, putaway audit, picking audit) is updated together. Also takes the SAP stock export for HU consolidation. Shows what each tool holds now. |
+| Access and people | [`access/`](access/) | One page to sign in, request access, see what your user group opens in each tool and change your password. Admins approve requests, place people in user groups and set each group's access to each tool here. |
 | Warehouse transactions | [`transactions/`](transactions/) | Dashboard of SAP EWM warehouse tasks: completed work by hour, activity, process type and associate, open task aging, and trends over time. A supervisor loads the SAP export and everyone signed in sees it. |
 
 The home page ([`index.html`](index.html), live at `https://nickwendel.github.io/ceva-tools/`) is the launcher: a card for every web tool, download cards for the templates in [`templates/`](templates/) (8D report in Word and Excel, action plan in Word, weekly staff meeting 4 Block deck in PowerPoint; the blank Inventory Action Tracker workbook there is what the action tracker's Excel export is built from), and a list of the site workbooks that are not published here because they hold site data. A search box filters the cards. To add a tool, copy a card in `index.html` and give it `data-tags` words for the search. Only blank templates belong in `templates/`; this repository is public.
@@ -38,6 +39,8 @@ All tools use one Firebase project, **`ceva-tools`** (console: [console.firebase
 | `name` | Shown on boards and in update threads |
 
 **Passwords.** The sign-in screen has **Forgot password?**, which emails a reset link, and signed-in people can change their password under **Settings → Account**. For the reset link to open the tool's own "set new password" screen (instead of Firebase's generic page, which some mail clients break), set the email action URL once in the console: **Authentication → Templates → Password reset → pencil icon → Customize action URL** → `https://nickwendel.github.io/ceva-tools/nci-inbound/` → **Save**.
+
+**User groups.** Access to each tool is set by user group. Every account is placed in one group on the access page, and each group has a level for each tool: **No access**, **View**, **Edit** (change things) or **Full** (also delete and change the tool's settings). The starting groups are **Lenovo**, **CEVA White Collar** and **CEVA Blue Collar**; admins change their levels, rename them and add more under **User groups** on the access page. The built-in **Admin** group has full access to everything and is the only group that can change people and groups. Loading a SAP export fills several tools at once, so it follows the **Data upload** row. Groups are stored in the Firestore collection `groups` and a person's group in the `group` field of their `roles` document. The tool list and levels live in `assets/access.js`, and `firestore.rules` enforces the same levels. Accounts that are not in a group yet keep the access of their old `role` until an admin places them in a group. Where the sections below mention viewers, supervisors and admins, read View, Edit and Full.
 
 **Access page.** `https://nickwendel.github.io/ceva-tools/access/` is the one link to send to new people. They request access there (or on any tool's sign-in screen), and once approved it lists what their role can do in each tool. Admins get the **Access requests** list and the full **People** list on the same page, and can change a person's role or company, remove them, or add a TV login by User UID. It uses the existing `roles` and `requests` rules, so no rules change is needed.
 
@@ -295,3 +298,22 @@ Lists the picks from the SAP warehouse task export so the pick locations can be 
 **Roles.** Viewers see everything. Supervisors and admins load exports and enter audit results.
 
 **Data.** `pickdays/{YYYY-MM-DD}` holds the picks confirmed on each date, `pickaud/{task|bin}` the audit result on each one. Loading adds to the list and never removes a line. Publish [`firestore.rules`](firestore.rules) after merging, or loading and saving will be refused.
+
+## HU consolidation
+
+**Live page:** `https://nickwendel.github.io/ceva-tools/consolidation/`
+
+Lists every location that holds more than one handling unit (HU), so the stock can be merged and one HU left in the location. It is fed by the SAP stock export (stock by storage bin and handling unit), which is a different file from the warehouse task export. Load it with **Load stock export** on the page, or on the Data upload page; the shared loader tells the two files apart by their columns.
+
+- **What is listed:** a storage bin with two or more different handling units. Stock with no handling unit is not counted.
+- **What to merge:** for each product in the location, the HU with the most stock is the one to keep (the oldest goods receipt when equal) and the others are merged into it. A location with different products is listed too, because it still holds more than one HU, but only HUs of the same product are suggested for merging. A flag shows when the HUs of one product hold different stock types.
+- **List:** location, storage type, HUs, product, total quantity, the HU to keep, the HUs to merge into it and how many HUs come out. Search; filter by storage type, status and same product or different products; sort by any heading.
+- **Status:** select a location to see every HU in it and mark it Open, Consolidated or Leave as is, with notes. **Save and next** moves down the list. Consolidated holds only while the location keeps the same HUs: on the next load it drops off the list when SAP shows one HU, and opens again if the HUs changed. Leave as is stays, for locations meant to hold several HUs.
+- **Print work sheet:** the list as filtered and sorted (landscape, CEVA document style) with the HU to keep, the HUs to merge, a Done box and room for notes.
+- **Export to Excel:** one row per handling unit with what to do, and a Locations tab.
+
+**Columns used:** `Storage Bin`, `Handling Unit`, `Product`, `Quantity`, `Product Short Description`, `Stock Type`, `Storage Type` and `Goods Receipt Date`.
+
+**Roles.** Viewers see everything. Supervisors and admins load the stock export and set status.
+
+**Data.** `hucons/current` holds the locations from the newest stock export (each load replaces it), `huconsst/{bin}` the status of each location. Publish [`firestore.rules`](firestore.rules) after merging, or loading and saving will be refused.

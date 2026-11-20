@@ -1,0 +1,563 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>HU Consolidation</title>
+<link rel="icon" href="../assets/ceva-logo.svg" type="image/svg+xml">
+<style>
+/* Visual system shared with the other CEVA tools (matched to the Whitsett KPI dashboard): dark navy, card panels, CEVA red accent, system type.
+   Layout: header, KPI tiles, section tabs with a date range, filters, then card panels. Dark only. */
+:root{
+  --bg:#0a1626; --card:#122A47; --row:#0e2038; --line:#1f3d61; --line-light:#2a4a73;
+  --fg:#e7eef7; --muted:#93a8c4; --faint:#5f7796;
+  --accent:#e2231a; --good:#2fbf71; --warn:#e8a33d; --bad:#e2231a; --info:#3d9fe8; --purple:#a78bfa;
+  --s1:#e7eef7; --s2:#3d9fe8; --s3:#2fbf71; --s4:#5f7796; --s5:#a78bfa; --s6:#4fd0e0; --s7:#3a5273;
+  --radius:10px;
+  --f:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{height:100%;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{min-height:100%;margin:0;color:var(--fg);font-family:var(--f);font-size:13.5px;line-height:1.45;-webkit-font-smoothing:antialiased;
+  background:radial-gradient(1200px 600px at 10% -10%,#123156 0%,var(--bg) 55%) fixed,var(--bg)}
+[hidden]{display:none!important}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--info);outline-offset:2px}
+::-webkit-scrollbar{height:8px;width:8px}
+::-webkit-scrollbar-thumb{background:var(--line-light);border-radius:4px}
+.gut{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.btn{background:var(--card);color:var(--fg);border:1px solid var(--line-light);border-radius:8px;min-height:2.6rem;padding:0 .95rem;font:600 13px/1 var(--f);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:.45rem;white-space:nowrap;position:relative;transition:filter .15s,border-color .15s}
+.btn:hover{border-color:var(--accent);filter:brightness(1.08)}
+.btn.primary{background:var(--accent);border-color:transparent;color:#fff}
+.btn.ghost{background:transparent;color:var(--muted)}
+.btn.ghost:hover{color:var(--fg)}
+.btn:disabled,.btn.busy{opacity:.45;cursor:default;filter:none}
+.btn input[type=file]{position:absolute;opacity:0;width:1px;height:1px}
+.btn:focus-within{outline:2px solid var(--info);outline-offset:2px}
+.inp{width:100%;min-height:2.6rem;background:var(--bg);color:var(--fg);border:1px solid var(--line-light);border-radius:8px;padding:.5rem .75rem;font-size:14px;outline:none}
+.inp:focus{border-color:var(--accent)}
+.fld{display:flex;flex-direction:column;gap:.35rem;min-width:0}
+.fld>label{font:600 10.5px/1 var(--f);letter-spacing:.5px;text-transform:uppercase;color:var(--faint)}
+.err{color:#f97066;font-weight:600;font-size:12px}
+
+/* sign-in gate */
+.gate{min-height:100vh;display:flex;align-items:center;justify-content:center;padding-block:2rem}
+.gate-card{width:100%;max-width:400px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:2.2rem 2.2rem 2rem;box-shadow:0 8px 40px rgba(0,0,0,.55);display:flex;flex-direction:column}
+.gate-head{display:flex;flex-direction:column;align-items:center;text-align:center;gap:.5rem;margin-bottom:1.4rem}
+.gate-head img{height:2.3rem;width:auto;display:block}
+.gate-site{font-size:12px;color:var(--faint);letter-spacing:.02em}
+.gate-body{display:flex;flex-direction:column;gap:.9rem}
+.gate-title{margin:0;font:700 20px/1.2 var(--f)}
+.gate-p{margin:0;color:var(--muted);line-height:1.5;font-size:12.5px}
+.gate-p b{color:var(--fg)}
+.gate form{display:flex;flex-direction:column;gap:.85rem}
+.gate .btn{width:100%;min-height:2.75rem;font-size:14px}
+.gate .btn.ghost{min-height:2.4rem;font-size:12.5px}
+.gate-alt{border-top:1px solid var(--line);padding-top:.85rem}
+
+/* app */
+.app{max-width:1500px;margin:0 auto;padding-bottom:3rem;font-size:14px}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:1.2em 1.6em;flex-wrap:wrap;padding-block:1.4em 1.1em;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:.9em;min-width:0}
+.logo-plate{height:2.6em;display:flex;align-items:center;flex:none}
+.logo-plate img{height:100%;width:auto;max-width:12em;object-fit:contain;display:block}
+.b-title{margin:0;font:700 1.35em/1.15 var(--f);letter-spacing:.2px}
+.status-line{display:flex;flex-wrap:wrap;align-items:center;gap:.3em 1em;margin-top:.45em;font-size:.85em;color:var(--faint)}
+.status-line b{color:var(--muted);font-weight:600}
+.dot{width:.6em;height:.6em;border-radius:50%;background:var(--warn);display:inline-block;margin-right:.4em}
+.dot.ok{background:var(--good)}.dot.bad{background:var(--bad)}
+.controls{display:flex;gap:.6em;align-items:center;flex-wrap:wrap}
+.b-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(9.5em,1fr));gap:.7em;margin:1.2em 0 0;padding:0}
+.b-stats>div{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:1.1em 1.2em 1em;position:relative;overflow:hidden;margin:0}
+.b-stats>div::before{content:"";position:absolute;top:0;left:0;width:3px;height:100%;background:var(--kpi,var(--line-light))}
+.b-stats>div:nth-child(1){--kpi:var(--accent)}.b-stats>div:nth-child(2){--kpi:var(--info)}.b-stats>div:nth-child(3){--kpi:var(--purple)}
+.b-stats>div:nth-child(5){--kpi:var(--good)}
+.b-stats>div.warn{--kpi:var(--warn)}.b-stats>div.hot{--kpi:var(--bad)}
+.b-stats dt{font:700 .75em/1.2 var(--f);letter-spacing:.6px;text-transform:uppercase;color:var(--faint);white-space:nowrap}
+.b-stats dd{margin:.45em 0 0;font:800 2.1em/1 var(--f);font-variant-numeric:tabular-nums;white-space:nowrap}
+.b-stats .hot dd{color:#ff6b61}.b-stats .warn dd{color:var(--warn)}
+.bar{display:flex;flex-wrap:wrap;gap:.6em;align-items:center;margin:1.2em 0 1em}
+.tab{background:transparent;border:1px solid var(--line-light);color:var(--muted);border-radius:2rem;min-height:2.3rem;padding:0 .9rem;font:600 13px/1 var(--f);cursor:pointer}
+.tab:hover{color:var(--fg)}
+.tab[aria-pressed="true"]{background:var(--accent);border-color:transparent;color:#fff}
+.msg{border:1px solid rgba(226,35,26,.5);color:#f97066;border-radius:8px;padding:.7rem 1rem;font-weight:600;margin-bottom:1em}
+.panels{display:flex;flex-direction:column;gap:1em}
+.b-panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);display:flex;flex-direction:column;min-width:0;padding:1em 1.1em .9em}
+.p-head{display:flex;align-items:baseline;flex-wrap:wrap;gap:.55em;padding-bottom:.6em;border-bottom:1px solid var(--line-light)}
+.p-head h2{margin:0;font:700 1.05em/1.2 var(--f)}
+.p-count{font:700 1.05em/1 var(--f);color:var(--muted);font-variant-numeric:tabular-nums}
+.p-page{margin-left:auto;font:600 .75em/1 var(--f);letter-spacing:.5px;text-transform:uppercase;color:var(--faint)}
+.p-body{padding-top:.7em}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:1em}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th{font:700 .72em/1 var(--f);letter-spacing:.5px;text-transform:uppercase;color:var(--faint);text-align:right;padding:.5em .7em;white-space:nowrap;border-bottom:1px solid var(--line)}
+th.s{cursor:pointer}th.s:hover{color:var(--fg)}
+th:first-child,td:first-child,th.t,td.t{text-align:left}
+td{padding:.5em .7em;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line)}
+tbody tr:last-child td{border-bottom:0}
+td.n{font-weight:700}
+tr.click{cursor:pointer}tr.click:hover td{background:var(--row)}tr.sel td{background:rgba(61,159,232,.14)}
+tr.tot td{font-weight:700;border-top:1px solid var(--line-light)}
+tr.hot td{background:rgba(226,35,26,.1)}
+.meter{display:inline-block;height:.4em;background:var(--info);vertical-align:middle;margin-right:.5em;border-radius:2px;opacity:.7}
+.pill{display:inline-block;padding:.2em .55em;border-radius:5px;font:700 .85em/1 var(--f);background:var(--row);color:var(--muted);border:1px solid var(--line-light)}
+.pill.p1{background:rgba(226,35,26,.16);color:#ff6b61;border-color:rgba(226,35,26,.5)}
+.pill.p2{background:rgba(232,163,61,.16);color:var(--warn);border-color:rgba(232,163,61,.5)}
+.legend{display:flex;flex-wrap:wrap;gap:.5em 1.2em;margin-top:.5em}
+.legend span{display:inline-flex;align-items:center;gap:.4em;font:600 .78em/1 var(--f);color:var(--muted)}
+.legend i{display:inline-block;width:.9em;height:.7em;border-radius:2px}
+svg text{font-family:var(--f);font-size:11px;fill:var(--muted)}svg .tl{fill:var(--fg);font-weight:700;paint-order:stroke;stroke:var(--card);stroke-width:3px;stroke-linejoin:round}
+.empty{border:1px dashed var(--line-light);border-radius:var(--radius);padding:1.2em;color:var(--muted);display:flex;flex-direction:column;gap:.35em}
+.empty strong{font:700 1.05em/1.2 var(--f);color:var(--fg)}
+.empty span{line-height:1.5;max-width:75ch}
+.ag{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.6em;margin-bottom:.8em}
+.ag>div{background:var(--row);border:1px solid var(--line);border-radius:8px;padding:.7em .9em;position:relative;overflow:hidden}
+.ag>div::before{content:"";position:absolute;top:0;left:0;width:3px;height:100%;background:var(--line-light)}
+.ag>div.ok::before{background:var(--good)}.ag>div.p2::before{background:var(--warn)}.ag>div.p1::before{background:var(--bad)}
+.ag .k{font:700 .72em/1.2 var(--f);letter-spacing:.5px;text-transform:uppercase;color:var(--faint)}
+.ag .v{font:800 1.7em/1 var(--f);font-variant-numeric:tabular-nums;margin-top:.3em}
+.ag .b{height:.35em;background:var(--line);border-radius:2px;margin-top:.55em;overflow:hidden}.ag .b i{display:block;height:100%;background:var(--muted)}
+.note{color:var(--faint);font-size:.88em;line-height:1.5;max-width:120ch;margin-top:1.2em;border-top:1px solid var(--line);padding-top:1em}
+.drop{outline:2px dashed var(--info);outline-offset:-6px}
+.views{display:flex;gap:.4em;flex-wrap:wrap}
+.view{background:var(--card);border:1px solid var(--line-light);color:var(--muted);border-radius:8px;min-height:2.6rem;padding:0 1rem;font:700 13.5px/1 var(--f);cursor:pointer;display:inline-flex;align-items:center;gap:.5em}
+.view:hover{color:var(--fg)}
+.view[aria-selected="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.view .n{font:700 .85em/1 var(--f);background:var(--row);color:var(--fg);border-radius:1rem;padding:.25em .55em;font-variant-numeric:tabular-nums}
+.view[aria-selected="true"] .n{background:var(--bg)}
+.navrow{display:flex;flex-wrap:wrap;gap:.7em 1em;align-items:center;justify-content:space-between;margin-top:1.2em}
+.range{display:flex;flex-wrap:wrap;gap:.5em;align-items:center}
+.segm{display:flex;background:var(--card);border:1px solid var(--line-light);border-radius:8px;padding:3px;gap:2px}
+.segm button{background:transparent;border:0;border-radius:6px;min-height:2.1rem;padding:0 .8rem;font:600 13px/1 var(--f);color:var(--muted);cursor:pointer}
+.segm button:hover{color:var(--fg)}
+.segm button[aria-pressed="true"]{background:var(--accent);color:#fff}
+.dayinp{background:var(--card);border:1px solid var(--line-light);border-radius:8px;min-height:2.5rem;padding:0 .6rem;font:600 13px/1 var(--f);color:var(--fg)}
+.dayinp.on{border-color:var(--accent)}
+.grid4{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:1em}
+.trbar{display:flex;flex-wrap:wrap;gap:.6em 1em;align-items:center;justify-content:space-between}
+.cap{display:flex;flex-wrap:wrap;gap:.3em 1.3em;margin-top:.5em;font:600 .82em/1.35 var(--f);color:var(--muted)}
+.cap b{color:var(--fg)}
+.cap i{display:inline-block;width:1.5em;height:0;border-top:2px dashed var(--warn);vertical-align:middle;margin-right:.45em}
+.cap i.t{border-top:3px solid var(--accent)}
+.cap i.c{border-top:2px dotted var(--info)}
+.linkbtn{background:none;border:0;padding:0;color:var(--info);font:inherit;font-weight:600;cursor:pointer;text-decoration:underline}
+.toast{position:fixed;left:50%;bottom:calc(1.2rem + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:30;background:var(--card);color:var(--fg);border:1px solid var(--line-light);padding:.75rem 1.1rem;border-radius:8px;font:600 13px/1.35 var(--f);box-shadow:0 8px 24px rgba(0,0,0,.45);max-width:calc(100% - 32px)}
+/* inventory differences */
+.tools{display:flex;flex-wrap:wrap;gap:.6em;align-items:center;margin:1em 0 .8em}
+.tools .inp{max-width:22rem;min-height:2.4rem}
+.chips{display:flex;flex-wrap:wrap;gap:.4em}
+.pill.p3{color:var(--muted)}
+.pill.st-new{color:var(--fg)}
+.pill.st-recount{background:rgba(61,159,232,.16);color:var(--info);border-color:rgba(61,159,232,.5)}
+.pill.st-research{background:rgba(167,139,250,.16);color:var(--purple);border-color:rgba(167,139,250,.5)}
+.pill.st-post{background:rgba(232,163,61,.16);color:var(--warn);border-color:rgba(232,163,61,.5)}
+.pill.st-closed{background:rgba(47,191,113,.14);color:var(--good);border-color:rgba(47,191,113,.45)}
+.pill.off{background:rgba(61,159,232,.12);color:var(--info);border-color:rgba(61,159,232,.45)}
+td.pos{color:var(--good)}td.neg{color:#ff6b61}
+td.note{max-width:22em;overflow:hidden;text-overflow:ellipsis;color:var(--muted)}
+tr.closed td{opacity:.55}
+.more{margin-top:.8em}
+dialog{background:var(--card);color:var(--fg);border:1px solid var(--line-light);border-radius:14px;padding:0;width:min(560px,calc(100% - 32px));box-shadow:0 12px 48px rgba(0,0,0,.6)}
+dialog::backdrop{background:rgba(5,12,24,.7)}
+.dlg{padding:1.4rem 1.5rem 1.3rem;display:flex;flex-direction:column;gap:.9rem}
+.dlg h2{margin:0;font:700 1.15em/1.25 var(--f)}
+.dlg .facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(7.5em,1fr));gap:.5em}
+.dlg .facts div{background:var(--row);border:1px solid var(--line);border-radius:8px;padding:.5em .7em}
+.dlg .facts b{display:block;font:700 .7em/1.2 var(--f);letter-spacing:.5px;text-transform:uppercase;color:var(--faint)}
+.dlg .facts span{display:block;font:700 1.05em/1.3 var(--f);margin-top:.2em;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.dlg textarea.inp{min-height:5.5rem;resize:vertical;font-family:var(--f)}
+.dlg .row{display:flex;gap:.6em;justify-content:flex-end;flex-wrap:wrap}
+.dlg .segm{flex-wrap:wrap}
+.dlg .who{font-size:.85em;color:var(--faint)}
+.map{display:grid;grid-template-columns:repeat(auto-fit,minmax(16em,1fr));gap:.2em 1.4em;margin-top:.5em}
+.map span{color:var(--muted)}.map b{color:var(--fg);font-weight:600}.map .miss{color:var(--faint)}
+/* HU consolidation */
+.hus{max-height:40vh;overflow:auto;border:1px solid var(--line);border-radius:8px}
+.hus th{position:sticky;top:0;background:var(--card)}
+dialog{width:min(820px,calc(100% - 32px))}
+select.sel{max-width:15rem;min-height:2.4rem;padding:.3rem .6rem;font-size:13.5px}
+.dlg .segm button[disabled]{cursor:default;opacity:.6}
+/* printed audit sheet: CEVA document style on white (Arial, title in CEVA Red, red and blue band, logo top right) */
+#sheet{display:none}
+@page{size:letter landscape;margin:9mm}
+@media print{
+  :root{color-scheme:light}
+  html,body{background:#fff!important;color:#000;padding:0;min-height:0}
+  #gate,#app,dialog,.toast{display:none!important}
+  #sheet{display:block;font:9.5pt/1.3 Arial,Helvetica,sans-serif;color:#021D49}
+  .sh-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8mm}
+  .sh-head h1{margin:0;font:700 17pt/1.1 Arial,Helvetica,sans-serif;color:#FF0000;letter-spacing:.3px}
+  .sh-head p{margin:2mm 0 0;font-size:9.5pt;color:#021D49}
+  .sh-head img{width:14.3%;height:auto}
+  .sh-band{display:flex;width:60mm;height:1.6mm;margin-top:1.5mm}.sh-band i{flex:2;background:#FF0000!important}.sh-band b{flex:1;background:#021D49!important}.sh-band i,.sh-band b{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .sh-sign{display:flex;align-items:flex-end;gap:2mm;margin:4mm 0 3mm;font-weight:700}
+  .sh-sign i{display:block;width:70mm;border-bottom:.3mm solid #021D49;height:5mm;margin-right:6mm}.sh-sign i.sm{width:32mm}
+  #sheet table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+  #sheet thead{display:table-header-group}
+  #sheet tr{break-inside:avoid}
+  #sheet th{background:#021D49!important;color:#fff!important;font:700 8pt/1.2 Arial,Helvetica,sans-serif;letter-spacing:.2px;text-transform:uppercase;text-align:left;padding:1.6mm 1.8mm;border:.2mm solid #021D49;white-space:nowrap;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  #sheet td{padding:1.5mm 1.8mm;border:.2mm solid #666666;text-align:left;white-space:nowrap;color:#000;height:7.5mm}
+  #sheet th.r,#sheet td.r{text-align:right}#sheet th.c,#sheet td.c{text-align:center;width:11mm}
+  #sheet td.w{width:20%;white-space:normal}#sheet td.m{white-space:normal}#sheet td div+div{margin-top:1mm;padding-top:1mm;border-top:.2mm dotted #999999}
+  #sheet .box{display:inline-block;width:4mm;height:4mm;border:.3mm solid #021D49;vertical-align:middle}
+  .sh-foot{margin:3mm 0 0;font-size:8pt;color:#666666}
+}
+</style>
+</head>
+<body>
+<noscript><p style="padding:1rem">This tool needs JavaScript turned on.</p></noscript>
+
+<!-- SIGN-IN GATE -->
+<section id="gate" class="gate gut" aria-label="Sign in">
+  <div class="gate-card">
+    <div class="gate-head"><img src="../assets/ceva-logo-whitered.png" alt="CEVA Logistics"><div class="gate-site">HU consolidation</div></div>
+    <div class="gate-body">
+      <h1 class="gate-title">Sign in</h1>
+      <p class="gate-p" id="gateWait">Connecting…</p>
+      <p class="gate-p" id="gateSetup" hidden>This tool isn’t connected to its database yet. Add the Firebase web config to <code>consolidation/firebase-config.js</code> in the repository.</p>
+      <form id="gateLogin" novalidate hidden>
+        <p class="gate-p">Sign in with the same account you use on the other CEVA tools.</p>
+        <div class="fld"><label for="lEmail">Email</label><input class="inp" id="lEmail" type="email" autocomplete="username" inputmode="email"></div>
+        <div class="fld"><label for="lPass">Password</label><input class="inp" id="lPass" type="password" autocomplete="current-password"></div>
+        <div class="err" id="lErr" role="alert" hidden></div>
+        <button class="btn primary" type="submit" id="lGo">Sign in</button>
+        <button class="btn ghost" type="button" id="lForgot">Forgot password? Email me a reset link</button>
+        <div class="gate-alt"><button class="btn" type="button" id="lRequest">New here? Request access</button></div>
+      </form>
+      <form id="gateRequest" novalidate hidden>
+        <p class="gate-p">Tell us who you are and create a password. An admin approves requests, and you’re let in automatically once approved.</p>
+        <div class="fld"><label for="qName">Your name</label><input class="inp" id="qName" maxlength="40" autocomplete="name"></div>
+        <div class="fld"><label for="qEmail">Work email</label><input class="inp" id="qEmail" type="email" autocomplete="username" inputmode="email"></div>
+        <div class="fld"><label for="qPass">Create a password (8+ characters)</label><input class="inp" id="qPass" type="password" autocomplete="new-password" minlength="8"></div>
+        <div class="fld"><label for="qNote">Role or site (optional)</label><input class="inp" id="qNote" maxlength="120" autocomplete="off"></div>
+        <div class="err" id="qErr" role="alert" hidden></div>
+        <button class="btn primary" type="submit" id="qGo">Send request</button>
+        <button class="btn ghost" type="button" id="qBack">Back to sign in</button>
+      </form>
+      <div id="gateDenied" hidden>
+        <p class="gate-p" id="dPending" hidden><b>Request sent.</b> Signed in as <b id="dEmailP"></b>, waiting for an admin to approve. Keep this page open or come back later; it opens on its own once approved.</p>
+        <div id="dNone" hidden>
+          <p class="gate-p">Signed in as <b id="dEmail"></b>, but this account hasn’t been added to the tools yet. Ask for access and an admin will approve it.</p>
+          <form id="dRequest" novalidate style="margin-top:.7rem">
+            <div class="fld"><label for="dName">Your name</label><input class="inp" id="dName" maxlength="40" autocomplete="name"></div>
+            <div class="fld"><label for="dNote">Role or site (optional)</label><input class="inp" id="dNote" maxlength="120" autocomplete="off"></div>
+            <div class="err" id="dReqErr" role="alert" hidden></div>
+            <button class="btn primary" type="submit" id="dReqGo">Request access</button>
+          </form>
+        </div>
+        <button type="button" class="btn ghost" id="dOut" style="margin-top:.7rem">Sign out</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TOOL -->
+<div id="app" class="app gut" hidden>
+  <header class="top">
+    <div class="brand">
+      <div class="logo-plate"><img src="../assets/ceva-logo-whitered.png" alt="CEVA Logistics"></div>
+      <div><h1 class="b-title">HU consolidation</h1><div class="status-line" id="status"></div></div>
+    </div>
+    <div class="controls">
+      <label class="btn primary" id="loadBtn" hidden>Load stock export<input type="file" id="file" accept=".xlsx,.xls,.csv,.txt"></label>
+      <a class="btn" href="../">All tools</a>
+      <button type="button" class="btn ghost" id="signOut">Sign out</button>
+    </div>
+  </header>
+  <dl class="b-stats" id="stats"></dl>
+  <div class="msg" id="msg" style="margin-top:1em" hidden></div>
+  <div id="noData" class="empty" style="margin-top:1.2em" hidden></div>
+
+  <div id="vList" hidden>
+    <div class="tools">
+      <input class="inp" id="q" type="search" placeholder="Search location, product, handling unit, notes" aria-label="Search">
+      <select class="inp sel" id="stype" aria-label="Storage type"></select>
+      <div class="chips" id="statChips" role="group" aria-label="Status"></div>
+      <div class="chips" id="kindChips" role="group" aria-label="What is in the location"></div>
+      <span style="margin-left:auto;display:flex;gap:.6em;flex-wrap:wrap"><button type="button" class="btn" id="xlsBtn">Export to Excel</button><button type="button" class="btn primary" id="printBtn">Print work sheet</button></span>
+    </div>
+    <section class="b-panel"><header class="p-head"><h2>Locations with more than one handling unit</h2><span class="p-count" id="cList"></span><span class="p-page" id="listHint"></span></header>
+      <div class="p-body scroll"><table id="tList"></table><div class="more" id="more"></div></div></section>
+  </div>
+
+  <div class="note" id="note"></div>
+</div>
+
+<!-- Printed work sheet (only shown when printing) -->
+<div id="sheet" aria-hidden="true"></div>
+
+<dialog id="dlg" aria-labelledby="dTitle"><form method="dialog" class="dlg" id="dForm">
+  <h2 id="dTitle"></h2>
+  <div class="facts" id="dFacts"></div>
+  <div class="scroll hus"><table id="dHus"></table></div>
+  <div class="fld"><label>Status</label><div class="segm" id="dSt" role="group" aria-label="Status"></div></div>
+  <div class="fld"><label for="dNoteIn">Notes</label><textarea class="inp" id="dNoteIn" maxlength="500"></textarea></div>
+  <div class="who" id="dWho"></div>
+  <div class="err" id="dErr" role="alert" hidden></div>
+  <div class="row"><button class="btn ghost" value="cancel" type="submit" formnovalidate>Close</button><button class="btn" type="button" id="dNext">Save and next</button><button class="btn primary" type="button" id="dSave">Save</button></div>
+</form></dialog>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script src="firebase-config.js"></script>
+<script src="../assets/access.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="../assets/sap-export.js"></script>
+<script type="module">
+const FB='https://www.gstatic.com/firebasejs/10.14.1/';
+const ROLE_LABEL={viewer:'Viewer',supervisor:'Supervisor',user:'User',admin:'Admin'};
+const PAGE=300;
+const ST=[["open","Open"],["done","Consolidated"],["leave","Leave as is"]],SL=Object.fromEntries(ST);
+const KINDS=[["same","Same product"],["mixed","Different products"]],KL=Object.fromEntries(KINDS);
+const S={snap:undefined,rows:null,sts:new Map(),q:"",stype:"",kind:"all",stat:"open",sort:"b",dir:1,show:PAGE,
+  fb:null,authUser:null,role:null,myName:"",canLoad:false,canEdit:false,isAdmin:false,busy:false,pendingReq:null,unsubs:[],cur:null,dSt:"open"};
+const $=id=>document.getElementById(id),p2=n=>String(n).padStart(2,"0");
+const nf=(n,d)=>(+n||0).toLocaleString("en-US",{maximumFractionDigits:d==null?2:d});
+const pct=(a,b)=>b?(a/b*100).toFixed(1)+"%":"";
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const str=(v,n)=>typeof v==="string"?v.trim().slice(0,n||200):"";
+const norm=s=>String(s==null?"":s).toLowerCase().replace(/\s+/g," ").trim();
+const mdyDay=d=>{if(d==null||d<0)return "";const x=new Date(d*86400000);return p2(x.getUTCMonth()+1)+"/"+p2(x.getUTCDate())+"/"+x.getUTCFullYear()};
+const stamp=t=>new Date(t).toLocaleString("en-US",{month:"numeric",day:"numeric",hour:"numeric",minute:"2-digit"});
+let toastT;function toast(t,keep){const e=$("toast");e.textContent=t;e.hidden=false;clearTimeout(toastT);if(!keep)toastT=setTimeout(()=>e.hidden=true,typeof keep==="number"?keep:6000)}
+const docId=k=>encodeURIComponent(k).slice(0,1400)||"_";
+function hash(s){let h=5381;for(let i=0;i<s.length;i++)h=(h*33^s.charCodeAt(i))>>>0;return h.toString(36)}
+
+/* ---------- shared data ----------
+   The SAP stock export is read and saved by ../assets/sap-export.js, the loader every tool shares.
+   hucons/current     the newest stock export, cut down to the locations that hold more than one handling unit. Each load replaces it.
+   huconsst/{bin}     the status of one location: open, consolidated or leave as is, with notes. "Consolidated" only counts while the
+                      location still holds the same handling units it held when it was marked. */
+/* Works out, for one location, which handling unit stays and which are merged into it. A stock line is [HU, product, stock type, quantity, goods receipt day].
+   Within each product the handling unit with the most stock stays (oldest goods receipt when equal) and the others move into it. */
+function plan(l){
+  const hus=new Map(),prods=new Map();
+  for(const x of l.q){const hu=x[0],p=x[1],qty=+x[3]||0,gr=x[4]==null?-1:x[4];if(!hu)continue;
+    let h=hus.get(hu);if(!h){h={hu,q:0,p:new Set(),sk:new Set(),gr};hus.set(hu,h)}
+    h.q+=qty;h.p.add(p);if(x[2])h.sk.add(x[2]);if(gr>=0&&(h.gr<0||gr<h.gr))h.gr=gr;
+    let g=prods.get(p);if(!g){g={p,hus:new Map(),q:0};prods.set(p,g)}g.hus.set(hu,(g.hus.get(hu)||0)+qty);g.q+=qty}
+  l.groups=[...prods.values()].map(g=>{
+    const list=[...g.hus].map(([hu,q])=>({hu,q,gr:hus.get(hu).gr,sk:[...hus.get(hu).sk].sort().join("/")})).sort((a,b)=>b.q-a.q||a.gr-b.gr||(a.hu<b.hu?-1:1));
+    return {p:g.p,q:g.q,keep:list[0],move:list.slice(1),skDiff:new Set(list.map(x=>x.sk)).size>1}}).sort((a,b)=>b.move.length-a.move.length||(a.p<b.p?-1:1));
+  l.n=hus.size;l.np=prods.size;l.kind=prods.size===1?"same":"mixed";l.out=Math.min(Math.max(0,l.n-1),l.groups.reduce((s,g)=>s+g.move.length,0));
+  l.tot=l.groups.reduce((s,g)=>s+g.q,0);l.skDiff=l.groups.some(g=>g.skDiff);l.loose=l.q.filter(x=>!x[0]).length;
+  l.sig=hash([...hus.keys()].sort().join(","))+"."+l.n;
+  l.hay=norm([l.b,l.st,...l.q.map(x=>x[0]+" "+x[1]+" "+(S.snap.desc[x[1]]||""))].join(" "));return l}
+function startData(){
+  const {Fs,fs}=S.fb;
+  S.unsubs.push(Fs.onSnapshot(Fs.doc(fs,"hucons","current"),snap=>{
+    if(!snap.exists()){S.snap=null;S.rows=[];render();return}
+    const d=snap.data()||{};let o={};try{o=JSON.parse(d.rows||"{}")}catch(_){}
+    S.snap={at:+d.at||0,file:str(d.file,80),byName:str(d.byName,40),bins:+d.bins||0,hus:+d.hus||0,lines:+d.lines||0,desc:o.desc||{}};
+    S.rows=(Array.isArray(o.locs)?o.locs:[]).map(plan);render()},()=>{S.snap=null;S.rows=S.rows||[];render()}));
+  S.unsubs.push(Fs.onSnapshot(Fs.collection(fs,"huconsst"),snap=>{const m=new Map();snap.docs.forEach(x=>{const a=x.data()||{};m.set(str(a.k,600)||decodeURIComponent(x.id),a)});S.sts=m;render()},()=>{}));
+}
+function stopData(){S.unsubs.forEach(u=>{try{u()}catch(_){}});S.unsubs=[];S.snap=undefined;S.rows=null;S.sts=new Map()}
+function load(f){
+  if(!f)return;
+  if(!S.canLoad){toast("Your user group cannot load an export.");return}
+  if(S.busy)return;
+  const rd=new FileReader();rd.onload=async()=>{
+    S.busy=true;$("loadBtn").classList.add("busy");$("msg").hidden=true;toast("Reading the export…",true);
+    try{const r=await SapExport.loadAll({Fs:S.fb.Fs,fs:S.fb.fs,uid:S.authUser.uid,byName:S.myName||S.authUser.email||""},new Uint8Array(rd.result),f.name,t=>toast(t,true)),x=r.stock;
+      if(!x){$("msg").textContent="That file is the SAP warehouse task export, so the other tools were updated from it: "+SapExport.summary(r)+" This page needs the SAP stock export, the one with a Handling Unit and a Storage Bin column.";$("msg").hidden=false;$("toast").hidden=true;return}
+      if(x.error){$("msg").textContent=x.error;$("msg").hidden=false;$("toast").hidden=true;return}
+      S.q="";$("q").value="";S.stype="";S.kind="all";S.stat="open";S.show=PAGE;
+      toast(SapExport.summary(r),15000);render()}
+    catch(e){$("msg").textContent=e.message;$("msg").hidden=false;$("toast").hidden=true}
+    finally{S.busy=false;$("loadBtn").classList.remove("busy")}
+  };rd.readAsArrayBuffer(f)}
+$("file").addEventListener("change",e=>{load(e.target.files[0]);e.target.value=""});
+const W=$("app");["dragenter","dragover"].forEach(n=>W.addEventListener(n,e=>{e.preventDefault();if(S.canLoad)W.classList.add("drop")}));
+["dragleave","drop"].forEach(n=>W.addEventListener(n,e=>{e.preventDefault();W.classList.remove("drop")}));
+W.addEventListener("drop",e=>load(e.dataTransfer.files[0]));
+
+/* ---------- which locations are showing ---------- */
+function enrich(rows){for(const r of rows){const a=S.sts.get(r.b)||null;r._a=a;r._stale=!!(a&&a.st==="done"&&a.sig!==r.sig);r._s=a&&SL[a.st]&&!r._stale?a.st:"open"}}
+function listRows(R,skip){
+  const q=norm(S.q);
+  return R.filter(r=>{
+    if(S.stype&&r.st!==S.stype)return false;
+    if(skip!=="kind"&&S.kind!=="all"&&r.kind!==S.kind)return false;
+    if(skip!=="stat"&&S.stat!=="all"&&r._s!==S.stat)return false;
+    if(q){const hay=r.hay+" "+norm(r._a&&r._a.note);if(!q.split(" ").every(w=>hay.includes(w)))return false}
+    return true})}
+const SORTS={b:r=>[r.b],st:r=>[r.st,r.b],n:r=>[-r.n,r.b],p:r=>[r.np>1?"~":r.groups[0].p,r.b],q:r=>[-r.tot,r.b],out:r=>[-r.out,r.b],res:r=>[r._s==="open"?0:r._s==="done"?1:2,r.b]};
+function cmp(a,b){for(let i=0;i<a.length;i++){if(a[i]<b[i])return -1;if(a[i]>b[i])return 1}return 0}
+function sorted(R){const rows=listRows(R),f=SORTS[S.sort]||SORTS.b;return rows.sort((a,b)=>S.dir*cmp(f(a),f(b)))}
+const huQ=x=>x.hu+" ("+nf(x.q)+")";
+function todo(r){return r.kind==="same"?"Merge "+r.n+" HUs into one":r.out?"Merge the same product, "+r.out+(r.out===1?" HU comes":" HUs come")+" out":r.np+" products, one HU each"}
+
+/* ---------- drawing ---------- */
+let LIST=[];
+function render(){
+  if(!S.role)return;
+  const has=!!(S.rows&&S.rows.length),sn=S.snap;
+  $("loadBtn").hidden=!S.canLoad;
+  const live=S.snap===undefined?"Loading…":sn?`Stock export <b>${esc(sn.file)}</b> loaded ${esc(stamp(sn.at))}${sn.byName?" by "+esc(sn.byName):""} · ${nf(sn.bins,0)} locations with stock, ${nf(sn.hus,0)} handling units`:"No stock export loaded yet";
+  $("status").innerHTML=`<span><span class="dot ok"></span>${esc(S.myName||"")}${S.myName?" · ":""}${(S.who||ROLE_LABEL[S.role])}</span><span>${live}</span>`;
+  $("noData").hidden=has||S.snap===undefined;
+  if(!has){$("noData").innerHTML=S.snap===undefined?"":sn?`<strong>Every location holds one handling unit</strong><span>The stock export loaded ${esc(stamp(sn.at))} has ${nf(sn.bins,0)} locations with stock and none of them holds more than one handling unit.</span>`
+      :`<strong>No stock export loaded</strong><span>${S.canLoad?"Load the SAP stock export (the list of stock by storage bin and handling unit) with <b>Load stock export</b>, on the <a href=\"../data/\" style=\"color:var(--info)\">Data upload</a> page, or drag the file onto this page. The page keeps the locations that hold more than one handling unit.":"A supervisor loads the SAP stock export. Once it is loaded, everyone signed in sees the locations to consolidate."}</span>`;
+    $("vList").hidden=true;$("stats").innerHTML="";renderNote();return}
+  const R=S.rows;enrich(R);
+  let open=0,done=0,leave=0,out=0,husOpen=0;for(const r of R){if(r._s==="done")done++;else if(r._s==="leave")leave++;else{open++;out+=r.out;husOpen+=r.n}}
+  $("stats").innerHTML=[["Locations over one HU",nf(R.length,0),""],["Open",nf(open,0),open?"warn":""],["HUs in open locations",nf(husOpen,0),""],["HUs that can come out",nf(out,0),""],["Consolidated",nf(done,0),""],["Left as is",nf(leave,0),""],["Locations with stock",nf(sn.bins,0),""],["Holding one HU",sn.bins?pct(sn.bins-R.length,sn.bins):"—",""]]
+    .map(t=>`<div class="${t[2]}"><dt>${t[0]}</dt><dd>${t[1]}</dd></div>`).join("");
+  $("vList").hidden=false;renderList(R);renderNote()}
+function chip(grp,val,label,cur){return `<button type="button" class="tab" data-${grp}="${val}" aria-pressed="${cur===val}">${label}</button>`}
+function stPill(r){return r._s==="done"?'<span class="pill st-closed">Consolidated</span>':r._s==="leave"?'<span class="pill off">Leave as is</span>':r._stale?'<span class="pill p2" title="Marked consolidated before, but the handling units in this location have changed since">Open again</span>':'<span class="pill p3">Open</span>'}
+function renderList(R){
+  const types=new Map();for(const r of R)types.set(r.st,(types.get(r.st)||0)+1);
+  $("stype").innerHTML=`<option value="">All storage types</option>`+[...types].sort((a,b)=>a[0]<b[0]?-1:1).map(([n,k])=>`<option value="${esc(n)}"${S.stype===n?" selected":""}>${esc(n||"(blank)")} · ${k}</option>`).join("");
+  const cs={open:0,done:0,leave:0},ck={same:0,mixed:0};for(const r of listRows(R,"stat"))cs[r._s]++;for(const r of listRows(R,"kind"))ck[r.kind]++;
+  $("statChips").innerHTML=chip("x","open","Open · "+nf(cs.open,0),S.stat)+chip("x","done","Consolidated · "+nf(cs.done,0),S.stat)+chip("x","leave","Leave as is · "+nf(cs.leave,0),S.stat)+chip("x","all","All",S.stat);
+  $("kindChips").innerHTML=chip("k","all","Any product mix",S.kind)+chip("k","same","Same product · "+nf(ck.same,0),S.kind)+chip("k","mixed","Different products · "+nf(ck.mixed,0),S.kind);
+  const rows=LIST=sorted(R);
+  $("cList").textContent=nf(rows.length,0);$("listHint").textContent=S.canEdit?"Select a row to see its handling units and set its status":"Select a row to see its handling units";
+  const th=(k,l,t)=>`<th class="s${t?" t":""}" data-s="${k}">${l}${S.sort===k?(S.dir>0?" ▲":" ▼"):""}</th>`;
+  let h="<thead><tr>"+th("b","Location",1)+th("st","Storage type",1)+th("n","HUs")+th("p","Product",1)+th("q","Total qty")+'<th class="t">Keep this HU</th><th class="t">Merge into it</th>'+th("out","HUs out")+th("res","Status",1)+'<th class="t">Notes</th></tr></thead><tbody>';
+  for(const r of rows.slice(0,S.show)){const a=r._a||{},g=r.groups[0],more=r.groups.length-1;
+    const mv=g.move.length?g.move.slice(0,3).map(huQ).join(", ")+(g.move.length>3?" and "+(g.move.length-3)+" more":""):"";
+    h+=`<tr class="click${r._s!=="open"?" closed":""}" data-k="${esc(r.b)}"><td class="t n">${esc(r.b)}</td><td class="t">${esc(r.st)}</td><td class="n">${r.n}</td>`
+      +`<td class="t n" title="${esc(r.np>1?r.groups.map(x=>x.p).join(", "):S.snap.desc[g.p]||"")}">${r.np>1?`<span class="pill p2">${r.np} products</span>`:esc(g.p)}${r.skDiff?' <span class="pill p2" title="The handling units of one product hold different stock types">Stock types differ</span>':""}</td><td>${nf(r.tot)}</td>`
+      +(r.out?`<td class="t">${r.np>1?esc(g.p)+": ":""}${esc(huQ(g.keep))}</td><td class="t">${esc(mv)}${more&&r.groups[1].move.length?" · more in details":""}</td>`:`<td class="t" colspan="2" style="color:var(--muted)">${esc(todo(r))}</td>`)
+      +`<td>${r.out||""}</td><td class="t">${stPill(r)}</td><td class="t note" title="${esc(a.note||"")}">${esc(a.note||"")}</td></tr>`}
+  if(!rows.length)h+=`<tr><td colspan="10" class="t" style="color:var(--muted)">Nothing matches these filters.</td></tr>`;
+  $("tList").innerHTML=h+"</tbody>";
+  $("more").innerHTML=rows.length>S.show?`<button type="button" class="btn" data-more="list">Show ${nf(Math.min(PAGE,rows.length-S.show),0)} more of ${nf(rows.length-S.show,0)}</button>`:""}
+function renderNote(){
+  $("note").innerHTML=`The list comes from the SAP stock export: every location that holds more than one handling unit, so the stock can be merged and one handling unit left in the location. For each product in a location the handling unit with the most stock is the one to keep (the oldest goods receipt when they are equal) and the others are merged into it. A location with different products is listed too, since it still holds more than one handling unit; only handling units of the same product are suggested for merging. Stock with no handling unit is not counted. Each load replaces the list with the newest export. A location marked Consolidated drops off the list on the next load once SAP shows one handling unit there; if its handling units change instead, it opens again. Leave as is stays until it is changed, for locations that are meant to hold several handling units.`}
+
+/* ---------- one location ---------- */
+function openDlg(k){
+  const r=S.rows.find(x=>x.b===k);if(!r)return;S.cur=r;const a=r._a||{};S.dSt=r._s;
+  $("dTitle").textContent=r.b+" · "+todo(r);
+  $("dFacts").innerHTML=[["Location",r.b],["Storage type",r.st||"—"],["Handling units",r.n],["Products",r.np],["Total quantity",nf(r.tot)],["HUs that can come out",r.out]].map(f=>`<div><b>${f[0]}</b><span>${esc(f[1])}</span></div>`).join("");
+  let h='<thead><tr><th class="t">Handling unit</th><th class="t">Product</th><th>Qty</th><th class="t">Stock type</th><th class="t">Goods receipt</th><th class="t">What to do</th></tr></thead><tbody>';
+  for(const g of r.groups){const line=(x,act,cls)=>`<tr><td class="t n">${esc(x.hu)}</td><td class="t" title="${esc(S.snap.desc[g.p]||"")}">${esc(g.p)}</td><td>${nf(x.q)}</td><td class="t">${esc(x.sk)}</td><td class="t">${mdyDay(x.gr)}</td><td class="t">${act?`<span class="pill ${cls}">${act}</span>`:""}</td></tr>`;
+    h+=line(g.keep,g.move.length?"Keep":"",g.move.length?"st-closed":"")+g.move.map(x=>line(x,"Merge into "+esc(g.keep.hu),"p2")).join("")}
+  $("dHus").innerHTML=h+"</tbody>";
+  $("dNoteIn").value=a.note||"";
+  $("dWho").textContent=(r.loose?r.loose+" stock "+(r.loose===1?"line":"lines")+" in this location with no handling unit "+(r.loose===1?"is":"are")+" not shown. ":"")+(r._stale?"Marked consolidated before, but the handling units here have changed since. ":"")+(a.at?"Last set "+stamp(a.at)+(a.byName?" by "+a.byName:""):"");
+  $("dNoteIn").disabled=!S.canEdit;$("dSave").hidden=$("dNext").hidden=!S.canEdit;$("dErr").hidden=true;
+  drawD();if(!$("dlg").open)$("dlg").showModal()}
+function drawD(){const dis=S.canEdit?"":" disabled";
+  $("dSt").innerHTML=ST.map(s=>`<button type="button" data-st="${s[0]}" aria-pressed="${S.dSt===s[0]}"${dis}>${s[1]}</button>`).join("")}
+$("dSt").addEventListener("click",e=>{const b=e.target.closest("button[data-st]");if(b&&S.canEdit){S.dSt=b.dataset.st;drawD()}});
+async function saveDlg(next){
+  const r=S.cur;if(!r||!S.canEdit)return;const {Fs,fs}=S.fb,k=r.b,err=$("dErr");err.hidden=true;
+  const i=LIST.findIndex(x=>x.b===k),nx=next&&i>=0?LIST[i+1]:null,nk=nx?nx.b:null;
+  $("dSave").disabled=$("dNext").disabled=true;
+  try{await Fs.setDoc(Fs.doc(fs,"huconsst",docId(k)),{k:k.slice(0,600),st:S.dSt,sig:r.sig,n:r.n,note:str($("dNoteIn").value,500),by:S.authUser.uid,byName:S.myName||S.authUser.email||"",at:Date.now()});
+    if(nk){toast("Saved");enrich(S.rows);openDlg(nk)}else{$("dlg").close();toast(next?"Saved. That was the last location in the list.":"Saved")}}
+  catch(e){err.textContent=e&&e.code==="permission-denied"?"Firebase refused the change. Your user group may be view only, or the latest security rules have not been published yet.":"Couldn’t save. Check the connection and try again.";err.hidden=false}
+  finally{$("dSave").disabled=$("dNext").disabled=false}}
+$("dSave").addEventListener("click",()=>saveDlg(false));$("dNext").addEventListener("click",()=>saveDlg(true));
+
+/* ---------- printed work sheet: every location of the list as filtered and sorted, with a box to tick when it is done ---------- */
+function buildSheet(){
+  const rows=sorted(S.rows),sn=S.snap;
+  const flt=[S.stat!=="all"?SL[S.stat]:"All statuses",S.kind!=="all"?KL[S.kind].toLowerCase():"",S.stype?"storage type "+S.stype:"",S.q?"search “"+S.q+"”":""].filter(Boolean).join(" · ");
+  const cell=(r,f)=>r.groups.map(g=>`<div>${f(g)}</div>`).join("");
+  $("sheet").innerHTML=`<div class="sh-head"><div><h1>HU CONSOLIDATION SHEET</h1><div class="sh-band"><i></i><b></b></div><p>${esc(flt)} · ${nf(rows.length,0)} ${rows.length===1?"location":"locations"} with more than one handling unit · stock as of ${esc(stamp(sn.at))}</p></div><img src="../assets/ceva-logo.svg" alt="CEVA Logistics"></div>
+    <div class="sh-sign"><span>Worked by</span><i></i><span>Date</span><i class="sm"></i><span>Shift</span><i class="sm"></i></div>
+    <table><thead><tr><th>#</th><th>Location</th><th class="r">HUs</th><th>Product</th><th>Keep this HU (qty)</th><th>Merge into it (qty)</th><th class="r">Qty after</th><th class="c">Done</th><th>Notes</th></tr></thead><tbody>`
+    +rows.map((r,i)=>`<tr><td>${i+1}</td><td><b>${esc(r.b)}</b></td><td class="r">${r.n}</td><td>${cell(r,g=>`<b>${esc(g.p)}</b>`)}</td><td>${cell(r,g=>esc(huQ(g.keep)))}</td><td class="m">${cell(r,g=>g.move.length?esc(g.move.map(huQ).join(", ")):"—")}</td><td class="r">${cell(r,g=>nf(g.q))}</td><td class="c"><span class="box"></span></td><td class="w">${esc((r._a&&r._a.note)||"")}</td></tr>`).join("")
+    +`</tbody></table><p class="sh-foot">Merge the handling units listed under “Merge into it” into the one to keep, so one handling unit is left in the location, and confirm the move in SAP. Then mark the location Consolidated in the HU consolidation tool.</p>`;
+  return rows.length}
+$("printBtn").addEventListener("click",()=>{if(!buildSheet()){toast("There are no locations in the list to print.");return}window.print()});
+window.addEventListener("beforeprint",()=>{if(S.role&&S.rows&&S.rows.length)buildSheet()});
+
+/* ---------- Excel ---------- */
+$("xlsBtn").addEventListener("click",()=>{
+  const rows=sorted(S.rows);if(!rows.length)return;
+  const head=["Location","Storage type","Handling unit","Product","Description","Qty","Stock type","Goods receipt","What to do","Merge into","HUs in location","Products in location","Status","Notes","Set by","Set on"];
+  const out=[head];
+  for(const r of rows){const a=r._a||{};for(const g of r.groups)for(const x of [g.keep,...g.move]){const mv=x!==g.keep;
+    out.push([r.b,r.st,x.hu,g.p,S.snap.desc[g.p]||"",x.q,x.sk,mdyDay(x.gr),mv?"Merge":g.move.length?"Keep":"",mv?g.keep.hu:"",r.n,r.np,SL[r._s],a.note||"",a.byName||"",a.at?stamp(a.at):""])}}
+  const ws=XLSX.utils.aoa_to_sheet(out);ws["!cols"]=head.map((h,i)=>({wch:[12,10,14,16,30,9,9,12,10,14,8,8,13,40,16,16][i]||14}));ws["!autofilter"]={ref:"A1:"+XLSX.utils.encode_col(head.length-1)+"1"};
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Handling units");
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([["Location","Storage type","HUs","Products","Total qty","HUs that can come out","What to do","Status","Notes"]].concat(rows.map(r=>[r.b,r.st,r.n,r.np,r.tot,r.out,todo(r),SL[r._s],(r._a&&r._a.note)||""]))),"Locations");
+  const t=new Date();XLSX.writeFile(wb,"CEVA HU Consolidation "+t.getFullYear()+"-"+p2(t.getMonth()+1)+"-"+p2(t.getDate())+".xlsx");
+  toast("Exported "+nf(rows.length,0)+" locations.")});
+
+/* ---------- clicks ---------- */
+$("statChips").addEventListener("click",e=>{const b=e.target.closest("button[data-x]");if(!b)return;S.stat=b.dataset.x;S.show=PAGE;render()});
+$("kindChips").addEventListener("click",e=>{const b=e.target.closest("button[data-k]");if(!b)return;S.kind=b.dataset.k;S.show=PAGE;render()});
+$("stype").addEventListener("change",e=>{S.stype=e.target.value;S.show=PAGE;render()});
+let qT;$("q").addEventListener("input",e=>{clearTimeout(qT);qT=setTimeout(()=>{S.q=e.target.value;S.show=PAGE;render()},150)});
+$("tList").addEventListener("click",e=>{const th=e.target.closest("th[data-s]");if(th){const k=th.dataset.s;if(S.sort===k)S.dir=-S.dir;else{S.sort=k;S.dir=1}render();return}
+  const tr=e.target.closest("tr[data-k]");if(tr)openDlg(tr.dataset.k)});
+document.addEventListener("click",e=>{const b=e.target.closest("button[data-more]");if(!b)return;S.show+=PAGE;render()});
+/* ---------- sign-in gate (same accounts, roles and access requests as the other CEVA tools) ---------- */
+function showGate(mode,waitText){
+  const ready=mode==="ready";$("gate").hidden=ready;$("app").hidden=!ready;
+  $("gateWait").hidden=mode!=="wait";if(waitText)$("gateWait").textContent=waitText;
+  $("gateSetup").hidden=mode!=="setup";$("gateLogin").hidden=mode!=="login";$("gateRequest").hidden=mode!=="request";$("gateDenied").hidden=mode!=="denied";
+  if(mode==="denied")renderDenied();
+}
+function renderDenied(){const em=S.authUser?S.authUser.email||"":"";$("dEmail").textContent=em;$("dEmailP").textContent=em;$("dPending").hidden=!S.myReq;$("dNone").hidden=!!S.myReq}
+function reqErrMsg(c){return c==="auth/email-already-in-use"?"That email already has a login. Go back and sign in, or use Forgot password."
+  :c==="auth/invalid-email"?"That doesn’t look like an email address.":c==="auth/weak-password"?"Use a password of at least 8 characters."
+  :c==="auth/network-request-failed"?"No connection. Check the network and try again.":"Couldn’t send the request. Try again in a moment."}
+function fileRequest(user,name,note){const {Fs,fs}=S.fb;return Fs.setDoc(Fs.doc(fs,"requests",user.uid),{name:str(name,40),email:str(user.email||"",80),company:"ceva",note:str(note,120),at:Date.now()})}
+$("gateLogin").addEventListener("submit",async e=>{e.preventDefault();const email=$("lEmail").value.trim(),pass=$("lPass").value,err=$("lErr");err.hidden=true;
+  if(!email||!pass){err.textContent="Enter your email and password.";err.hidden=false;return}
+  if(!S.fb)return;$("lGo").disabled=true;
+  try{await S.fb.F.signInWithEmailAndPassword(S.fb.auth,email,pass);$("lPass").value=""}
+  catch(x){const c=x&&x.code;err.textContent=c==="auth/too-many-requests"?"Too many tries. Wait a few minutes, then try again.":c==="auth/network-request-failed"?"No connection. Check the network and try again.":"That email and password don’t match an account on this tool.";err.hidden=false}
+  finally{$("lGo").disabled=false}});
+$("lForgot").addEventListener("click",async()=>{const email=$("lEmail").value.trim(),err=$("lErr");err.hidden=true;
+  if(!email){err.textContent="Type your email above first, then select this again.";err.hidden=false;$("lEmail").focus();return}
+  if(!S.fb)return;
+  try{await S.fb.F.sendPasswordResetEmail(S.fb.auth,email);toast("Reset link sent to "+email+". Check spam too; the link expires, so use it soon.")}
+  catch(x){err.textContent="Couldn’t send the reset link. Check the email address and the connection, then try again.";err.hidden=false}});
+$("lRequest").addEventListener("click",()=>{$("qEmail").value=$("lEmail").value;showGate("request");setTimeout(()=>$("qName").focus(),30)});
+$("qBack").addEventListener("click",()=>showGate("login"));
+$("gateRequest").addEventListener("submit",async e=>{e.preventDefault();const name=str($("qName").value,40),email=$("qEmail").value.trim(),pass=$("qPass").value,note=str($("qNote").value,120),err=$("qErr");err.hidden=true;
+  const bad=!name?"Enter your name so the admin knows who is asking.":!email?"Enter your work email.":pass.length<8?"Use a password of at least 8 characters.":"";
+  if(bad){err.textContent=bad;err.hidden=false;return}
+  if(!S.fb)return;$("qGo").disabled=true;S.pendingReq={name,note};
+  try{await S.fb.F.createUserWithEmailAndPassword(S.fb.auth,email,pass);$("qPass").value=""}
+  catch(x){S.pendingReq=null;err.textContent=reqErrMsg(x&&x.code);err.hidden=false}
+  finally{$("qGo").disabled=false}});
+$("dRequest").addEventListener("submit",async e=>{e.preventDefault();const name=str($("dName").value,40),note=str($("dNote").value,120),err=$("dReqErr");err.hidden=true;
+  if(!name){err.textContent="Enter your name so the admin knows who is asking.";err.hidden=false;return}
+  if(!S.fb||!S.authUser)return;$("dReqGo").disabled=true;
+  try{await fileRequest(S.authUser,name,note);toast("Request sent")}catch(x){err.textContent=reqErrMsg(x&&x.code);err.hidden=false}finally{$("dReqGo").disabled=false}});
+const signOut=()=>{if(S.fb)S.fb.F.signOut(S.fb.auth)};
+$("dOut").addEventListener("click",signOut);$("signOut").addEventListener("click",signOut);
+
+(async function connect(){
+  const cfg=window.FIREBASE_CONFIG;
+  if(!cfg||!cfg.apiKey||/PASTE/i.test(cfg.apiKey+cfg.projectId)){showGate("setup");return}
+  let A,F,Fs;
+  try{[A,F,Fs]=await Promise.all([import(FB+"firebase-app.js"),import(FB+"firebase-auth.js"),import(FB+"firebase-firestore.js")])}
+  catch(_){showGate("wait","Can’t reach Firebase from this network. Ask IT to allow gstatic.com, googleapis.com and firebaseapp.com, then reload.");return}
+  const app=A.initializeApp(cfg),auth=F.getAuth(app);let fs;
+  try{fs=Fs.initializeFirestore(app,{localCache:Fs.persistentLocalCache({tabManager:Fs.persistentMultipleTabManager()})})}catch(_){fs=Fs.getFirestore(app)}
+  S.fb={auth,F,Fs,fs};
+  let roleUnsub=null,reqUnsub=null;
+  F.onAuthStateChanged(auth,user=>{
+    if(roleUnsub){roleUnsub();roleUnsub=null}if(reqUnsub){reqUnsub();reqUnsub=null}
+    stopData();S.authUser=user;S.role=null;S.canLoad=S.canEdit=S.isAdmin=false;S.myReq=null;
+    if(!user){showGate("login");return}
+    if(S.pendingReq){const q=S.pendingReq;S.pendingReq=null;fileRequest(user,q.name,q.note).then(()=>toast("Request sent. An admin will approve it."),()=>toast("Signed up, but the request didn’t send. Fill in the form below."))}
+    showGate("wait","Checking access…");
+    reqUnsub=Fs.onSnapshot(Fs.doc(fs,"requests",user.uid),s=>{S.myReq=s.exists();if(!S.role&&!$("gateDenied").hidden)renderDenied()},()=>{});
+    roleUnsub=CevaAccess.watch(Fs,fs,user.uid,"consolidation",snap=>{
+      const d=snap.exists()?(snap.data()||{}):{},role=d.role;
+      if(d.noAccess){S.role=null;stopData();showGate("wait",CevaAccess.NO_ACCESS);return}
+      if(!ROLE_LABEL[role]){if(snap.metadata.fromCache){showGate("wait","Waiting for the network…");return}S.role=null;stopData();showGate("denied");return}
+      const first=!S.role;S.role=role;S.myName=str(d.name,40);S.canLoad=!!d.canLoad;S.canEdit=role==="supervisor"||role==="admin";S.who=d.groupName+" · "+CevaAccess.LEVEL_LABEL[d.level];S.isAdmin=role==="admin";
+      if(first){startData();showGate("ready")}
+      render();
+    },()=>{S.role=null;stopData();showGate("denied")});
+  });
+})();
+</script>
+</body>
+</html>
