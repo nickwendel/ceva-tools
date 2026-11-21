@@ -20,7 +20,7 @@ rules_version = '2';
 //   role     the old way (viewer, user, supervisor, admin). It only counts while the account has no
 //            group, so people keep their access until an admin places them in a group.
 // Tool keys: dock, inbound, transactions, differences, putaway, picking, consolidation, tracker,
-// training, data. Loading a SAP export writes data for several tools at once, so it follows the
+// training, rewards, data. Loading a SAP export writes data for several tools at once, so it follows the
 // level on 'data' (the Data upload page), not the level on each tool.
 // Anyone who signs in without a roles document sees nothing.
 // Keep in step with assets/access.js, which the pages use to show the same levels.
@@ -315,6 +315,49 @@ service cloud.firestore {
     match /atrkcfg/{docId} {
       allow read: if canView('tracker');
       allow write: if canFull('tracker') && request.resource.data.size() <= 6;
+    }
+
+    // ───────── Rewards board ─────────
+
+    // rewdays/{YYYY-MM-DD} is the score sheet for one day: per associate, the picks, putaways,
+    // internal moves and audit results, as JSON text. The page works it out from the data the
+    // other tools hold, when someone with edit on the board (who can also see those tools) has it
+    // open. Everyone with view on the board reads the sheets, never the task lines or audit notes.
+    match /rewdays/{day} {
+      allow read: if canView('rewards');
+      allow create, update: if canEdit('rewards')
+        && request.resource.data.date == day
+        && request.resource.data.by == request.auth.uid
+        && request.resource.data.rows is string
+        && request.resource.data.rows.size() < 200000
+        && request.resource.data.size() <= 8;
+      allow delete: if canFull('rewards');
+    }
+
+    // rewawards/{id} is recognition points given to one associate, with the reason. Groups with
+    // edit give them; they are not changed afterwards, only removed by full access.
+    match /rewawards/{awardId} {
+      allow read: if canView('rewards');
+      allow create: if canEdit('rewards')
+        && request.resource.data.by == request.auth.uid
+        && request.resource.data.who is string && request.resource.data.who.size() > 0 && request.resource.data.who.size() <= 40
+        && request.resource.data.pts is int && request.resource.data.pts >= 1 && request.resource.data.pts <= 1000
+        && request.resource.data.cat in ['safety', 'quality', 'team', 'attend', 'idea', 'extra', 'other']
+        && request.resource.data.note is string && request.resource.data.note.size() <= 300
+        && request.resource.data.dt is int
+        && request.resource.data.size() <= 8;
+      allow update: if false;
+      allow delete: if canFull('rewards');
+    }
+
+    // rewcfg/settings holds the point values, the name shown for each SAP user and who is left
+    // off the board.
+    match /rewcfg/{docId} {
+      allow read: if canView('rewards');
+      allow write: if canFull('rewards')
+        && request.resource.data.names is string && request.resource.data.names.size() < 100000
+        && request.resource.data.hide is string && request.resource.data.hide.size() < 100000
+        && request.resource.data.size() <= 10;
     }
 
     // ───────── Training documents ─────────

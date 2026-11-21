@@ -32,6 +32,7 @@ const TOOLS=[
   {key:"consolidation",name:"HU consolidation",href:"consolidation/",view:"View the locations to consolidate",edit:"Print sheets and set status",full:"Set status, remove the loaded data"},
   {key:"tracker",name:"Inventory action tracker",href:"action-tracker/",view:"View actions and export Excel",edit:"Add and update actions, import Excel",full:"Update, import, delete, set the site name"},
   {key:"training",name:"Training documents",href:"training-docs/",view:"Open and download documents",edit:"Add documents and upload new versions",full:"Add, update, archive, delete, set categories"},
+  {key:"rewards",name:"Rewards board",href:"rewards/",view:"View the board",edit:"Give recognition points, keep the scores up to date",full:"Give and remove points, set point values and names"},
   {key:"data",name:"Data upload",href:"data/",view:"See what is loaded",edit:"Load SAP exports for every tool",full:"Load SAP exports for every tool"}
 ];
 const LEVELS=["none","view","edit","full"];
@@ -43,7 +44,7 @@ const all=l=>{const o={};TOOLS.forEach(t=>o[t.key]=l);return o};
 const DEFAULT_GROUPS=[
   {id:"lenovo",name:"Lenovo",order:1,tools:Object.assign(all("none"),{dock:"view",transactions:"view"})},
   {id:"ceva-white",name:"CEVA White Collar",order:2,tools:all("edit")},
-  {id:"ceva-blue",name:"CEVA Blue Collar",order:3,tools:Object.assign(all("none"),{dock:"view",consolidation:"view",training:"view"})}
+  {id:"ceva-blue",name:"CEVA Blue Collar",order:3,tools:Object.assign(all("none"),{dock:"view",consolidation:"view",training:"view",rewards:"view"})}
 ];
 const NO_ACCESS="Your user group does not have access to this tool. Ask an admin if you need it.";
 
