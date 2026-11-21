@@ -319,45 +319,33 @@ service cloud.firestore {
 
     // ───────── Rewards board ─────────
 
-    // rewdays/{YYYY-MM-DD} is the score sheet for one day: per associate, the picks, putaways,
-    // internal moves and audit results, as JSON text. The page works it out from the data the
-    // other tools hold, when someone with edit on the board (who can also see those tools) has it
-    // open. Everyone with view on the board reads the sheets, never the task lines or audit notes.
-    match /rewdays/{day} {
-      allow read: if canView('rewards');
-      allow create, update: if canEdit('rewards')
-        && request.resource.data.date == day
-        && request.resource.data.by == request.auth.uid
-        && request.resource.data.rows is string
-        && request.resource.data.rows.size() < 200000
-        && request.resource.data.size() <= 8;
-      allow delete: if canFull('rewards');
-    }
-
-    // rewawards/{id} is recognition points given to one associate, with the reason. Groups with
-    // edit give them; they are not changed afterwards, only removed by full access.
-    match /rewawards/{awardId} {
+    // rewlog/{id} is one person taking part in one activity on one date (5S, a bin check, a
+    // committee meeting, weekend support…), with the points it was worth when logged. Groups with
+    // edit log them. An entry is never changed; full access removes one, and whoever logged an
+    // entry can remove their own.
+    match /rewlog/{logId} {
       allow read: if canView('rewards');
       allow create: if canEdit('rewards')
         && request.resource.data.by == request.auth.uid
         && request.resource.data.who is string && request.resource.data.who.size() > 0 && request.resource.data.who.size() <= 40
+        && request.resource.data.act is string && request.resource.data.act.size() > 0 && request.resource.data.act.size() <= 40
+        && request.resource.data.actName is string && request.resource.data.actName.size() <= 60
         && request.resource.data.pts is int && request.resource.data.pts >= 1 && request.resource.data.pts <= 1000
-        && request.resource.data.cat in ['safety', 'quality', 'team', 'attend', 'idea', 'extra', 'other']
         && request.resource.data.note is string && request.resource.data.note.size() <= 300
         && request.resource.data.dt is int
-        && request.resource.data.size() <= 8;
+        && request.resource.data.size() <= 9;
       allow update: if false;
-      allow delete: if canFull('rewards');
+      allow delete: if canFull('rewards') || (canEdit('rewards') && resource.data.by == request.auth.uid);
     }
 
-    // rewcfg/settings holds the point values, the name shown for each SAP user and who is left
-    // off the board.
+    // rewcfg/settings holds the list of activities with their points and the names offered when
+    // logging.
     match /rewcfg/{docId} {
       allow read: if canView('rewards');
       allow write: if canFull('rewards')
-        && request.resource.data.names is string && request.resource.data.names.size() < 100000
-        && request.resource.data.hide is string && request.resource.data.hide.size() < 100000
-        && request.resource.data.size() <= 10;
+        && request.resource.data.acts is string && request.resource.data.acts.size() < 60000
+        && request.resource.data.people is string && request.resource.data.people.size() < 100000
+        && request.resource.data.size() <= 8;
     }
 
     // ───────── Training documents ─────────

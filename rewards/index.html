@@ -213,6 +213,14 @@ body.tv .app{max-width:none;font-size:clamp(15px,1.25vw,26px)}
 body.tv .tvbar{display:flex;justify-content:space-between;align-items:center;gap:1em;margin-top:1em;color:var(--muted);font-weight:600}
 body.tv tr.click{cursor:default}
 @media (max-width:640px){.podium{grid-template-columns:1fr}.pod.r1{order:1;padding-top:1.2em;padding-bottom:1.1em}.pod.r2{order:2}.pod.r3{order:3}}
+.plist{display:grid;grid-template-columns:repeat(auto-fill,minmax(11.5em,1fr));gap:.15em .8em;max-height:13.5em;overflow-y:auto;background:var(--bg);border:1px solid var(--line-light);border-radius:8px;padding:.6em .7em}
+.plist label{display:flex;gap:.5em;align-items:center;min-height:1.9em;cursor:pointer;overflow-wrap:anywhere}
+.plist input{width:1.15em;height:1.15em;flex:none;accent-color:var(--accent)}
+.plist .none{color:var(--faint);grid-column:1/-1}
+.addrow{display:flex;gap:.5em;flex-wrap:wrap}.addrow .inp{flex:1;min-width:10em}
+dialog.wide{width:min(680px,calc(100% - 32px))}
+textarea.roster{min-height:14rem;font-family:var(--f);max-width:30em;resize:vertical}
+td.wrap{white-space:normal;min-width:14em}
 </style>
 </head>
 <body>
@@ -271,7 +279,7 @@ body.tv tr.click{cursor:default}
     </div>
     <div class="controls">
       <button type="button" class="btn" id="tvBtn">TV view</button>
-      <button type="button" class="btn primary" id="giveBtn" hidden>Give points</button>
+      <button type="button" class="btn primary" id="giveBtn" hidden>Log an activity</button>
       <button type="button" class="btn ghost" id="signOut">Sign out</button>
     </div>
   </header>
@@ -287,7 +295,7 @@ body.tv tr.click{cursor:default}
   <div id="vBoard" hidden>
     <div class="podium" id="podium"></div>
     <div class="tools hide-tv">
-      <input class="inp" id="q" type="search" placeholder="Search associate" aria-label="Search">
+      <input class="inp" id="q" type="search" placeholder="Search name" aria-label="Search">
       <span style="margin-left:auto"><button type="button" class="btn" id="xlsBtn">Export to Excel</button></span>
     </div>
     <section class="b-panel" style="margin-top:1em"><header class="p-head"><h2>Leaderboard</h2><span class="p-count" id="cBoard"></span><span class="p-page">Select a row to see how the points add up</span></header>
@@ -297,20 +305,23 @@ body.tv tr.click{cursor:default}
   <!-- Badges -->
   <div id="vBadges" style="margin-top:1.2em" hidden><div class="bcards" id="bCards"></div></div>
 
-  <!-- Recognition -->
+  <!-- Activity log -->
   <div class="panels" id="vRec" style="margin-top:1.2em" hidden>
-    <section class="b-panel"><header class="p-head"><h2>Recognition points</h2><span class="p-count" id="cRec"></span><span class="p-page" id="recHint"></span></header>
+    <div class="tools" style="margin:0"><select class="inp sel" id="fAct" aria-label="Activity"></select></div>
+    <section class="b-panel"><header class="p-head"><h2>Activity log</h2><span class="p-count" id="cRec"></span><span class="p-page" id="recHint"></span></header>
       <div class="p-body scroll"><table id="tRec"></table></div></section>
   </div>
 
   <!-- Settings -->
   <div class="panels" id="vSet" style="margin-top:1.2em" hidden>
-    <section class="b-panel"><header class="p-head"><h2>Points</h2><span class="p-page">Changing a value rescores every day on the board</span></header>
-      <div class="p-body"><div class="setgrid" id="setPts"></div></div></section>
-    <section class="b-panel"><header class="p-head"><h2>Associates</h2><span class="p-count" id="cSet"></span><span class="p-page">Name shown on the board, and who appears on it</span></header>
-      <div class="p-body"><p class="hint">The SAP export only holds user IDs. Type the name to show for each one. Untick <b>On the board</b> for IDs that should not be ranked, such as supervisors or system users.</p>
-        <div class="scroll"><table id="tSet"></table></div></div></section>
-    <div class="co-bar"><p id="setText"></p><span style="display:flex;gap:.6em;flex-wrap:wrap"><button type="button" class="btn" id="rebuildBtn">Rebuild all scores</button><button type="button" class="btn primary" id="setSave">Save settings</button></span></div>
+    <section class="b-panel"><header class="p-head"><h2>Activities and points</h2><span class="p-count" id="cSet"></span><span class="p-page">What people can earn points for</span></header>
+      <div class="p-body"><p class="hint">Each activity is worth the points set here. Untick <b>In use</b> to stop offering an activity; what was already logged keeps its points. Changing the points only applies to what is logged from then on.</p>
+        <div class="scroll"><table id="tSet"></table></div><div style="margin-top:.8em"><button type="button" class="btn" id="addAct">Add an activity</button></div></div></section>
+    <section class="b-panel"><header class="p-head"><h2>People</h2><span class="p-page">The names offered when logging an activity</span></header>
+      <div class="p-body"><p class="hint">One name per line. Anyone logging an activity can also type a name that is not on this list.</p>
+        <textarea class="inp roster" id="sPeople" aria-label="People, one name per line"></textarea>
+        <div class="fld" style="margin-top:1em"><label for="sTop">Places shown in TV view</label><input class="inp" id="sTop" type="number" min="3" max="100" step="1" style="max-width:9em"></div></div></section>
+    <div class="co-bar"><p id="setText"></p><button type="button" class="btn primary" id="setSave">Save settings</button></div>
   </div>
 
   <div class="note" id="note"></div>
@@ -324,15 +335,15 @@ body.tv tr.click{cursor:default}
   <div class="scroll" style="max-height:15em;overflow-y:auto"><table id="dDays"></table></div>
   <div class="row"><button class="btn primary" value="cancel" type="submit">Close</button></div>
 </form></dialog>
-<dialog id="gDlg" aria-labelledby="gTitle"><form method="dialog" class="dlg">
-  <h2 id="gTitle">Give recognition points</h2>
-  <div class="fld"><label for="gWho">Associate</label><select class="inp" id="gWho"></select></div>
-  <div class="fld"><label>What for</label><div class="segm" id="gCat" role="group" aria-label="What for"></div></div>
-  <div class="fld"><label for="gPts">Points</label><div class="quick"><input class="inp" id="gPts" type="number" min="1" max="1000" step="1" style="max-width:8em"><span class="segm" id="gQuick" role="group" aria-label="Quick points"></span></div></div>
-  <div class="fld"><label for="gDay">Date it counts on</label><input class="inp" id="gDay" type="date" style="max-width:12em"></div>
-  <div class="fld"><label for="gNote">What they did</label><textarea class="inp" id="gNote" maxlength="300"></textarea></div>
+<dialog id="gDlg" class="wide" aria-labelledby="gTitle"><form method="dialog" class="dlg">
+  <h2 id="gTitle">Log an activity</h2>
+  <div class="fld"><label for="gAct">Activity</label><select class="inp" id="gAct"></select></div>
+  <div class="fld"><label for="gDay">Date</label><input class="inp" id="gDay" type="date" style="max-width:12em"></div>
+  <div class="fld"><label for="gFind">Who took part <span id="gCount"></span></label><input class="inp" id="gFind" type="search" placeholder="Find a name" autocomplete="off"><div class="plist" id="gPeople"></div>
+    <div class="addrow"><input class="inp" id="gNew" maxlength="40" placeholder="Name not on the list" autocomplete="off"><button type="button" class="btn" id="gAdd">Add name</button></div></div>
+  <div class="fld"><label for="gNote">Note (optional)</label><textarea class="inp" id="gNote" maxlength="300" style="min-height:3.5rem"></textarea></div>
   <div class="err" id="gErr" role="alert" hidden></div>
-  <div class="row"><button class="btn ghost" value="cancel" type="submit" formnovalidate>Cancel</button><button class="btn primary" type="button" id="gSave">Give points</button></div>
+  <div class="row"><button class="btn ghost" value="cancel" type="submit" formnovalidate>Cancel</button><button class="btn primary" type="button" id="gSave">Log it</button></div>
 </form></dialog>
 <div class="toast" id="toast" role="status" hidden></div>
 
@@ -342,243 +353,199 @@ body.tv tr.click{cursor:default}
 <script type="module">
 const FB='https://www.gstatic.com/firebasejs/10.14.1/';
 const ROLE_LABEL={viewer:'Viewer',supervisor:'Supervisor',user:'User',admin:'Admin'};
-const RANGES=[["day","Day"],["week","Week"],["month","Month"],["all","All"]];
-const CATS=[["safety","Safety"],["quality","Quality"],["team","Teamwork"],["attend","Attendance"],["idea","Improvement idea"],["extra","Above and beyond"],["other","Other"]],CL=Object.fromEntries(CATS);
-/* Points. Admins change them on the Settings tab; these are the starting values. */
-const DEF={pts:{pick:1,put:1,move:1,ok:2,err:0},big:50,top:10};
-const PT_FIELDS=[["pick","Each pick"],["put","Each putaway"],["move","Each internal move"],["ok","Each line audited correct"],["err","Taken off for each audit error"]];
-const SRCS=["pickdays","putdays","wtdays","pickaud","putaud"],SYNC_DAYS=45;
-const S={days:null,idx:new Map(),awards:new Map(),cfg:{pts:{...DEF.pts},big:DEF.big,top:DEF.top,names:{},hide:{}},cfgAt:0,view:"board",range:"week",day:null,q:"",
-  fb:null,authUser:null,role:null,myName:"",canEdit:false,isFull:false,pendingReq:null,unsubs:[],sync:null,syncing:false,setDirty:false,setDrawn:false,delAsk:"",gCat:"",tv:false};
+const RANGES=[["week","Week"],["month","Month"],["year","Year"],["all","All"]];
+/* The starting list of activities and what each is worth. Admins change it on the Settings tab. */
+const DEF_ACTS=[["5s","5S an area",10],["bin","Bin check",5],["safety","Safety Committee meeting",15],["engage","Employee Engagement meeting",10],["weekend","Weekend support volunteering",25],
+  ["observe","Safety observation or near miss reported",10],["idea","Improvement idea submitted",10],["train","Trained or helped a teammate",10]].map(a=>({id:a[0],name:a[1],pts:a[2],on:true}));
+const S={log:null,cfg:{acts:DEF_ACTS,people:[],top:10},cfgAt:0,view:"board",range:"month",day:null,q:"",fAct:"",
+  fb:null,authUser:null,role:null,myName:"",canEdit:false,isFull:false,pendingReq:null,unsubs:[],setDirty:false,setDrawn:false,delAsk:"",gSel:new Set(),gExtra:[],tv:false};
 const $=id=>document.getElementById(id),p2=n=>String(n).padStart(2,"0");
 const nf=(n,d)=>(+n||0).toLocaleString("en-US",{maximumFractionDigits:d==null?2:d});
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const str=(v,n)=>typeof v==="string"?v.trim().slice(0,n||200):"";
+const str=(v,n)=>typeof v==="string"?v.replace(/\s+/g," ").trim().slice(0,n||200):"";
 const norm=s=>String(s==null?"":s).toLowerCase().replace(/\s+/g," ").trim();
 const num=(v,lo,hi,d)=>{const n=+v;return isFinite(n)&&v!==""&&v!=null?Math.min(hi,Math.max(lo,n)):d};
 const dayNow=()=>Math.floor((Date.now()/1000-new Date().getTimezoneOffset()*60)/86400);
 const iso=d=>new Date(d*86400000).toISOString().slice(0,10);
 const dayOf=s=>Math.floor(Date.parse(s+"T00:00:00Z")/86400000);
 const mdyDay=d=>{if(d==null||d<0)return "";const x=new Date(d*86400000);return p2(x.getUTCMonth()+1)+"/"+p2(x.getUTCDate())+"/"+x.getUTCFullYear()};
+const weekOf=d=>Math.floor((d+4)/7); // weeks run Sunday to Saturday
 const stamp=t=>new Date(t).toLocaleString("en-US",{month:"numeric",day:"numeric",hour:"numeric",minute:"2-digit"});
-const r3=x=>Math.round(x*1000)/1000;
 let toastT;function toast(t,keep){const e=$("toast");e.textContent=t;e.hidden=false;clearTimeout(toastT);if(!keep)toastT=setTimeout(()=>e.hidden=true,typeof keep==="number"?keep:6000)}
-const nm=u=>S.cfg.names[u]||u;
-const shown=u=>!S.cfg.hide[u];
 const refused=e=>e&&e.code==="permission-denied"?"Firebase refused the change. Your user group may not be allowed to do this, or the latest security rules have not been published yet.":"Couldn’t save. Check the connection and try again.";
+const actName=a=>{const x=S.cfg.acts.find(c=>c.id===a.act);return x?x.name:a.actName||"Activity"};
 
 /* ---------- shared data ----------
-   rewdays/{YYYY-MM-DD}   the score sheet for one day: one line per associate, [SAP user, picks, units picked, putaways, units put
-                          away, internal moves, lines audited correct, audit errors], as JSON text. Everyone with access reads these.
-   rewawards/{id}         recognition points a supervisor gave an associate, with the reason.
-   rewcfg/settings        the point values, the name to show for each SAP user and who is left off the board.
-   The score sheets are built from data the other tools already hold (see "keeping the score sheets up to date" below), so the
-   board needs no load of its own and people who only see the board never read the task lines or the audit notes. */
+   rewlog/{id}        one person taking part in one activity on one date: who, the activity, the points it was worth when it was
+                      logged, an optional note, and who logged it. Entries are not edited, only removed.
+   rewcfg/settings    the list of activities with their points, and the names offered when logging.
+   Points come only from these entries. Nothing is read from SAP or from the audit tools. */
 function startData(){
   const {Fs,fs}=S.fb;
-  S.unsubs.push(Fs.onSnapshot(Fs.collection(fs,"rewdays"),snap=>{
-    const m=new Map(),ix=new Map();
-    snap.docs.forEach(x=>{const d=x.data()||{};let rows=[];try{rows=JSON.parse(d.rows||"[]")}catch(_){}
-      if(!/^\d{4}-\d\d-\d\d$/.test(x.id))return;const dn=dayOf(x.id);m.set(x.id,{dn,at:+d.at||0,str:d.rows||"[]",rows});ix.set(dn,new Map(rows.map(r=>[r[0],r])))});
-    S.days=m;S.idx=ix;render();queueSync()},()=>{S.days=S.days||new Map();render()}));
-  S.unsubs.push(Fs.onSnapshot(Fs.collection(fs,"rewawards"),snap=>{const m=new Map();snap.docs.forEach(x=>{const a=x.data()||{};if(str(a.who,40)&&+a.pts>0&&isFinite(+a.dt))m.set(x.id,a)});S.awards=m;render()},()=>{}));
-  S.unsubs.push(Fs.onSnapshot(Fs.doc(fs,"rewcfg","settings"),snap=>{const d=snap.exists()?(snap.data()||{}):{},p=d.pts||{},J=(t,f)=>{try{const o=JSON.parse(t||"");return o&&typeof o==="object"?o:f}catch(_){return f}};
-    const pts={};for(const [k] of PT_FIELDS)pts[k]=num(p[k],0,1000,DEF.pts[k]);
-    const hide={};[].concat(J(d.hide,[])).forEach(u=>hide[u]=true);
-    S.cfg={pts,big:num(d.big,1,100000,DEF.big),top:num(d.top,3,100,DEF.top),names:J(d.names,{}),hide};S.cfgAt=+d.at||0;render()},()=>{}));
-  if(S.canEdit)startSync(false);
+  S.unsubs.push(Fs.onSnapshot(Fs.collection(fs,"rewlog"),snap=>{const L=[];snap.docs.forEach(x=>{const a=x.data()||{};if(str(a.who,40)&&+a.pts>0&&isFinite(+a.dt))L.push(Object.assign({id:x.id},a,{who:str(a.who,40),pts:+a.pts,dt:+a.dt}))});S.log=L;render()},
+    ()=>{S.log=S.log||[];render()}));
+  S.unsubs.push(Fs.onSnapshot(Fs.doc(fs,"rewcfg","settings"),snap=>{const d=snap.exists()?(snap.data()||{}):{},J=t=>{try{const o=JSON.parse(t||"");return Array.isArray(o)?o:null}catch(_){return null}};
+    const acts=(J(d.acts)||DEF_ACTS).map(a=>({id:str(a.id,40),name:str(a.name,60),pts:Math.round(num(a.pts,1,1000,5)),on:a.on!==false})).filter(a=>a.id&&a.name);
+    S.cfg={acts:acts.length?acts:DEF_ACTS,people:(J(d.people)||[]).map(n=>str(n,40)).filter(Boolean),top:num(d.top,3,100,10)};S.cfgAt=+d.at||0;render()},()=>{}));
 }
-function stopData(){S.unsubs.forEach(u=>{try{u()}catch(_){}});S.unsubs=[];stopSync();S.days=null;S.idx=new Map();S.awards=new Map()}
-
-/* ---------- keeping the score sheets up to date ----------
-   The work comes from the SAP export every tool shares: picks from the Picking audit list, putaways from the Putaway audit list and
-   internal moves from the Warehouse transactions counts. Accuracy comes from the results entered in the two audit tools. Whenever
-   someone whose group can edit this board and see those tools has the page open, it reads the last 45 days of them, works out each
-   day's sheet and saves the days that changed. Rebuild all scores on the Settings tab does the same for every day on record. */
-function stopSync(){if(S.sync){S.sync.unsubs.forEach(u=>{try{u()}catch(_){}});S.sync=null}}
-function startSync(all){
-  stopSync();const {Fs,fs}=S.fb,from=all?0:dayNow()-SYNC_DAYS,y=S.sync={from,all,got:{},data:{},off:false,unsubs:[],saved:0};
-  for(const n of SRCS){const c=Fs.collection(fs,n),q=/aud$/.test(n)?Fs.query(c,Fs.where("dt",">=",from)):Fs.query(c,Fs.where(Fs.documentId(),">=",iso(from)));
-    y.unsubs.push(Fs.onSnapshot(q,snap=>{if(S.sync!==y)return;y.data[n]=snap.docs.map(x=>({id:x.id,d:x.data()||{}}));y.got[n]=true;queueSync()},()=>{if(S.sync!==y)return;y.off=true;render()}))}}
-let syncT;function queueSync(){clearTimeout(syncT);syncT=setTimeout(doSync,1500)}
-function buildSheets(y){
-  const m=new Map(),J=t=>{try{return JSON.parse(t||"[]")}catch(_){return []}};
-  const cell=(date,u)=>{u=String(u||"").trim().slice(0,40);if(!u||u==="(blank)"||!/^\d{4}-\d\d-\d\d$/.test(date))return null;let d=m.get(date);if(!d){d=new Map();m.set(date,d)}let c=d.get(u);if(!c){c=[u,0,0,0,0,0,0,0,0];d.set(u,c)}return c};
-  for(const x of y.data.pickdays)for(const r of J(x.d.rows)){const c=cell(x.id,r.by);if(c){c[1]++;c[2]+=+r.q||0}}
-  for(const x of y.data.putdays)for(const r of J(x.d.rows)){const c=cell(x.id,r.by);if(c){c[3]++;c[4]+=+r.q||0;if(r.cat==="Internal move")c[8]++}}
-  for(const x of y.data.wtdays)for(const r of J(x.d.cube)){if(r[1]!=="Internal move")continue;const c=cell(x.id,r[0]);if(c)c[5]+=+r[4]||0}
-  for(const n of ["pickaud","putaud"])for(const x of y.data[n]){const a=x.d;if(a.res!=="ok"&&a.res!=="error")continue;const dt=+a.dt;if(!isFinite(dt)||dt<y.from)continue;
-    const c=cell(iso(dt),a.who);if(c)c[a.res==="ok"?6:7]++}
-  const out=new Map();
-  for(const [date,d] of m){const rows=[...d.values()].map(c=>[c[0],c[1],r3(c[2]),c[3],r3(c[4]),Math.max(0,c[5]-c[8]),c[6],c[7]]).filter(c=>c.slice(1).some(Boolean)).sort((a,b)=>a[0]<b[0]?-1:1);
-    out.set(date,rows)}
-  return out}
-async function doSync(){
-  const y=S.sync;if(!y||y.off||S.syncing||!S.days||!S.canEdit||!SRCS.every(n=>y.got[n]))return;
-  const {Fs,fs}=S.fb;S.syncing=true;let n=0;
-  try{for(const [date,rows] of buildSheets(y)){const s=JSON.stringify(rows),old=S.days.get(date);
-      if(old?old.str===s:!rows.length)continue;if(s.length>190000)continue;
-      await Fs.setDoc(Fs.doc(fs,"rewdays",date),{date,n:rows.length,rows:s,by:S.authUser.uid,byName:S.myName||S.authUser.email||"",at:Date.now()});n++}
-    if(S.sync===y){y.saved+=n;if(y.all){toast(n?"Rebuilt. "+nf(n,0)+(n===1?" day was":" days were")+" updated.":"Rebuilt. Every day was already up to date.",9000);y.all=false}}}
-  catch(e){if(S.sync===y){y.off=true;if(y.all)toast(refused(e),9000)}}
-  finally{S.syncing=false;render()}}
+function stopData(){S.unsubs.forEach(u=>{try{u()}catch(_){}});S.unsubs=[];S.log=null}
 
 /* ---------- the period showing ---------- */
-function latestDay(){let m=-1;for(const d of S.days.values())if(d.dn>m)m=d.dn;return m}
-function anchor(){return S.day!=null?S.day:latestDay()}
-function period(){const a=anchor();if(S.range==="all")return [-1e9,1e9];if(S.range==="day")return [a,a];
-  if(S.range==="week"){const w=new Date(a*86400000).getUTCDay();return [a-w,a-w+6]}
-  const x=new Date(a*86400000),y=x.getUTCFullYear(),mo=x.getUTCMonth();return [Date.UTC(y,mo,1)/86400000,Date.UTC(y,mo+1,0)/86400000]}
-function periodText(){const [f,t]=period();if(S.range==="all")return "all dates";if(S.range==="day")return mdyDay(f);
-  if(S.range==="week")return "week of "+mdyDay(f)+" to "+mdyDay(t);return new Date(f*86400000).toLocaleString("en-US",{month:"long",year:"numeric",timeZone:"UTC"})}
+function anchor(){return S.day!=null?S.day:dayNow()}
+function period(){const a=anchor(),x=new Date(a*86400000),y=x.getUTCFullYear(),mo=x.getUTCMonth();
+  if(S.range==="all")return [-1e9,1e9];if(S.range==="week"){const w=x.getUTCDay();return [a-w,a-w+6]}
+  if(S.range==="year")return [Date.UTC(y,0,1)/86400000,Date.UTC(y,11,31)/86400000];
+  return [Date.UTC(y,mo,1)/86400000,Date.UTC(y,mo+1,0)/86400000]}
+function periodText(){const [f]=period(),[,t]=period();if(S.range==="all")return "all dates";if(S.range==="week")return "the week of "+mdyDay(f)+" to "+mdyDay(t);
+  if(S.range==="year")return String(new Date(f*86400000).getUTCFullYear());return new Date(f*86400000).toLocaleString("en-US",{month:"long",year:"numeric",timeZone:"UTC"})}
 
-/* ---------- scoring ---------- */
-const tasksOf=r=>r[1]+r[3]+r[5];
-function workPts(r){const P=S.cfg.pts;return Math.max(0,r[1]*P.pick+r[3]*P.put+r[5]*P.move+r[6]*P.ok-r[7]*P.err)}
+/* ---------- standings ----------
+   People are matched on their name, ignoring capitals and extra spaces. The name is shown as it is on the People list, or else as
+   it was first typed. */
+function nameMap(){const m=new Map();for(const n of S.cfg.people)if(!m.has(norm(n)))m.set(norm(n),n);if(S.log)for(const a of S.log)if(!m.has(norm(a.who)))m.set(norm(a.who),a.who);return m}
 const BADGES=[
-  ["win","Day winner","Most points from work and audits on a day.","#f0c24b",o=>o.wins],
-  ["big","Big day",()=>nf(S.cfg.big,0)+" or more tasks in one day.","#3d9fe8",o=>o.big],
-  ["perfect","Perfect audit","10 or more lines audited in the period and no errors.","#2fbf71",o=>o.ok>=10&&!o.er?1:0],
-  ["streak","On a streak","Scored on 5 or more working days in a row.","#e8a33d",o=>o.streak>=5?1:0],
-  ["all","All-rounder","Picks, putaways and internal moves in the same period.","#a78bfa",o=>o.pk&&o.pt&&o.mv?1:0],
-  ["rec","Recognized","Given recognition points by a supervisor.","#ff8674",o=>o.awN]
+  ["regular","Regular","Took part in 5 or more activities in the period.","#3d9fe8",o=>o.n>=5?1:0],
+  ["all","All-rounder","Took part in 3 or more different kinds of activity in the period.","#a78bfa",o=>o.kinds>=3?1:0],
+  ["goto","Go-to person","Did the same activity 3 or more times in the period.","#2fbf71",o=>o.acts.filter(x=>x.n>=3).length],
+  ["weeks","Every week","Took part in at least one activity in each of the last 4 weeks.","#e8a33d",o=>o.weeks>=4?1:0]
 ];
-function streakOf(u,dns){let n=0;for(let i=dns.length-1;i>=0;i--){const r=S.idx.get(dns[i]).get(u);if(r&&workPts(r)>0)n++;else break}return n}
 function standings(){
-  const [f,t]=period(),m=new Map();
-  const get=u=>{let o=m.get(u);if(!o){o={u,pk:0,pkU:0,pt:0,ptU:0,mv:0,ok:0,er:0,work:0,aw:0,awN:0,awl:[],days:[],wins:0,big:0,streak:0};m.set(u,o)}return o};
-  for(const d of S.days.values()){if(d.dn<f||d.dn>t)continue;let best=0,top=[];
-    for(const r of d.rows){if(!shown(r[0]))continue;const o=get(r[0]),p=workPts(r);
-      o.pk+=r[1];o.pkU+=r[2];o.pt+=r[3];o.ptU+=r[4];o.mv+=r[5];o.ok+=r[6];o.er+=r[7];o.work+=p;o.days.push({dn:d.dn,r,p});if(tasksOf(r)>=S.cfg.big)o.big++;
-      if(p>best){best=p;top=[o]}else if(p===best&&p>0)top.push(o)}
-    top.forEach(o=>o.wins++)}
-  for(const a of S.awards.values()){const dt=+a.dt;if(dt<f||dt>t||!shown(a.who))continue;const o=get(a.who);o.aw+=+a.pts;o.awN++;o.awl.push(a)}
-  const dns=[...S.idx.keys()].filter(d=>d<=t).sort((a,b)=>a-b);
-  const L=[...m.values()].filter(o=>o.work+o.aw>0||o.pk+o.pt+o.mv>0);
-  for(const o of L){o.pts=r3(o.work+o.aw);o.tasks=o.pk+o.pt+o.mv;o.units=r3(o.pkU+o.ptU);o.acc=o.ok+o.er?o.ok/(o.ok+o.er):null;o.streak=streakOf(o.u,dns);
+  const [f,t]=period(),names=nameMap(),m=new Map(),wk=new Map();
+  for(const a of S.log){const k=norm(a.who);if(a.dt<=t){let w=wk.get(k);if(!w){w=new Set();wk.set(k,w)}w.add(weekOf(a.dt))}
+    if(a.dt<f||a.dt>t)continue;let o=m.get(k);if(!o){o={k,name:names.get(k)||a.who,pts:0,n:0,by:new Map(),list:[]};m.set(k,o)}
+    o.pts+=a.pts;o.n++;o.list.push(a);const an=actName(a);let x=o.by.get(an);if(!x){x={name:an,n:0,pts:0};o.by.set(an,x)}x.n++;x.pts+=a.pts}
+  const end=weekOf(Math.min(t,dayNow())),L=[...m.values()];
+  for(const o of L){o.acts=[...o.by.values()].sort((a,b)=>b.pts-a.pts||b.n-a.n);o.kinds=o.acts.length;const w=wk.get(o.k);let n=0;while(w.has(end-n))n++;o.weeks=n;
     o.badges=BADGES.map(b=>[b,b[4](o)]).filter(x=>x[1]>0)}
-  L.sort((a,b)=>b.pts-a.pts||b.tasks-a.tasks||(nm(a.u)<nm(b.u)?-1:1));
+  L.sort((a,b)=>b.pts-a.pts||b.n-a.n||(norm(a.name)<norm(b.name)?-1:1));
   L.forEach((o,i)=>o.rank=i&&L[i-1].pts===o.pts?L[i-1].rank:i+1);
   return L}
-const accText=o=>o.acc==null?"":(o.acc*100).toFixed(o.acc===1?0:1)+"%";
-const badgeHtml=x=>`<span class="badge" style="--bc:${x[0][3]}" title="${esc(typeof x[0][2]==="function"?x[0][2]():x[0][2])}"><i></i>${esc(x[0][1])}${x[1]>1?" ×"+x[1]:""}</span>`;
+const didText=o=>o.acts.map(x=>x.name+(x.n>1?" ×"+x.n:"")).join(", ");
+const badgeHtml=x=>`<span class="badge" style="--bc:${x[0][3]}" title="${esc(x[0][2])}"><i></i>${esc(x[0][1])}${x[1]>1?" ×"+x[1]:""}</span>`;
 
 /* ---------- drawing ---------- */
 let CUR=[];
 function render(){
   if(!S.role)return;
-  const has=!!(S.days&&S.days.size);
+  const has=!!(S.log&&S.log.length);
   $("giveBtn").hidden=!S.canEdit;
-  let newest=0;if(S.days)for(const d of S.days.values())if(d.at>newest)newest=d.at;
-  const y=S.sync,live=S.days===null?"Loading…":has?`${nf(S.days.size,0)} ${S.days.size===1?"day":"days"} scored · scores last updated ${esc(stamp(newest))}`:"No scores yet";
-  const off=S.canEdit&&y&&y.off?`<span>Scores are not refreshed from this account. Its group also needs View on Picking audit, Putaway audit and Warehouse transactions.</span>`:"";
-  $("status").innerHTML=`<span><span class="dot ok"></span>${esc(S.myName||"")}${S.myName?" · ":""}${esc(S.grp||ROLE_LABEL[S.role])}</span><span>${live}</span>${off}`;
-  const views=[["board","Leaderboard"],["badges","Badges"],["rec","Recognition"]];if(S.isFull)views.push(["set","Settings"]);
+  let newest=null;if(S.log)for(const a of S.log)if(!newest||a.at>newest.at)newest=a;
+  const live=S.log===null?"Loading…":has?`${nf(S.log.length,0)} ${S.log.length===1?"entry":"entries"} logged · last ${esc(stamp(newest.at))}${newest.byName?" by "+esc(newest.byName):""}`:"Nothing logged yet";
+  $("status").innerHTML=`<span><span class="dot ok"></span>${esc(S.myName||"")}${S.myName?" · ":""}${esc(S.grp||ROLE_LABEL[S.role])}</span><span>${live}</span>`;
+  const views=[["board","Leaderboard"],["badges","Badges"],["rec","Activity log"]];if(S.isFull)views.push(["set","Settings"]);
   if(!views.some(v=>v[0]===S.view))S.view="board";
   const setV=S.view==="set";
-  $("noData").hidden=has||S.days===null||setV;
-  if(!has&&!setV){$("noData").innerHTML=S.days===null?"":`<strong>No scores yet</strong><span>The board scores the picks, putaways and internal moves in the SAP warehouse task export, and the results entered in the Putaway and Picking audits. Load the export on the <a href="../data/" style="color:var(--info)">Data upload</a> page, then open this board from an account that can edit it and the scores are worked out.</span>`}
+  $("noData").hidden=has||S.log===null||setV;
+  if(!has&&!setV)$("noData").innerHTML=S.log===null?"":`<strong>Nothing logged yet</strong><span>People earn points for taking part: 5S of an area, bin checks, the Safety Committee and Employee Engagement meetings, weekend support and the like. ${S.canEdit?"Use <b>Log an activity</b> to record who took part, and the board builds from there.":"A supervisor records who took part, and the board builds from there."}</span>`;
   $("views").innerHTML=views.map(v=>`<button type="button" class="view" role="tab" data-v="${v[0]}" aria-selected="${S.view===v[0]}">${v[1]}</button>`).join("");
   $("rangeBtns").innerHTML=RANGES.map(r=>`<button type="button" data-r="${r[0]}" aria-pressed="${S.range===r[0]}">${r[1]}</button>`).join("");
   $("rangeBtns").parentNode.hidden=setV||!has;
-  $("dayIn").value=has&&anchor()>=0?iso(anchor()):"";$("dayIn").classList.toggle("on",S.day!=null);
+  $("dayIn").value=iso(anchor());$("dayIn").classList.toggle("on",S.day!=null);
   ["vBoard","vBadges","vRec","vSet"].forEach(id=>$(id).hidden=true);
   if(setV){$("stats").innerHTML="";$("vSet").hidden=false;if(!S.setDrawn||!S.setDirty)renderSet();renderNote();return}
   S.setDrawn=false;S.setDirty=false;
-  if(!has){$("stats").innerHTML="";renderNote();return}
-  const L=CUR=standings();let pts=0,tasks=0,ok=0,er=0,aw=0,bd=0;for(const o of L){pts+=o.pts;tasks+=o.tasks;ok+=o.ok;er+=o.er;aw+=o.aw;bd+=o.badges.length}
-  $("stats").innerHTML=[["Associates",nf(L.length,0)],["Points",nf(pts,0)],["Tasks",nf(tasks,0)],["Audit accuracy",ok+er?(ok/(ok+er)*100).toFixed(1)+"%":"—"],["Recognition points",nf(aw,0)],["Badges earned",nf(bd,0)]]
-    .map(t=>`<div><dt>${t[0]}</dt><dd>${t[1]}</dd></div>`).join("");
+  if(!has){$("stats").innerHTML="";CUR=[];renderNote();return}
+  const L=CUR=standings();let pts=0,n=0,bd=0;const cnt=new Map();for(const o of L){pts+=o.pts;n+=o.n;bd+=o.badges.length;for(const x of o.acts)cnt.set(x.name,(cnt.get(x.name)||0)+x.n)}
+  const top=[...cnt].sort((a,b)=>b[1]-a[1])[0];
+  $("stats").innerHTML=[["People taking part",nf(L.length,0)],["Activities logged",nf(n,0)],["Points earned",nf(pts,0)],["Badges earned",nf(bd,0)]]
+    .map(t=>`<div><dt>${t[0]}</dt><dd>${t[1]}</dd></div>`).join("")+`<div style="grid-column:span 2"><dt>Most common activity</dt><dd style="font-size:1.35em;line-height:1.55;white-space:normal">${top?esc(top[0])+" · "+nf(top[1],0):"—"}</dd></div>`;
   $("tvText").textContent="Standings for "+periodText();
   if(S.view==="board"||S.tv){$("vBoard").hidden=false;renderBoard(L)}else if(S.view==="badges"){$("vBadges").hidden=false;renderBadges(L)}else{$("vRec").hidden=false;renderRec()}
   renderNote()}
 function renderBoard(L){
   const top=L.filter(o=>o.rank<=3).slice(0,3);
-  $("podium").innerHTML=top.map((o,i)=>`<div class="pod r${i+1}" data-u="${esc(o.u)}"><span class="medal">${o.rank}</span><div class="nm">${esc(nm(o.u))}</div><div class="pt">${nf(o.pts,0)}<small>points</small></div>
-    <div class="sub">${nf(o.tasks,0)} tasks${o.acc!=null?" · "+accText(o)+" accurate":""}</div><div class="bdg">${o.badges.map(badgeHtml).join("")}</div></div>`).join("");
+  $("podium").innerHTML=top.map((o,i)=>`<div class="pod r${i+1}" data-u="${esc(o.k)}"><span class="medal">${o.rank}</span><div class="nm">${esc(o.name)}</div><div class="pt">${nf(o.pts,0)}<small>points</small></div>
+    <div class="sub">${nf(o.n,0)} ${o.n===1?"activity":"activities"}</div><div class="bdg">${o.badges.map(badgeHtml).join("")}</div></div>`).join("");
   $("podium").hidden=!top.length;
-  const q=norm(S.q);let rows=q&&!S.tv?L.filter(o=>norm(nm(o.u)+" "+o.u).includes(q)):L;if(S.tv)rows=rows.slice(0,S.cfg.top);
+  const q=norm(S.q);let rows=q&&!S.tv?L.filter(o=>o.k.includes(q)):L;if(S.tv)rows=rows.slice(0,S.cfg.top);
   $("cBoard").textContent=S.tv?"Top "+rows.length:nf(rows.length,0);
   const mx=Math.max(1,...L.map(o=>o.pts));
-  $("tBoard").innerHTML='<thead><tr><th class="t">Rank</th><th class="t">Associate</th><th class="t">Points</th><th>Picks</th><th>Putaways</th><th>Moves</th><th>Units</th><th>Audit accuracy</th><th>Recognition</th><th>Streak</th><th class="t">Badges</th></tr></thead><tbody>'
-    +(rows.length?rows.map(o=>`<tr class="click" data-u="${esc(o.u)}"><td class="t"><span class="rank${o.rank<=3?" r"+o.rank:""}">${o.rank}</span></td><td class="t n">${esc(nm(o.u))}</td>
-      <td class="t pts"><span class="meter" style="width:${(o.pts/mx*7).toFixed(2)}em"></span>${nf(o.pts,0)}</td><td>${o.pk||""}</td><td>${o.pt||""}</td><td>${o.mv||""}</td><td>${nf(o.units,0)}</td><td>${accText(o)}</td><td>${o.aw?"+"+nf(o.aw,0):""}</td><td>${o.streak>1?o.streak+" days":""}</td><td class="t"><div class="bdg">${o.badges.map(badgeHtml).join("")}</div></td></tr>`).join("")
-      :`<tr><td colspan="11" class="t" style="color:var(--muted)">${L.length?"Nobody matches that search.":"Nothing was scored for "+esc(periodText())+". Choose another date or period."}</td></tr>`)+"</tbody>"}
+  $("tBoard").innerHTML='<thead><tr><th class="t">Rank</th><th class="t">Name</th><th class="t">Points</th><th>Activities</th><th class="t">What they took part in</th><th class="t">Badges</th></tr></thead><tbody>'
+    +(rows.length?rows.map(o=>`<tr class="click" data-u="${esc(o.k)}"><td class="t"><span class="rank${o.rank<=3?" r"+o.rank:""}">${o.rank}</span></td><td class="t n">${esc(o.name)}</td>
+      <td class="t pts"><span class="meter" style="width:${(o.pts/mx*7).toFixed(2)}em"></span>${nf(o.pts,0)}</td><td>${o.n}</td><td class="t wrap">${esc(didText(o))}</td><td class="t"><div class="bdg">${o.badges.map(badgeHtml).join("")}</div></td></tr>`).join("")
+      :`<tr><td colspan="6" class="t" style="color:var(--muted)">${L.length?"Nobody matches that search.":"Nothing was logged for "+esc(periodText())+". Choose another date or period."}</td></tr>`)+"</tbody>"}
 function renderBadges(L){
   $("bCards").innerHTML=BADGES.map(b=>{const who=L.map(o=>[o,b[4](o)]).filter(x=>x[1]>0).sort((x,y)=>y[1]-x[1]||x[0].rank-y[0].rank);
-    return `<div class="bcard" style="--bc:${b[3]}"><h3>${esc(b[1])}</h3><p>${esc(typeof b[2]==="function"?b[2]():b[2])}</p><div class="who">${who.length?who.map(x=>`<span class="badge" style="--bc:${b[3]}"><i></i>${esc(nm(x[0].u))}${x[1]>1?" ×"+x[1]:""}</span>`).join(""):`<span class="none">Nobody yet for ${esc(periodText())}.</span>`}</div></div>`}).join("")}
+    return `<div class="bcard" style="--bc:${b[3]}"><h3>${esc(b[1])}</h3><p>${esc(b[2])}</p><div class="who">${who.length?who.map(x=>`<span class="badge" style="--bc:${b[3]}"><i></i>${esc(x[0].name)}${x[1]>1?" ×"+x[1]:""}</span>`).join(""):`<span class="none">Nobody yet for ${esc(periodText())}.</span>`}</div></div>`}).join("")}
 function renderRec(){
-  const [f,t]=period(),A=[...S.awards].filter(([,a])=>+a.dt>=f&&+a.dt<=t).sort((x,y)=>y[1].dt-x[1].dt||y[1].at-x[1].at);
-  $("cRec").textContent=nf(A.length,0);$("recHint").textContent=S.canEdit?"Use Give points to add one":"";
-  $("tRec").innerHTML=A.length?'<thead><tr><th class="t">Date</th><th class="t">Associate</th><th class="t">What for</th><th>Points</th><th class="t">What they did</th><th class="t">Given by</th>'+(S.isFull?"<th></th>":"")+"</tr></thead><tbody>"
-    +A.map(([id,a])=>`<tr><td class="t">${mdyDay(+a.dt)}</td><td class="t n">${esc(nm(a.who))}</td><td class="t"><span class="pill">${esc(CL[a.cat]||"Other")}</span></td><td class="n pos">+${nf(a.pts,0)}</td><td class="t" style="white-space:normal;min-width:16em">${esc(a.note||"")}</td><td class="t">${esc(a.byName||"")}</td>${S.isFull?`<td><button type="button" class="linkbtn" data-del="${esc(id)}">${S.delAsk===id?"Select again to remove":"Remove"}</button></td>`:""}</tr>`).join("")+"</tbody>"
-    :`<tbody><tr><td class="t" style="color:var(--muted)">No recognition points were given for ${esc(periodText())}.</td></tr></tbody>`}
-function allUsers(){const s=new Set(Object.keys(S.cfg.names));if(S.days)for(const d of S.days.values())for(const r of d.rows)s.add(r[0]);for(const a of S.awards.values())s.add(a.who);return [...s].sort()}
+  const [f,t]=period(),names=nameMap(),inP=S.log.filter(a=>a.dt>=f&&a.dt<=t),kinds=[...new Set(inP.map(actName))].sort();
+  if(S.fAct&&!kinds.includes(S.fAct))S.fAct="";
+  $("fAct").innerHTML='<option value="">All activities</option>'+kinds.map(k=>`<option${S.fAct===k?" selected":""}>${esc(k)}</option>`).join("");
+  const A=inP.filter(a=>!S.fAct||actName(a)===S.fAct).sort((x,y)=>y.dt-x.dt||y.at-x.at),uid=S.authUser.uid,any=A.some(a=>S.isFull||(S.canEdit&&a.by===uid));
+  $("cRec").textContent=nf(A.length,0);$("recHint").textContent=S.canEdit?"Use Log an activity to add to it":"";
+  $("tRec").innerHTML=A.length?'<thead><tr><th class="t">Date</th><th class="t">Name</th><th class="t">Activity</th><th>Points</th><th class="t">Note</th><th class="t">Logged by</th>'+(any?"<th></th>":"")+"</tr></thead><tbody>"
+    +A.map(a=>`<tr><td class="t">${mdyDay(a.dt)}</td><td class="t n">${esc(names.get(norm(a.who))||a.who)}</td><td class="t"><span class="pill">${esc(actName(a))}</span></td><td class="n pos">+${nf(a.pts,0)}</td><td class="t wrap">${esc(a.note||"")}</td><td class="t">${esc(a.byName||"")}</td>${any?`<td>${S.isFull||(S.canEdit&&a.by===uid)?`<button type="button" class="linkbtn" data-del="${esc(a.id)}">${S.delAsk===a.id?"Select again to remove":"Remove"}</button>`:""}</td>`:""}</tr>`).join("")+"</tbody>"
+    :`<tbody><tr><td class="t" style="color:var(--muted)">Nothing was logged for ${esc(periodText())}.</td></tr></tbody>`}
+function actRow(a){return `<tr data-id="${esc(a.id)}"><td class="t"><input class="inp" maxlength="60" value="${esc(a.name)}" placeholder="Name of the activity" aria-label="Activity name"></td><td class="t"><input class="inp" type="number" min="1" max="1000" step="1" value="${a.pts}" style="max-width:7em" aria-label="Points"></td><td class="t"><input type="checkbox"${a.on?" checked":""} aria-label="In use"></td></tr>`}
 function renderSet(){
-  const P=S.cfg.pts;S.setDrawn=true;S.setDirty=false;
-  $("setPts").innerHTML=PT_FIELDS.map(([k,l])=>`<div class="fld"><label for="sp_${k}">${l}</label><input class="inp" id="sp_${k}" type="number" min="0" max="1000" step="0.5" value="${P[k]}"></div>`).join("")
-    +`<div class="fld"><label for="sBig">Tasks in a day for the Big day badge</label><input class="inp" id="sBig" type="number" min="1" step="1" value="${S.cfg.big}"></div>`
-    +`<div class="fld"><label for="sTop">Places shown in TV view</label><input class="inp" id="sTop" type="number" min="3" max="100" step="1" value="${S.cfg.top}"></div>`;
-  const U=allUsers();$("cSet").textContent=nf(U.length,0);
-  $("tSet").innerHTML=U.length?'<thead><tr><th class="t">SAP user</th><th class="t">Name shown on the board</th><th class="t">On the board</th></tr></thead><tbody>'
-    +U.map(u=>`<tr data-su="${esc(u)}"><td class="t n">${esc(u)}</td><td class="t"><input class="inp" maxlength="40" value="${esc(S.cfg.names[u]||"")}" placeholder="${esc(u)}" aria-label="Name for ${esc(u)}"></td><td class="t"><input type="checkbox"${S.cfg.hide[u]?"":" checked"} aria-label="Show ${esc(u)} on the board"></td></tr>`).join("")+"</tbody>"
-    :'<tbody><tr><td class="t" style="color:var(--muted)">Associates appear here once a day has been scored.</td></tr></tbody>';
-  $("setText").innerHTML=S.cfgAt?"Settings last saved "+esc(stamp(S.cfgAt))+".":"These are the starting values. Nothing has been saved yet."}
-function renderNote(){const P=S.cfg.pts;
-  $("note").innerHTML=`<b style="color:var(--muted)">How points are earned.</b> ${nf(P.pick)} for each pick, ${nf(P.put)} for each putaway and ${nf(P.move)} for each internal move confirmed in SAP, ${nf(P.ok)} for each line an audit found correct${P.err?", less "+nf(P.err)+" for each audit error":""}, plus any recognition points a supervisor gives. Work is counted from the SAP warehouse task export, so the board is as current as the last export loaded. Week runs Sunday to Saturday. A streak counts the days in a row, among the days on the board, that an associate scored.`}
+  S.setDrawn=true;S.setDirty=false;$("cSet").textContent=nf(S.cfg.acts.length,0);
+  $("tSet").innerHTML='<thead><tr><th class="t">Activity</th><th class="t">Points</th><th class="t">In use</th></tr></thead><tbody>'+S.cfg.acts.map(actRow).join("")+"</tbody>";
+  $("sPeople").value=S.cfg.people.join("\n");$("sTop").value=S.cfg.top;
+  $("setText").innerHTML=S.cfgAt?"Settings last saved "+esc(stamp(S.cfgAt))+".":"This is the starting list. Nothing has been saved yet."}
+function renderNote(){
+  $("note").innerHTML=`<b style="color:var(--muted)">How points are earned.</b> Points come from taking part, not from productivity numbers: ${S.cfg.acts.filter(a=>a.on).map(a=>esc(a.name)+" "+nf(a.pts,0)).join(", ")}. A supervisor logs who took part. Weeks run Sunday to Saturday.`}
 
-/* ---------- one associate: how the points add up ---------- */
-function openDlg(u){
-  const o=CUR.find(x=>x.u===u);if(!o||S.tv)return;const P=S.cfg.pts;
-  $("dTitle").textContent=nm(o.u)+(nm(o.u)!==o.u?" · "+o.u:"")+" · "+periodText();
-  $("dFacts").innerHTML=[["Rank",o.rank+" of "+CUR.length],["Points",nf(o.pts,0)],["Tasks",nf(o.tasks,0)],["Units",nf(o.units,0)],["Audit accuracy",accText(o)||"Not audited"],["Streak",o.streak+(o.streak===1?" day":" days")]]
+/* ---------- one person: what the points are for ---------- */
+function openDlg(k){
+  const o=CUR.find(x=>x.k===k);if(!o||S.tv)return;
+  $("dTitle").textContent=o.name+" · "+periodText();
+  $("dFacts").innerHTML=[["Rank",o.rank+" of "+CUR.length],["Points",nf(o.pts,0)],["Activities",nf(o.n,0)],["Kinds of activity",nf(o.kinds,0)],["Weeks in a row",nf(o.weeks,0)]]
     .map(f=>`<div><b>${f[0]}</b><span>${esc(f[1])}</span></div>`).join("");
   $("dBdg").innerHTML=o.badges.map(badgeHtml).join("");
-  const line=(l,n,p,sign)=>n?`<tr><td class="t">${l}</td><td>${nf(n,0)}</td><td>× ${nf(p)}</td><td class="n">${sign<0?"−":""}${nf(n*p)}</td></tr>`:"";
-  $("dPts").innerHTML='<thead><tr><th class="t">Points from</th><th>Count</th><th>Each</th><th>Points</th></tr></thead><tbody>'
-    +line("Picks",o.pk,P.pick)+line("Putaways",o.pt,P.put)+line("Internal moves",o.mv,P.move)+line("Lines audited correct",o.ok,P.ok)+(P.err?line("Audit errors",o.er,P.err,-1):"")
-    +(o.aw?`<tr><td class="t">Recognition</td><td>${o.awN}</td><td></td><td class="n">${nf(o.aw,0)}</td></tr>`:"")
-    +`<tr class="tot"><td class="t">Total</td><td></td><td></td><td>${nf(o.pts)}</td></tr></tbody>`;
-  const ev=o.days.map(d=>[d.dn,0,`<tr><td class="t">${mdyDay(d.dn)}</td><td>${d.r[1]||""}</td><td>${d.r[3]||""}</td><td>${d.r[5]||""}</td><td>${d.r[6]||""}</td><td>${d.r[7]||""}</td><td class="n">${nf(d.p)}</td></tr>`])
-    .concat(o.awl.map(a=>[+a.dt,1,`<tr><td class="t">${mdyDay(+a.dt)}</td><td colspan="5" class="t" style="white-space:normal">Recognition, ${esc(CL[a.cat]||"Other")}${a.note?": "+esc(a.note):""}</td><td class="n pos">+${nf(a.pts,0)}</td></tr>`]))
-    .sort((a,b)=>b[0]-a[0]||a[1]-b[1]);
-  $("dDays").innerHTML='<thead><tr><th class="t">Day</th><th>Picks</th><th>Putaways</th><th>Moves</th><th>Correct</th><th>Errors</th><th>Points</th></tr></thead><tbody>'+ev.map(x=>x[2]).join("")+"</tbody>";
+  $("dPts").innerHTML='<thead><tr><th class="t">Activity</th><th>Times</th><th>Points</th></tr></thead><tbody>'+o.acts.map(x=>`<tr><td class="t">${esc(x.name)}</td><td>${x.n}</td><td class="n">${nf(x.pts,0)}</td></tr>`).join("")
+    +`<tr class="tot"><td class="t">Total</td><td>${o.n}</td><td>${nf(o.pts,0)}</td></tr></tbody>`;
+  $("dDays").innerHTML='<thead><tr><th class="t">Date</th><th class="t">Activity</th><th class="t">Note</th><th class="t">Logged by</th><th>Points</th></tr></thead><tbody>'
+    +o.list.slice().sort((a,b)=>b.dt-a.dt||b.at-a.at).map(a=>`<tr><td class="t">${mdyDay(a.dt)}</td><td class="t">${esc(actName(a))}</td><td class="t wrap">${esc(a.note||"")}</td><td class="t">${esc(a.byName||"")}</td><td class="n pos">+${nf(a.pts,0)}</td></tr>`).join("")+"</tbody>";
   $("dlg").showModal()}
 
-/* ---------- recognition points ---------- */
+/* ---------- logging an activity: one activity and date, as many people as took part ---------- */
 function openGive(){
-  if(!S.canEdit)return;const U=allUsers().filter(shown);
-  $("gWho").innerHTML='<option value="">Choose an associate</option>'+U.map(u=>[nm(u),u]).sort((a,b)=>a[0].toLowerCase()<b[0].toLowerCase()?-1:1).map(([n,u])=>`<option value="${esc(u)}">${esc(n)}${n!==u?" ("+esc(u)+")":""}</option>`).join("");
-  S.gCat="";$("gPts").value="";$("gNote").value="";$("gDay").value=iso(dayNow());$("gErr").hidden=true;drawGive();$("gDlg").showModal()}
-function drawGive(){$("gCat").innerHTML=CATS.map(c=>`<button type="button" data-c="${c[0]}" aria-pressed="${S.gCat===c[0]}">${c[1]}</button>`).join("");
-  $("gQuick").innerHTML=[5,10,25,50].map(n=>`<button type="button" data-n="${n}" aria-pressed="${+$("gPts").value===n}">${n}</button>`).join("")}
-$("gCat").addEventListener("click",e=>{const b=e.target.closest("button[data-c]");if(b){S.gCat=b.dataset.c;drawGive()}});
-$("gQuick").addEventListener("click",e=>{const b=e.target.closest("button[data-n]");if(b){$("gPts").value=b.dataset.n;drawGive()}});
-$("gPts").addEventListener("input",drawGive);
+  if(!S.canEdit)return;const A=S.cfg.acts.filter(a=>a.on);
+  $("gAct").innerHTML='<option value="">Choose the activity</option>'+A.map(a=>`<option value="${esc(a.id)}">${esc(a.name)} · ${nf(a.pts,0)} points</option>`).join("");
+  S.gSel=new Set();S.gExtra=[];$("gFind").value="";$("gNew").value="";$("gNote").value="";$("gDay").value=iso(dayNow());$("gErr").hidden=true;drawPeople();$("gDlg").showModal()}
+function drawPeople(){
+  const q=norm($("gFind").value),all=[...new Map([...nameMap().values(),...S.gExtra].map(n=>[norm(n),n])).entries()].sort((a,b)=>a[0]<b[0]?-1:1),L=all.filter(([k])=>!q||k.includes(q)||S.gSel.has(k));
+  $("gPeople").innerHTML=L.length?L.map(([k,n])=>`<label><input type="checkbox" value="${esc(k)}"${S.gSel.has(k)?" checked":""}><span>${esc(n)}</span></label>`).join("")
+    :`<span class="none">${all.length?"No name matches. Add it below.":"No names yet. Add the people who took part below. Admins can keep a list on the Settings tab."}</span>`;
+  $("gCount").textContent=S.gSel.size?"· "+S.gSel.size+" chosen":"";$("gSave").textContent=S.gSel.size>1?"Log it for "+S.gSel.size+" people":"Log it"}
+$("gPeople").addEventListener("change",e=>{const c=e.target;if(c.type!=="checkbox")return;c.checked?S.gSel.add(c.value):S.gSel.delete(c.value);drawPeople()});
+$("gFind").addEventListener("input",drawPeople);
+function addName(){const n=str($("gNew").value,40);if(!n)return;const k=norm(n);if(!nameMap().has(k)&&!S.gExtra.some(x=>norm(x)===k))S.gExtra.push(n);S.gSel.add(k);$("gNew").value="";$("gFind").value="";drawPeople()}
+$("gAdd").addEventListener("click",addName);
+$("gNew").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();addName()}});
 $("gSave").addEventListener("click",async()=>{
-  const {Fs,fs}=S.fb,err=$("gErr"),who=$("gWho").value,pts=Math.round(+$("gPts").value),day=$("gDay").value,note=str($("gNote").value,300);err.hidden=true;
-  const bad=!who?"Choose the associate.":!S.gCat?"Choose what the points are for.":!(pts>=1&&pts<=1000)?"Enter the points, from 1 to 1,000.":!day?"Choose the date.":!note?"Say what they did, so it shows on the board.":"";
+  const {Fs,fs}=S.fb,err=$("gErr"),act=S.cfg.acts.find(a=>a.id===$("gAct").value&&a.on),day=$("gDay").value,note=str($("gNote").value,300);err.hidden=true;
+  if(str($("gNew").value,40))addName();
+  const bad=!act?"Choose the activity.":!day?"Choose the date.":!S.gSel.size?"Choose who took part.":S.gSel.size>400?"Log 400 people or fewer at a time.":"";
   if(bad){err.textContent=bad;err.hidden=false;return}
+  const dt=dayOf(day),names=new Map([...nameMap(),...S.gExtra.map(n=>[norm(n),n])]),have=new Set(S.log.filter(a=>a.dt===dt&&a.act===act.id).map(a=>norm(a.who)));
+  const who=[...S.gSel].filter(k=>!have.has(k)),skip=S.gSel.size-who.length;
+  if(!who.length){err.textContent=(skip===1?"That person is":"Those people are")+" already logged for this activity on that date.";err.hidden=false;return}
   $("gSave").disabled=true;
-  try{await Fs.addDoc(Fs.collection(fs,"rewawards"),{who,pts,cat:S.gCat,note,dt:dayOf(day),by:S.authUser.uid,byName:S.myName||S.authUser.email||"",at:Date.now()});
-    $("gDlg").close();toast(nf(pts,0)+" points given to "+nm(who)+".")}
+  try{const b=Fs.writeBatch(fs),at=Date.now();
+    for(const k of who)b.set(Fs.doc(Fs.collection(fs,"rewlog")),{who:names.get(k)||k,act:act.id,actName:act.name,pts:act.pts,note,dt,by:S.authUser.uid,byName:S.myName||S.authUser.email||"",at});
+    await b.commit();$("gDlg").close();
+    toast(act.name+" logged for "+(who.length===1?names.get(who[0]):who.length+" people")+", "+nf(act.pts,0)+" points each."+(skip?" "+skip+" already logged for that date "+(skip===1?"was":"were")+" skipped.":""),9000)}
   catch(e){err.textContent=refused(e);err.hidden=false}
   finally{$("gSave").disabled=false}});
 $("giveBtn").addEventListener("click",openGive);
-$("tRec").addEventListener("click",async e=>{const b=e.target.closest("button[data-del]");if(!b||!S.isFull)return;const id=b.dataset.del;
+$("fAct").addEventListener("change",e=>{S.fAct=e.target.value;render()});
+$("tRec").addEventListener("click",async e=>{const b=e.target.closest("button[data-del]");if(!b||!S.canEdit)return;const id=b.dataset.del;
   if(S.delAsk!==id){S.delAsk=id;render();return}
-  S.delAsk="";try{await S.fb.Fs.deleteDoc(S.fb.Fs.doc(S.fb.fs,"rewawards",id));toast("Removed.")}catch(x){toast(refused(x))}});
+  S.delAsk="";try{await S.fb.Fs.deleteDoc(S.fb.Fs.doc(S.fb.fs,"rewlog",id));toast("Removed.")}catch(x){toast(refused(x))}});
 
 /* ---------- settings ---------- */
 $("vSet").addEventListener("input",()=>{S.setDirty=true});
+$("addAct").addEventListener("click",()=>{S.setDirty=true;$("tSet").tBodies[0].insertAdjacentHTML("beforeend",actRow({id:"a"+Date.now().toString(36),name:"",pts:10,on:true}));const r=$("tSet").tBodies[0].lastElementChild;r.querySelector("input").focus()});
 $("setSave").addEventListener("click",async()=>{
-  if(!S.isFull)return;const {Fs,fs}=S.fb,pts={},names={},hide=[];
-  for(const [k] of PT_FIELDS)pts[k]=num($("sp_"+k).value,0,1000,DEF.pts[k]);
-  document.querySelectorAll("#tSet tr[data-su]").forEach(tr=>{const u=tr.dataset.su,n=str(tr.querySelector("input.inp").value,40);if(n&&n!==u)names[u]=n;if(!tr.querySelector("input[type=checkbox]").checked)hide.push(u)});
-  const doc={pts,big:Math.round(num($("sBig").value,1,100000,DEF.big)),top:Math.round(num($("sTop").value,3,100,DEF.top)),names:JSON.stringify(names),hide:JSON.stringify(hide),by:S.authUser.uid,byName:S.myName||S.authUser.email||"",at:Date.now()};
+  if(!S.isFull)return;const {Fs,fs}=S.fb,acts=[],seen=new Set(),people=[];
+  document.querySelectorAll("#tSet tr[data-id]").forEach(tr=>{const i=tr.querySelectorAll("input"),name=str(i[0].value,60);if(name)acts.push({id:tr.dataset.id,name,pts:Math.round(num(i[1].value,1,1000,5)),on:i[2].checked})});
+  if(!acts.some(a=>a.on)){toast("Keep at least one activity in use.");return}
+  for(const l of $("sPeople").value.split("\n")){const n=str(l,40),k=norm(n);if(n&&!seen.has(k)){seen.add(k);people.push(n)}}
+  const doc={acts:JSON.stringify(acts),people:JSON.stringify(people),top:Math.round(num($("sTop").value,3,100,10)),by:S.authUser.uid,byName:S.myName||S.authUser.email||"",at:Date.now()};
+  if(doc.acts.length>50000||doc.people.length>90000){toast("That is too much to save. Shorten the lists.");return}
   $("setSave").disabled=true;
   try{await Fs.setDoc(Fs.doc(fs,"rewcfg","settings"),doc);S.setDirty=false;toast("Settings saved.")}catch(e){toast(refused(e),9000)}finally{$("setSave").disabled=false}});
-$("rebuildBtn").addEventListener("click",()=>{if(!S.isFull)return;toast("Reading every day on record…",true);startSync(true)});
 
 /* ---------- TV view ---------- */
 function setTv(on){S.tv=on;document.body.classList.toggle("tv",on);if(on){S.view="board";const el=document.documentElement;if(el.requestFullscreen)el.requestFullscreen().catch(()=>{})}
@@ -589,19 +556,19 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape"&&S.tv&&!document.que
 /* ---------- Excel ---------- */
 $("xlsBtn").addEventListener("click",()=>{
   const L=CUR;if(!L.length)return;
-  const head=["Rank","Associate","SAP user","Points","Picks","Putaways","Internal moves","Units","Audited correct","Audit errors","Audit accuracy","Recognition points","Streak (days)","Badges"];
-  const out=[head].concat(L.map(o=>[o.rank,nm(o.u),o.u,o.pts,o.pk,o.pt,o.mv,o.units,o.ok,o.er,o.acc==null?"":Math.round(o.acc*1000)/1000,o.aw,o.streak,o.badges.map(x=>x[0][1]+(x[1]>1?" x"+x[1]:"")).join(", ")]));
-  const ws=XLSX.utils.aoa_to_sheet(out);ws["!cols"]=head.map((h,i)=>({wch:[6,22,14,9,8,10,14,9,15,12,14,18,13,50][i]}));
+  const head=["Rank","Name","Points","Activities","What they took part in","Badges"];
+  const ws=XLSX.utils.aoa_to_sheet([head].concat(L.map(o=>[o.rank,o.name,o.pts,o.n,didText(o).replace(/×/g,"x"),o.badges.map(x=>x[0][1]+(x[1]>1?" x"+x[1]:"")).join(", ")])));ws["!cols"]=[6,24,9,10,70,40].map(w=>({wch:w}));
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Standings");
-  const [f,t]=period(),A=[...S.awards.values()].filter(a=>+a.dt>=f&&+a.dt<=t).sort((x,y)=>y.dt-x.dt);
-  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([["Date","Associate","SAP user","What for","Points","What they did","Given by"]].concat(A.map(a=>[mdyDay(+a.dt),nm(a.who),a.who,CL[a.cat]||"Other",+a.pts,a.note||"",a.byName||""]))),"Recognition");
+  const [f,t]=period(),names=nameMap(),A=S.log.filter(a=>a.dt>=f&&a.dt<=t).sort((x,y)=>y.dt-x.dt);
+  const w2=XLSX.utils.aoa_to_sheet([["Date","Name","Activity","Points","Note","Logged by"]].concat(A.map(a=>[mdyDay(a.dt),names.get(norm(a.who))||a.who,actName(a),a.pts,a.note||"",a.byName||""])));w2["!cols"]=[12,24,34,8,50,20].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb,w2,"Activity log");
   const d=new Date();XLSX.writeFile(wb,"CEVA Rewards Board "+d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate())+".xlsx");
   toast("Exported the standings for "+periodText()+".")});
 
 /* ---------- clicks ---------- */
 $("views").addEventListener("click",e=>{const b=e.target.closest("button[data-v]");if(b){S.view=b.dataset.v;S.delAsk="";render()}});
 $("rangeBtns").addEventListener("click",e=>{const b=e.target.closest("button[data-r]");if(b){S.range=b.dataset.r;render()}});
-$("dayIn").addEventListener("change",e=>{const v=e.target.value;S.day=v?dayOf(v):null;if(S.range==="all")S.range="day";render()});
+$("dayIn").addEventListener("change",e=>{const v=e.target.value;S.day=v?dayOf(v):null;if(S.range==="all")S.range="month";render()});
 let qT;$("q").addEventListener("input",e=>{clearTimeout(qT);qT=setTimeout(()=>{S.q=e.target.value;render()},150)});
 $("tBoard").addEventListener("click",e=>{const tr=e.target.closest("tr[data-u]");if(tr)openDlg(tr.dataset.u)});
 $("podium").addEventListener("click",e=>{const d=e.target.closest("[data-u]");if(d)openDlg(d.dataset.u)});
@@ -666,7 +633,7 @@ $("dOut").addEventListener("click",signOut);$("signOut").addEventListener("click
       if(d.noAccess){S.role=null;stopData();showGate("wait",CevaAccess.NO_ACCESS);return}
       if(!ROLE_LABEL[role]){if(snap.metadata.fromCache){showGate("wait","Waiting for the network…");return}S.role=null;stopData();showGate("denied");return}
       const first=!S.role;S.role=role;S.myName=str(d.name,40);S.canEdit=role==="supervisor"||role==="admin";S.isFull=role==="admin";S.grp=d.groupName+" · "+CevaAccess.LEVEL_LABEL[d.level];
-      if(first){startData();showGate("ready")}else if(S.canEdit&&!S.sync)startSync(false);else if(!S.canEdit)stopSync();
+      if(first){startData();showGate("ready")}
       render();
     },()=>{S.role=null;stopData();showGate("denied")});
   });

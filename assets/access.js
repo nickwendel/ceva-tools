@@ -32,7 +32,7 @@ const TOOLS=[
   {key:"consolidation",name:"HU consolidation",href:"consolidation/",view:"View the locations to consolidate",edit:"Print sheets and set status",full:"Set status, remove the loaded data"},
   {key:"tracker",name:"Inventory action tracker",href:"action-tracker/",view:"View actions and export Excel",edit:"Add and update actions, import Excel",full:"Update, import, delete, set the site name"},
   {key:"training",name:"Training documents",href:"training-docs/",view:"Open and download documents",edit:"Add documents and upload new versions",full:"Add, update, archive, delete, set categories"},
-  {key:"rewards",name:"Rewards board",href:"rewards/",view:"View the board",edit:"Give recognition points, keep the scores up to date",full:"Give and remove points, set point values and names"},
+  {key:"rewards",name:"Rewards board",href:"rewards/",view:"View the board",edit:"Log who took part in an activity",full:"Log and remove entries, set the activities, points and names"},
   {key:"data",name:"Data upload",href:"data/",view:"See what is loaded",edit:"Load SAP exports for every tool",full:"Load SAP exports for every tool"}
 ];
 const LEVELS=["none","view","edit","full"];

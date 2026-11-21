@@ -12,7 +12,7 @@ Operational tools for CEVA sites, served with GitHub Pages.
 | Picking audit | [`picking-audit/`](picking-audit/) | Lists every pick out of a storage bin from the SAP warehouse task export, prints an audit sheet, takes the audit results and tracks the errors by associate. |
 | HU consolidation | [`consolidation/`](consolidation/) | Finds every location that holds more than one handling unit in the SAP stock export, shows which handling unit to keep and which to merge into it, prints a work sheet and tracks what has been consolidated. |
 | Training documents | [`training-docs/`](training-docs/) | The site's training library: work instructions, procedures and guides by category, uploaded as files (up to 20 MB) or links, with every version kept. Supervisors and admins add and update; everyone at CEVA with a login can open and download. |
-| Rewards board | [`rewards/`](rewards/) | Leaderboard that scores the daily work: points for picks, putaways and internal moves from the SAP export and for accurate audits, badges, recognition points from supervisors, and a TV view for the floor. |
+| Rewards board | [`rewards/`](rewards/) | Rewards people for taking part, not for productivity numbers: points for 5S, bin checks, the Safety Committee and Employee Engagement meetings, weekend support and the like, with a leaderboard, badges and a TV view for the floor. |
 | Data upload | [`data/`](data/) | One place to load the SAP warehouse task export. The file is read once and every tool that uses it (warehouse transactions, inventory differences, putaway audit, picking audit) is updated together. Also takes the SAP stock export for HU consolidation. Shows what each tool holds now. |
 | Access and people | [`access/`](access/) | One page to sign in, request access, see what your user group opens in each tool and change your password. Admins approve requests, place people in user groups and set each group's access to each tool here. |
 | Warehouse transactions | [`transactions/`](transactions/) | Dashboard of SAP EWM warehouse tasks: completed work by hour, activity, process type and associate, open task aging, and trends over time. A supervisor loads the SAP export and everyone signed in sees it. |
@@ -306,22 +306,19 @@ Lists the picks from the SAP warehouse task export so the pick locations can be 
 
 **Live page:** `https://nickwendel.github.io/ceva-tools/rewards/`
 
-A leaderboard that turns the daily work into points, badges and recognition, for the floor to see. It needs no load of its own: it scores the data the other tools already hold.
+A board that rewards people for taking part in the things that make the site better. It is not driven by productivity numbers: nothing is read from SAP or from the audit tools. Points come only from activities a supervisor logs.
 
-- **Points:** 1 for each pick, 1 for each putaway and 1 for each internal move confirmed in SAP, and 2 for each line an audit found correct. Audit errors take nothing off unless a value is set for them. Admins change every value on the Settings tab, and the board rescores at once.
-- **Where the numbers come from:** picks are the Picking audit list, putaways the Putaway audit list, internal moves the Warehouse transactions counts (less the moves already counted as putaways), and accuracy the results entered in the two audit tools.
-- **Leaderboard:** the top three on a podium, then everyone ranked with points, picks, putaways, moves, units, audit accuracy, recognition points, streak and badges. Show a day, a week (Sunday to Saturday), a month or everything; the date box picks which one. Select a row to see how that associate's points add up, day by day.
-- **Badges:** Day winner, Big day (50 or more tasks in a day, changeable), Perfect audit (10 or more lines audited, no errors), On a streak (scored 5 working days in a row), All-rounder (picks, putaways and moves) and Recognized.
-- **Recognition:** **Give points** adds points to an associate for safety, quality, teamwork, attendance, an improvement idea or going above and beyond, with a line on what they did. Everyone sees the list.
+- **Activities:** the starting list is 5S an area (10 points), Bin check (5), Safety Committee meeting (15), Employee Engagement meeting (10), Weekend support volunteering (25), Safety observation or near miss reported (10), Improvement idea submitted (10) and Trained or helped a teammate (10). Admins add, rename, re-point or retire activities on the Settings tab.
+- **Log an activity:** choose the activity and the date, tick everyone who took part (a whole meeting can be logged at once) and add a note if wanted. A name that is not on the list can be typed in. Someone already logged for that activity on that date is skipped, so nobody is counted twice.
+- **Leaderboard:** the top three on a podium, then everyone ranked with points, number of activities, what they took part in and badges. Show a week (Sunday to Saturday), a month, a year or everything; the date box picks which one. Select a row to see that person's entries.
+- **Badges:** Regular (5 or more activities in the period), All-rounder (3 or more different kinds), Go-to person (the same activity 3 or more times) and Every week (at least one activity in each of the last 4 weeks).
+- **Activity log:** every entry for the period, filtered by activity, with who logged it.
 - **TV view:** only the podium and the top places, in large type, for a floor display. Esc or **Exit TV view** leaves it.
-- **Settings:** point values, the Big day threshold, how many places TV view shows, the name to show for each SAP user ID, and who is left off the board (supervisors, system users).
-- **Export to Excel:** the standings and the recognition list for the period showing.
+- **Export to Excel:** the standings and the activity log for the period showing.
 
-**Roles.** View sees the board. Edit also gives recognition points and keeps the scores up to date. Full also removes recognition points and changes the settings.
+**Roles.** View sees the board. Edit logs activities and can remove an entry they logged themselves. Full also removes any entry and changes the settings.
 
-**Keeping scores up to date.** Whenever someone with Edit on the board has the page open, it reads the last 45 days of the Picking audit, Putaway audit and Warehouse transactions data, works out each day's score sheet and saves the days that changed. That account's group also needs View on those three tools; if it does not, the page says so under the title. People with View only read the score sheets, never the task lines or the audit notes. **Rebuild all scores** on the Settings tab rescores every day on record.
-
-**Data.** `rewdays/{YYYY-MM-DD}` holds one score sheet per day (per associate: picks, units, putaways, units, moves, audited correct, audit errors), `rewawards/{id}` the recognition points, `rewcfg/settings` the point values, names and who is left off. Names are kept in Firestore, not in this repository. Publish [`firestore.rules`](firestore.rules) after merging and set each user group's level for **Rewards board** on the Access page; existing groups start at No access.
+**Data.** `rewlog/{id}` holds one entry per person, activity and date, with the points it was worth when logged, so changing an activity's points later does not change the past. `rewcfg/settings` holds the activities and the list of names. Names are kept in Firestore, not in this repository. Publish [`firestore.rules`](firestore.rules) after merging and set each user group's level for **Rewards board** on the Access page; existing groups start at No access.
 
 ## HU consolidation
 
