@@ -12,6 +12,7 @@ Operational tools for CEVA sites, served with GitHub Pages.
 | Picking audit | [`picking-audit/`](picking-audit/) | Lists every pick out of a storage bin from the SAP warehouse task export, prints an audit sheet, takes the audit results and tracks the errors by associate. |
 | HU consolidation | [`consolidation/`](consolidation/) | Finds every location that holds more than one handling unit in the SAP stock export, shows which handling unit to keep and which to merge into it, prints a work sheet and tracks what has been consolidated. |
 | Training documents | [`training-docs/`](training-docs/) | The site's training library: work instructions, procedures and guides by category, uploaded as files (up to 20 MB) or links, with every version kept. Supervisors and admins add and update; everyone at CEVA with a login can open and download. |
+| Rewards board | [`rewards/`](rewards/) | Rewards people for taking part, not for productivity numbers: points for 5S, bin checks, the Safety Committee and Employee Engagement meetings, weekend support and the like, with a leaderboard, badges and a TV view for the floor. |
 | Data upload | [`data/`](data/) | One place to load the SAP warehouse task export. The file is read once and every tool that uses it (warehouse transactions, inventory differences, putaway audit, picking audit) is updated together. Also takes the SAP stock export for HU consolidation. Shows what each tool holds now. |
 | Access and people | [`access/`](access/) | One page to sign in, request access, see what your user group opens in each tool and change your password. Admins approve requests, place people in user groups and set each group's access to each tool here. |
 | Warehouse transactions | [`transactions/`](transactions/) | Dashboard of SAP EWM warehouse tasks: completed work by hour, activity, process type and associate, open task aging, and trends over time. A supervisor loads the SAP export and everyone signed in sees it. |
@@ -300,6 +301,24 @@ Lists the picks from the SAP warehouse task export so the pick locations can be 
 **Roles.** Viewers see everything. Groups with Edit on the tool enter audit results and close out an audit; loading an export follows the Data upload level.
 
 **Data.** `pickdays/{YYYY-MM-DD}` holds the picks confirmed on each date, `pickaud/{task|bin}` the audit result on each one. Loading adds to the list and never removes a line. Publish [`firestore.rules`](firestore.rules) after merging, or loading and saving will be refused.
+
+## Rewards board
+
+**Live page:** `https://nickwendel.github.io/ceva-tools/rewards/`
+
+A board that rewards people for taking part in the things that make the site better. It is not driven by productivity numbers: nothing is read from SAP or from the audit tools. Points come only from activities a supervisor logs.
+
+- **Activities:** the starting list is 5S an area (10 points), Bin check (5), Safety Committee meeting (15), Employee Engagement meeting (10), Weekend support volunteering (25), Safety observation or near miss reported (10), Improvement idea submitted (10) and Trained or helped a teammate (10). Admins add, rename, re-point or retire activities on the Settings tab.
+- **Log an activity:** choose the activity and the date, tick everyone who took part (a whole meeting can be logged at once) and add a note if wanted. A name that is not on the list can be typed in. Someone already logged for that activity on that date is skipped, so nobody is counted twice.
+- **Leaderboard:** the top three on a podium, then everyone ranked with points, number of activities, what they took part in and badges. Show a week (Sunday to Saturday), a month, a year or everything; the date box picks which one. Select a row to see that person's entries.
+- **Badges:** Regular (5 or more activities in the period), All-rounder (3 or more different kinds), Go-to person (the same activity 3 or more times) and Every week (at least one activity in each of the last 4 weeks).
+- **Activity log:** every entry for the period, filtered by activity, with who logged it.
+- **TV view:** only the podium and the top places, in large type, for a floor display. Esc or **Exit TV view** leaves it.
+- **Export to Excel:** the standings and the activity log for the period showing.
+
+**Roles.** View sees the board. Edit logs activities and can remove an entry they logged themselves. Full also removes any entry and changes the settings.
+
+**Data.** `rewlog/{id}` holds one entry per person, activity and date, with the points it was worth when logged, so changing an activity's points later does not change the past. `rewcfg/settings` holds the activities and the list of names. Names are kept in Firestore, not in this repository. Publish [`firestore.rules`](firestore.rules) after merging and set each user group's level for **Rewards board** on the Access page; existing groups start at No access.
 
 ## HU consolidation
 

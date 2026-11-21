@@ -1,0 +1,643 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Rewards Board</title>
+<link rel="icon" href="../assets/ceva-logo.svg" type="image/svg+xml">
+<style>
+/* Visual system shared with the other CEVA tools (matched to the Whitsett KPI dashboard): dark navy, card panels, CEVA red accent, system type.
+   Layout: header, KPI tiles, section tabs with a period, the podium, then card panels. Dark only. */
+:root{
+  --bg:#0a1626; --card:#122A47; --row:#0e2038; --line:#1f3d61; --line-light:#2a4a73;
+  --fg:#e7eef7; --muted:#93a8c4; --faint:#5f7796;
+  --accent:#e2231a; --good:#2fbf71; --warn:#e8a33d; --bad:#e2231a; --info:#3d9fe8; --purple:#a78bfa;
+  --s1:#e7eef7; --s2:#3d9fe8; --s3:#2fbf71; --s4:#5f7796; --s5:#a78bfa; --s6:#4fd0e0; --s7:#3a5273;
+  --radius:10px;
+  --f:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{height:100%;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{min-height:100%;margin:0;color:var(--fg);font-family:var(--f);font-size:13.5px;line-height:1.45;-webkit-font-smoothing:antialiased;
+  background:radial-gradient(1200px 600px at 10% -10%,#123156 0%,var(--bg) 55%) fixed,var(--bg)}
+[hidden]{display:none!important}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--info);outline-offset:2px}
+::-webkit-scrollbar{height:8px;width:8px}
+::-webkit-scrollbar-thumb{background:var(--line-light);border-radius:4px}
+.gut{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.btn{background:var(--card);color:var(--fg);border:1px solid var(--line-light);border-radius:8px;min-height:2.6rem;padding:0 .95rem;font:600 13px/1 var(--f);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:.45rem;white-space:nowrap;position:relative;transition:filter .15s,border-color .15s}
+.btn:hover{border-color:var(--accent);filter:brightness(1.08)}
+.btn.primary{background:var(--accent);border-color:transparent;color:#fff}
+.btn.ghost{background:transparent;color:var(--muted)}
+.btn.ghost:hover{color:var(--fg)}
+.btn:disabled,.btn.busy{opacity:.45;cursor:default;filter:none}
+.btn input[type=file]{position:absolute;opacity:0;width:1px;height:1px}
+.btn:focus-within{outline:2px solid var(--info);outline-offset:2px}
+.inp{width:100%;min-height:2.6rem;background:var(--bg);color:var(--fg);border:1px solid var(--line-light);border-radius:8px;padding:.5rem .75rem;font-size:14px;outline:none}
+.inp:focus{border-color:var(--accent)}
+.fld{display:flex;flex-direction:column;gap:.35rem;min-width:0}
+.fld>label{font:600 10.5px/1 var(--f);letter-spacing:.5px;text-transform:uppercase;color:var(--faint)}
+.err{color:#f97066;font-weight:600;font-size:12px}
+
+/* sign-in gate */
+.gate{min-height:100vh;display:flex;align-items:center;justify-content:center;padding-block:2rem}
+.gate-card{width:100%;max-width:400px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:2.2rem 2.2rem 2rem;box-shadow:0 8px 40px rgba(0,0,0,.55);display:flex;flex-direction:column}
+.gate-head{display:flex;flex-direction:column;align-items:center;text-align:center;gap:.5rem;margin-bottom:1.4rem}
+.gate-head img{height:2.3rem;width:auto;display:block}
+.gate-site{font-size:12px;color:var(--faint);letter-spacing:.02em}
+.gate-body{display:flex;flex-direction:column;gap:.9rem}
+.gate-title{margin:0;font:700 20px/1.2 var(--f)}
+.gate-p{margin:0;color:var(--muted);line-height:1.5;font-size:12.5px}
+.gate-p b{color:var(--fg)}
+.gate form{display:flex;flex-direction:column;gap:.85rem}
+.gate .btn{width:100%;min-height:2.75rem;font-size:14px}
+.gate .btn.ghost{min-height:2.4rem;font-size:12.5px}
+.gate-alt{border-top:1px solid var(--line);padding-top:.85rem}
+
+/* app */
+.app{max-width:1500px;margin:0 auto;padding-bottom:3rem;font-size:14px}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:1.2em 1.6em;flex-wrap:wrap;padding-block:1.4em 1.1em;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:.9em;min-width:0}
+.logo-plate{height:2.6em;display:flex;align-items:center;flex:none}
+.logo-plate img{height:100%;width:auto;max-width:12em;object-fit:contain;display:block}
+.b-title{margin:0;font:700 1.35em/1.15 var(--f);letter-spacing:.2px}
+.status-line{display:flex;flex-wrap:wrap;align-items:center;gap:.3em 1em;margin-top:.45em;font-size:.85em;color:var(--faint)}
+.status-line b{color:var(--muted);font-weight:600}
+.dot{width:.6em;height:.6em;border-radius:50%;background:var(--warn);display:inline-block;margin-right:.4em}
+.dot.ok{background:var(--good)}.dot.bad{background:var(--bad)}
+.controls{display:flex;gap:.6em;align-items:center;flex-wrap:wrap}
+.b-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(9.5em,1fr));gap:.7em;margin:1.2em 0 0;padding:0}
+.b-stats>div{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:1.1em 1.2em 1em;position:relative;overflow:hidden;margin:0}
+.b-stats>div::before{content:"";position:absolute;top:0;left:0;width:3px;height:100%;background:var(--kpi,var(--line-light))}
+.b-stats>div:nth-child(1){--kpi:var(--accent)}.b-stats>div:nth-child(2){--kpi:var(--info)}.b-stats>div:nth-child(3){--kpi:var(--purple)}
+.b-stats>div:nth-child(5){--kpi:var(--good)}
+.b-stats>div.warn{--kpi:var(--warn)}.b-stats>div.hot{--kpi:var(--bad)}
+.b-stats dt{font:700 .75em/1.2 var(--f);letter-spacing:.6px;text-transform:uppercase;color:var(--faint);white-space:nowrap}
+.b-stats dd{margin:.45em 0 0;font:800 2.1em/1 var(--f);font-variant-numeric:tabular-nums;white-space:nowrap}
+.b-stats .hot dd{color:#ff6b61}.b-stats .warn dd{color:var(--warn)}
+.bar{display:flex;flex-wrap:wrap;gap:.6em;align-items:center;margin:1.2em 0 1em}
+.tab{background:transparent;border:1px solid var(--line-light);color:var(--muted);border-radius:2rem;min-height:2.3rem;padding:0 .9rem;font:600 13px/1 var(--f);cursor:pointer}
+.tab:hover{color:var(--fg)}
+.tab[aria-pressed="true"]{background:var(--accent);border-color:transparent;color:#fff}
+.msg{border:1px solid rgba(226,35,26,.5);color:#f97066;border-radius:8px;padding:.7rem 1rem;font-weight:600;margin-bottom:1em}
+.panels{display:flex;flex-direction:column;gap:1em}
+.b-panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);display:flex;flex-direction:column;min-width:0;padding:1em 1.1em .9em}
+.p-head{display:flex;align-items:baseline;flex-wrap:wrap;gap:.55em;padding-bottom:.6em;border-bottom:1px solid var(--line-light)}
+.p-head h2{margin:0;font:700 1.05em/1.2 var(--f)}
+.p-count{font:700 1.05em/1 var(--f);color:var(--muted);font-variant-numeric:tabular-nums}
+.p-page{margin-left:auto;font:600 .75em/1 var(--f);letter-spacing:.5px;text-transform:uppercase;color:var(--faint)}
+.p-body{padding-top:.7em}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:1em}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th{font:700 .72em/1 var(--f);letter-spacing:.5px;text-transform:uppercase;color:var(--faint);text-align:right;padding:.5em .7em;white-space:nowrap;border-bottom:1px solid var(--line)}
+th.s{cursor:pointer}th.s:hover{color:var(--fg)}
+th:first-child,td:first-child,th.t,td.t{text-align:left}
+td{padding:.5em .7em;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line)}
+tbody tr:last-child td{border-bottom:0}
+td.n{font-weight:700}
+tr.click{cursor:pointer}tr.click:hover td{background:var(--row)}tr.sel td{background:rgba(61,159,232,.14)}
+tr.tot td{font-weight:700;border-top:1px solid var(--line-light)}
+tr.hot td{background:rgba(226,35,26,.1)}
+.meter{display:inline-block;height:.4em;background:var(--info);vertical-align:middle;margin-right:.5em;border-radius:2px;opacity:.7}
+.pill{display:inline-block;padding:.2em .55em;border-radius:5px;font:700 .85em/1 var(--f);background:var(--row);color:var(--muted);border:1px solid var(--line-light)}
+.pill.p1{background:rgba(226,35,26,.16);color:#ff6b61;border-color:rgba(226,35,26,.5)}
+.pill.p2{background:rgba(232,163,61,.16);color:var(--warn);border-color:rgba(232,163,61,.5)}
+.legend{display:flex;flex-wrap:wrap;gap:.5em 1.2em;margin-top:.5em}
+.legend span{display:inline-flex;align-items:center;gap:.4em;font:600 .78em/1 var(--f);color:var(--muted)}
+.legend i{display:inline-block;width:.9em;height:.7em;border-radius:2px}
+svg text{font-family:var(--f);font-size:11px;fill:var(--muted)}svg .tl{fill:var(--fg);font-weight:700;paint-order:stroke;stroke:var(--card);stroke-width:3px;stroke-linejoin:round}
+.empty{border:1px dashed var(--line-light);border-radius:var(--radius);padding:1.2em;color:var(--muted);display:flex;flex-direction:column;gap:.35em}
+.empty strong{font:700 1.05em/1.2 var(--f);color:var(--fg)}
+.empty span{line-height:1.5;max-width:75ch}
+.ag{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.6em;margin-bottom:.8em}
+.ag>div{background:var(--row);border:1px solid var(--line);border-radius:8px;padding:.7em .9em;position:relative;overflow:hidden}
+.ag>div::before{content:"";position:absolute;top:0;left:0;width:3px;height:100%;background:var(--line-light)}
+.ag>div.ok::before{background:var(--good)}.ag>div.p2::before{background:var(--warn)}.ag>div.p1::before{background:var(--bad)}
+.ag .k{font:700 .72em/1.2 var(--f);letter-spacing:.5px;text-transform:uppercase;color:var(--faint)}
+.ag .v{font:800 1.7em/1 var(--f);font-variant-numeric:tabular-nums;margin-top:.3em}
+.ag .b{height:.35em;background:var(--line);border-radius:2px;margin-top:.55em;overflow:hidden}.ag .b i{display:block;height:100%;background:var(--muted)}
+.note{color:var(--faint);font-size:.88em;line-height:1.5;max-width:120ch;margin-top:1.2em;border-top:1px solid var(--line);padding-top:1em}
+.drop{outline:2px dashed var(--info);outline-offset:-6px}
+.views{display:flex;gap:.4em;flex-wrap:wrap}
+.view{background:var(--card);border:1px solid var(--line-light);color:var(--muted);border-radius:8px;min-height:2.6rem;padding:0 1rem;font:700 13.5px/1 var(--f);cursor:pointer;display:inline-flex;align-items:center;gap:.5em}
+.view:hover{color:var(--fg)}
+.view[aria-selected="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.view .n{font:700 .85em/1 var(--f);background:var(--row);color:var(--fg);border-radius:1rem;padding:.25em .55em;font-variant-numeric:tabular-nums}
+.view[aria-selected="true"] .n{background:var(--bg)}
+.navrow{display:flex;flex-wrap:wrap;gap:.7em 1em;align-items:center;justify-content:space-between;margin-top:1.2em}
+.range{display:flex;flex-wrap:wrap;gap:.5em;align-items:center}
+.segm{display:flex;background:var(--card);border:1px solid var(--line-light);border-radius:8px;padding:3px;gap:2px}
+.segm button{background:transparent;border:0;border-radius:6px;min-height:2.1rem;padding:0 .8rem;font:600 13px/1 var(--f);color:var(--muted);cursor:pointer}
+.segm button:hover{color:var(--fg)}
+.segm button[aria-pressed="true"]{background:var(--accent);color:#fff}
+.dayinp{background:var(--card);border:1px solid var(--line-light);border-radius:8px;min-height:2.5rem;padding:0 .6rem;font:600 13px/1 var(--f);color:var(--fg)}
+.dayinp.on{border-color:var(--accent)}
+.grid4{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:1em}
+.trbar{display:flex;flex-wrap:wrap;gap:.6em 1em;align-items:center;justify-content:space-between}
+.cap{display:flex;flex-wrap:wrap;gap:.3em 1.3em;margin-top:.5em;font:600 .82em/1.35 var(--f);color:var(--muted)}
+.cap b{color:var(--fg)}
+.cap i{display:inline-block;width:1.5em;height:0;border-top:2px dashed var(--warn);vertical-align:middle;margin-right:.45em}
+.cap i.t{border-top:3px solid var(--accent)}
+.cap i.c{border-top:2px dotted var(--info)}
+.linkbtn{background:none;border:0;padding:0;color:var(--info);font:inherit;font-weight:600;cursor:pointer;text-decoration:underline}
+.toast{position:fixed;left:50%;bottom:calc(1.2rem + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:30;background:var(--card);color:var(--fg);border:1px solid var(--line-light);padding:.75rem 1.1rem;border-radius:8px;font:600 13px/1.35 var(--f);box-shadow:0 8px 24px rgba(0,0,0,.45);max-width:calc(100% - 32px)}
+/* inventory differences */
+.tools{display:flex;flex-wrap:wrap;gap:.6em;align-items:center;margin:1em 0 .8em}
+.tools .inp{max-width:22rem;min-height:2.4rem}
+.chips{display:flex;flex-wrap:wrap;gap:.4em}
+.pill.p3{color:var(--muted)}
+.pill.st-new{color:var(--fg)}
+.pill.st-recount{background:rgba(61,159,232,.16);color:var(--info);border-color:rgba(61,159,232,.5)}
+.pill.st-research{background:rgba(167,139,250,.16);color:var(--purple);border-color:rgba(167,139,250,.5)}
+.pill.st-post{background:rgba(232,163,61,.16);color:var(--warn);border-color:rgba(232,163,61,.5)}
+.pill.st-closed{background:rgba(47,191,113,.14);color:var(--good);border-color:rgba(47,191,113,.45)}
+.pill.off{background:rgba(61,159,232,.12);color:var(--info);border-color:rgba(61,159,232,.45)}
+td.pos{color:var(--good)}td.neg{color:#ff6b61}
+td.note{max-width:22em;overflow:hidden;text-overflow:ellipsis;color:var(--muted)}
+tr.closed td{opacity:.55}
+.more{margin-top:.8em}
+dialog{background:var(--card);color:var(--fg);border:1px solid var(--line-light);border-radius:14px;padding:0;width:min(560px,calc(100% - 32px));box-shadow:0 12px 48px rgba(0,0,0,.6)}
+dialog::backdrop{background:rgba(5,12,24,.7)}
+.dlg{padding:1.4rem 1.5rem 1.3rem;display:flex;flex-direction:column;gap:.9rem}
+.dlg h2{margin:0;font:700 1.15em/1.25 var(--f)}
+.dlg .facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(7.5em,1fr));gap:.5em}
+.dlg .facts div{background:var(--row);border:1px solid var(--line);border-radius:8px;padding:.5em .7em}
+.dlg .facts b{display:block;font:700 .7em/1.2 var(--f);letter-spacing:.5px;text-transform:uppercase;color:var(--faint)}
+.dlg .facts span{display:block;font:700 1.05em/1.3 var(--f);margin-top:.2em;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.dlg textarea.inp{min-height:5.5rem;resize:vertical;font-family:var(--f)}
+.dlg .row{display:flex;gap:.6em;justify-content:flex-end;flex-wrap:wrap}
+.dlg .segm{flex-wrap:wrap}
+.dlg .who{font-size:.85em;color:var(--faint)}
+.map{display:grid;grid-template-columns:repeat(auto-fit,minmax(16em,1fr));gap:.2em 1.4em;margin-top:.5em}
+.map span{color:var(--muted)}.map b{color:var(--fg);font-weight:600}.map .miss{color:var(--faint)}
+/* rewards board */
+.b-stats>div:nth-child(4){--kpi:var(--warn)}
+.podium{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1em;align-items:end;margin-top:1.2em}
+.pod{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:1.2em 1.1em 1.1em;text-align:center;position:relative;overflow:hidden;min-width:0;cursor:pointer}
+.pod::before{content:"";position:absolute;top:0;left:0;right:0;height:4px;background:var(--medal)}
+.pod.r1{--medal:#f0c24b;padding-top:2em;padding-bottom:1.6em;order:2}.pod.r2{--medal:#c3ccd8;order:1}.pod.r3{--medal:#cf8a52;order:3}
+.pod:hover{border-color:var(--line-light)}
+.medal{display:inline-flex;align-items:center;justify-content:center;width:2.2em;height:2.2em;border-radius:50%;background:var(--medal);color:#0a1626;font:800 1.15em/1 var(--f);flex:none}
+.pod .nm{font:700 1.35em/1.2 var(--f);margin-top:.55em;overflow-wrap:anywhere}
+.pod .pt{font:800 2.6em/1 var(--f);font-variant-numeric:tabular-nums;margin-top:.25em}
+.pod .pt small{font:600 .32em/1 var(--f);color:var(--muted);letter-spacing:.5px;text-transform:uppercase;margin-left:.4em}
+.pod .sub{color:var(--muted);font-size:.9em;margin-top:.5em}
+.pod .bdg{justify-content:center;margin-top:.7em}
+.bdg{display:flex;flex-wrap:wrap;gap:.3em}
+.badge{display:inline-flex;align-items:center;gap:.4em;padding:.22em .6em;border-radius:1rem;font:700 .8em/1.2 var(--f);background:var(--row);border:1px solid var(--line-light);color:var(--fg);white-space:nowrap}
+.badge i{width:.6em;height:.6em;border-radius:50%;background:var(--bc,var(--info));flex:none}
+.rank{display:inline-flex;align-items:center;justify-content:center;min-width:2em;height:2em;border-radius:50%;font:800 .9em/1 var(--f);color:var(--muted);background:var(--row);border:1px solid var(--line)}
+.rank.r1{background:#f0c24b;color:#0a1626;border-color:transparent}.rank.r2{background:#c3ccd8;color:#0a1626;border-color:transparent}.rank.r3{background:#cf8a52;color:#0a1626;border-color:transparent}
+td.pts{font:800 1.15em/1 var(--f)}
+.bcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:1em}
+.bcard{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:1em 1.1em;position:relative;overflow:hidden}
+.bcard::before{content:"";position:absolute;top:0;left:0;width:3px;height:100%;background:var(--bc,var(--info))}
+.bcard h3{margin:0;font:700 1.05em/1.2 var(--f)}
+.bcard p{margin:.35em 0 .7em;color:var(--muted);line-height:1.45}
+.bcard .who{display:flex;flex-wrap:wrap;gap:.35em}
+.bcard .none{color:var(--faint)}
+.setgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(11em,1fr));gap:.8em}
+.setgrid .inp{max-width:9em}
+.hint{color:var(--muted);line-height:1.5;margin:0 0 .9em;max-width:100ch}
+td .inp{min-height:2.2rem;padding:.3rem .55rem;max-width:18em}
+td input[type=checkbox]{width:1.2em;height:1.2em;accent-color:var(--accent)}
+.quick{display:flex;gap:.4em;flex-wrap:wrap}
+.tvbar{display:none}
+/* TV view: only the title, the podium and the top of the list, larger */
+body.tv .controls,body.tv .navrow,body.tv .b-stats,body.tv .note,body.tv #vBadges,body.tv #vRec,body.tv #vSet,body.tv .tools,body.tv .p-page,body.tv .hide-tv{display:none!important}
+body.tv .app{max-width:none;font-size:clamp(15px,1.25vw,26px)}
+body.tv .tvbar{display:flex;justify-content:space-between;align-items:center;gap:1em;margin-top:1em;color:var(--muted);font-weight:600}
+body.tv tr.click{cursor:default}
+@media (max-width:640px){.podium{grid-template-columns:1fr}.pod.r1{order:1;padding-top:1.2em;padding-bottom:1.1em}.pod.r2{order:2}.pod.r3{order:3}}
+.plist{display:grid;grid-template-columns:repeat(auto-fill,minmax(11.5em,1fr));gap:.15em .8em;max-height:13.5em;overflow-y:auto;background:var(--bg);border:1px solid var(--line-light);border-radius:8px;padding:.6em .7em}
+.plist label{display:flex;gap:.5em;align-items:center;min-height:1.9em;cursor:pointer;overflow-wrap:anywhere}
+.plist input{width:1.15em;height:1.15em;flex:none;accent-color:var(--accent)}
+.plist .none{color:var(--faint);grid-column:1/-1}
+.addrow{display:flex;gap:.5em;flex-wrap:wrap}.addrow .inp{flex:1;min-width:10em}
+dialog.wide{width:min(680px,calc(100% - 32px))}
+textarea.roster{min-height:14rem;font-family:var(--f);max-width:30em;resize:vertical}
+td.wrap{white-space:normal;min-width:14em}
+</style>
+</head>
+<body>
+<noscript><p style="padding:1rem">This tool needs JavaScript turned on.</p></noscript>
+
+<!-- SIGN-IN GATE -->
+<section id="gate" class="gate gut" aria-label="Sign in">
+  <div class="gate-card">
+    <div class="gate-head"><img src="../assets/ceva-logo-whitered.png" alt="CEVA Logistics"><div class="gate-site">Rewards board</div></div>
+    <div class="gate-body">
+      <h1 class="gate-title">Sign in</h1>
+      <p class="gate-p" id="gateWait">Connecting…</p>
+      <p class="gate-p" id="gateSetup" hidden>This tool isn’t connected to its database yet. Add the Firebase web config to <code>rewards/firebase-config.js</code> in the repository.</p>
+      <form id="gateLogin" novalidate hidden>
+        <p class="gate-p">Sign in with the same account you use on the other CEVA tools.</p>
+        <div class="fld"><label for="lEmail">Email</label><input class="inp" id="lEmail" type="email" autocomplete="username" inputmode="email"></div>
+        <div class="fld"><label for="lPass">Password</label><input class="inp" id="lPass" type="password" autocomplete="current-password"></div>
+        <div class="err" id="lErr" role="alert" hidden></div>
+        <button class="btn primary" type="submit" id="lGo">Sign in</button>
+        <button class="btn ghost" type="button" id="lForgot">Forgot password? Email me a reset link</button>
+        <div class="gate-alt"><button class="btn" type="button" id="lRequest">New here? Request access</button></div>
+      </form>
+      <form id="gateRequest" novalidate hidden>
+        <p class="gate-p">Tell us who you are and create a password. An admin approves requests, and you’re let in automatically once approved.</p>
+        <div class="fld"><label for="qName">Your name</label><input class="inp" id="qName" maxlength="40" autocomplete="name"></div>
+        <div class="fld"><label for="qEmail">Work email</label><input class="inp" id="qEmail" type="email" autocomplete="username" inputmode="email"></div>
+        <div class="fld"><label for="qPass">Create a password (8+ characters)</label><input class="inp" id="qPass" type="password" autocomplete="new-password" minlength="8"></div>
+        <div class="fld"><label for="qNote">Role or site (optional)</label><input class="inp" id="qNote" maxlength="120" autocomplete="off"></div>
+        <div class="err" id="qErr" role="alert" hidden></div>
+        <button class="btn primary" type="submit" id="qGo">Send request</button>
+        <button class="btn ghost" type="button" id="qBack">Back to sign in</button>
+      </form>
+      <div id="gateDenied" hidden>
+        <p class="gate-p" id="dPending" hidden><b>Request sent.</b> Signed in as <b id="dEmailP"></b>, waiting for an admin to approve. Keep this page open or come back later; it opens on its own once approved.</p>
+        <div id="dNone" hidden>
+          <p class="gate-p">Signed in as <b id="dEmail"></b>, but this account hasn’t been added to the tools yet. Ask for access and an admin will approve it.</p>
+          <form id="dRequest" novalidate style="margin-top:.7rem">
+            <div class="fld"><label for="dName">Your name</label><input class="inp" id="dName" maxlength="40" autocomplete="name"></div>
+            <div class="fld"><label for="dNote">Role or site (optional)</label><input class="inp" id="dNote" maxlength="120" autocomplete="off"></div>
+            <div class="err" id="dReqErr" role="alert" hidden></div>
+            <button class="btn primary" type="submit" id="dReqGo">Request access</button>
+          </form>
+        </div>
+        <button type="button" class="btn ghost" id="dOut" style="margin-top:.7rem">Sign out</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TOOL -->
+<div id="app" class="app gut" hidden>
+  <header class="top">
+    <div class="brand">
+      <div class="logo-plate"><img src="../assets/ceva-logo-whitered.png" alt="CEVA Logistics"></div>
+      <div><h1 class="b-title">Rewards board</h1><div class="status-line" id="status"></div></div>
+    </div>
+    <div class="controls">
+      <button type="button" class="btn" id="tvBtn">TV view</button>
+      <button type="button" class="btn primary" id="giveBtn" hidden>Log an activity</button>
+      <button type="button" class="btn ghost" id="signOut">Sign out</button>
+    </div>
+  </header>
+  <div class="tvbar"><span id="tvText"></span><button type="button" class="btn ghost" id="tvExit">Exit TV view</button></div>
+  <dl class="b-stats" id="stats"></dl>
+  <div class="navrow"><div class="views" role="tablist" aria-label="Sections" id="views"></div>
+    <div class="range"><div class="segm" id="rangeBtns" role="group" aria-label="Period"></div>
+      <input type="date" class="dayinp" id="dayIn" aria-label="Show the day, week or month that holds this date"></div></div>
+  <div class="msg" id="msg" hidden></div>
+  <div id="noData" class="empty" style="margin-top:1.2em" hidden></div>
+
+  <!-- Leaderboard -->
+  <div id="vBoard" hidden>
+    <div class="podium" id="podium"></div>
+    <div class="tools hide-tv">
+      <input class="inp" id="q" type="search" placeholder="Search name" aria-label="Search">
+      <span style="margin-left:auto"><button type="button" class="btn" id="xlsBtn">Export to Excel</button></span>
+    </div>
+    <section class="b-panel" style="margin-top:1em"><header class="p-head"><h2>Leaderboard</h2><span class="p-count" id="cBoard"></span><span class="p-page">Select a row to see how the points add up</span></header>
+      <div class="p-body scroll"><table id="tBoard"></table></div></section>
+  </div>
+
+  <!-- Badges -->
+  <div id="vBadges" style="margin-top:1.2em" hidden><div class="bcards" id="bCards"></div></div>
+
+  <!-- Activity log -->
+  <div class="panels" id="vRec" style="margin-top:1.2em" hidden>
+    <div class="tools" style="margin:0"><select class="inp sel" id="fAct" aria-label="Activity"></select></div>
+    <section class="b-panel"><header class="p-head"><h2>Activity log</h2><span class="p-count" id="cRec"></span><span class="p-page" id="recHint"></span></header>
+      <div class="p-body scroll"><table id="tRec"></table></div></section>
+  </div>
+
+  <!-- Settings -->
+  <div class="panels" id="vSet" style="margin-top:1.2em" hidden>
+    <section class="b-panel"><header class="p-head"><h2>Activities and points</h2><span class="p-count" id="cSet"></span><span class="p-page">What people can earn points for</span></header>
+      <div class="p-body"><p class="hint">Each activity is worth the points set here. Untick <b>In use</b> to stop offering an activity; what was already logged keeps its points. Changing the points only applies to what is logged from then on.</p>
+        <div class="scroll"><table id="tSet"></table></div><div style="margin-top:.8em"><button type="button" class="btn" id="addAct">Add an activity</button></div></div></section>
+    <section class="b-panel"><header class="p-head"><h2>People</h2><span class="p-page">The names offered when logging an activity</span></header>
+      <div class="p-body"><p class="hint">One name per line. Anyone logging an activity can also type a name that is not on this list.</p>
+        <textarea class="inp roster" id="sPeople" aria-label="People, one name per line"></textarea>
+        <div class="fld" style="margin-top:1em"><label for="sTop">Places shown in TV view</label><input class="inp" id="sTop" type="number" min="3" max="100" step="1" style="max-width:9em"></div></div></section>
+    <div class="co-bar"><p id="setText"></p><button type="button" class="btn primary" id="setSave">Save settings</button></div>
+  </div>
+
+  <div class="note" id="note"></div>
+</div>
+
+<dialog id="dlg" aria-labelledby="dTitle"><form method="dialog" class="dlg">
+  <h2 id="dTitle"></h2>
+  <div class="facts" id="dFacts"></div>
+  <div class="bdg" id="dBdg"></div>
+  <div class="scroll"><table id="dPts"></table></div>
+  <div class="scroll" style="max-height:15em;overflow-y:auto"><table id="dDays"></table></div>
+  <div class="row"><button class="btn primary" value="cancel" type="submit">Close</button></div>
+</form></dialog>
+<dialog id="gDlg" class="wide" aria-labelledby="gTitle"><form method="dialog" class="dlg">
+  <h2 id="gTitle">Log an activity</h2>
+  <div class="fld"><label for="gAct">Activity</label><select class="inp" id="gAct"></select></div>
+  <div class="fld"><label for="gDay">Date</label><input class="inp" id="gDay" type="date" style="max-width:12em"></div>
+  <div class="fld"><label for="gFind">Who took part <span id="gCount"></span></label><input class="inp" id="gFind" type="search" placeholder="Find a name" autocomplete="off"><div class="plist" id="gPeople"></div>
+    <div class="addrow"><input class="inp" id="gNew" maxlength="40" placeholder="Name not on the list" autocomplete="off"><button type="button" class="btn" id="gAdd">Add name</button></div></div>
+  <div class="fld"><label for="gNote">Note (optional)</label><textarea class="inp" id="gNote" maxlength="300" style="min-height:3.5rem"></textarea></div>
+  <div class="err" id="gErr" role="alert" hidden></div>
+  <div class="row"><button class="btn ghost" value="cancel" type="submit" formnovalidate>Cancel</button><button class="btn primary" type="button" id="gSave">Log it</button></div>
+</form></dialog>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script src="firebase-config.js"></script>
+<script src="../assets/access.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script type="module">
+const FB='https://www.gstatic.com/firebasejs/10.14.1/';
+const ROLE_LABEL={viewer:'Viewer',supervisor:'Supervisor',user:'User',admin:'Admin'};
+const RANGES=[["week","Week"],["month","Month"],["year","Year"],["all","All"]];
+/* The starting list of activities and what each is worth. Admins change it on the Settings tab. */
+const DEF_ACTS=[["5s","5S an area",10],["bin","Bin check",5],["safety","Safety Committee meeting",15],["engage","Employee Engagement meeting",10],["weekend","Weekend support volunteering",25],
+  ["observe","Safety observation or near miss reported",10],["idea","Improvement idea submitted",10],["train","Trained or helped a teammate",10]].map(a=>({id:a[0],name:a[1],pts:a[2],on:true}));
+const S={log:null,cfg:{acts:DEF_ACTS,people:[],top:10},cfgAt:0,view:"board",range:"month",day:null,q:"",fAct:"",
+  fb:null,authUser:null,role:null,myName:"",canEdit:false,isFull:false,pendingReq:null,unsubs:[],setDirty:false,setDrawn:false,delAsk:"",gSel:new Set(),gExtra:[],tv:false};
+const $=id=>document.getElementById(id),p2=n=>String(n).padStart(2,"0");
+const nf=(n,d)=>(+n||0).toLocaleString("en-US",{maximumFractionDigits:d==null?2:d});
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const str=(v,n)=>typeof v==="string"?v.replace(/\s+/g," ").trim().slice(0,n||200):"";
+const norm=s=>String(s==null?"":s).toLowerCase().replace(/\s+/g," ").trim();
+const num=(v,lo,hi,d)=>{const n=+v;return isFinite(n)&&v!==""&&v!=null?Math.min(hi,Math.max(lo,n)):d};
+const dayNow=()=>Math.floor((Date.now()/1000-new Date().getTimezoneOffset()*60)/86400);
+const iso=d=>new Date(d*86400000).toISOString().slice(0,10);
+const dayOf=s=>Math.floor(Date.parse(s+"T00:00:00Z")/86400000);
+const mdyDay=d=>{if(d==null||d<0)return "";const x=new Date(d*86400000);return p2(x.getUTCMonth()+1)+"/"+p2(x.getUTCDate())+"/"+x.getUTCFullYear()};
+const weekOf=d=>Math.floor((d+4)/7); // weeks run Sunday to Saturday
+const stamp=t=>new Date(t).toLocaleString("en-US",{month:"numeric",day:"numeric",hour:"numeric",minute:"2-digit"});
+let toastT;function toast(t,keep){const e=$("toast");e.textContent=t;e.hidden=false;clearTimeout(toastT);if(!keep)toastT=setTimeout(()=>e.hidden=true,typeof keep==="number"?keep:6000)}
+const refused=e=>e&&e.code==="permission-denied"?"Firebase refused the change. Your user group may not be allowed to do this, or the latest security rules have not been published yet.":"Couldn’t save. Check the connection and try again.";
+const actName=a=>{const x=S.cfg.acts.find(c=>c.id===a.act);return x?x.name:a.actName||"Activity"};
+
+/* ---------- shared data ----------
+   rewlog/{id}        one person taking part in one activity on one date: who, the activity, the points it was worth when it was
+                      logged, an optional note, and who logged it. Entries are not edited, only removed.
+   rewcfg/settings    the list of activities with their points, and the names offered when logging.
+   Points come only from these entries. Nothing is read from SAP or from the audit tools. */
+function startData(){
+  const {Fs,fs}=S.fb;
+  S.unsubs.push(Fs.onSnapshot(Fs.collection(fs,"rewlog"),snap=>{const L=[];snap.docs.forEach(x=>{const a=x.data()||{};if(str(a.who,40)&&+a.pts>0&&isFinite(+a.dt))L.push(Object.assign({id:x.id},a,{who:str(a.who,40),pts:+a.pts,dt:+a.dt}))});S.log=L;render()},
+    ()=>{S.log=S.log||[];render()}));
+  S.unsubs.push(Fs.onSnapshot(Fs.doc(fs,"rewcfg","settings"),snap=>{const d=snap.exists()?(snap.data()||{}):{},J=t=>{try{const o=JSON.parse(t||"");return Array.isArray(o)?o:null}catch(_){return null}};
+    const acts=(J(d.acts)||DEF_ACTS).map(a=>({id:str(a.id,40),name:str(a.name,60),pts:Math.round(num(a.pts,1,1000,5)),on:a.on!==false})).filter(a=>a.id&&a.name);
+    S.cfg={acts:acts.length?acts:DEF_ACTS,people:(J(d.people)||[]).map(n=>str(n,40)).filter(Boolean),top:num(d.top,3,100,10)};S.cfgAt=+d.at||0;render()},()=>{}));
+}
+function stopData(){S.unsubs.forEach(u=>{try{u()}catch(_){}});S.unsubs=[];S.log=null}
+
+/* ---------- the period showing ---------- */
+function anchor(){return S.day!=null?S.day:dayNow()}
+function period(){const a=anchor(),x=new Date(a*86400000),y=x.getUTCFullYear(),mo=x.getUTCMonth();
+  if(S.range==="all")return [-1e9,1e9];if(S.range==="week"){const w=x.getUTCDay();return [a-w,a-w+6]}
+  if(S.range==="year")return [Date.UTC(y,0,1)/86400000,Date.UTC(y,11,31)/86400000];
+  return [Date.UTC(y,mo,1)/86400000,Date.UTC(y,mo+1,0)/86400000]}
+function periodText(){const [f]=period(),[,t]=period();if(S.range==="all")return "all dates";if(S.range==="week")return "the week of "+mdyDay(f)+" to "+mdyDay(t);
+  if(S.range==="year")return String(new Date(f*86400000).getUTCFullYear());return new Date(f*86400000).toLocaleString("en-US",{month:"long",year:"numeric",timeZone:"UTC"})}
+
+/* ---------- standings ----------
+   People are matched on their name, ignoring capitals and extra spaces. The name is shown as it is on the People list, or else as
+   it was first typed. */
+function nameMap(){const m=new Map();for(const n of S.cfg.people)if(!m.has(norm(n)))m.set(norm(n),n);if(S.log)for(const a of S.log)if(!m.has(norm(a.who)))m.set(norm(a.who),a.who);return m}
+const BADGES=[
+  ["regular","Regular","Took part in 5 or more activities in the period.","#3d9fe8",o=>o.n>=5?1:0],
+  ["all","All-rounder","Took part in 3 or more different kinds of activity in the period.","#a78bfa",o=>o.kinds>=3?1:0],
+  ["goto","Go-to person","Did the same activity 3 or more times in the period.","#2fbf71",o=>o.acts.filter(x=>x.n>=3).length],
+  ["weeks","Every week","Took part in at least one activity in each of the last 4 weeks.","#e8a33d",o=>o.weeks>=4?1:0]
+];
+function standings(){
+  const [f,t]=period(),names=nameMap(),m=new Map(),wk=new Map();
+  for(const a of S.log){const k=norm(a.who);if(a.dt<=t){let w=wk.get(k);if(!w){w=new Set();wk.set(k,w)}w.add(weekOf(a.dt))}
+    if(a.dt<f||a.dt>t)continue;let o=m.get(k);if(!o){o={k,name:names.get(k)||a.who,pts:0,n:0,by:new Map(),list:[]};m.set(k,o)}
+    o.pts+=a.pts;o.n++;o.list.push(a);const an=actName(a);let x=o.by.get(an);if(!x){x={name:an,n:0,pts:0};o.by.set(an,x)}x.n++;x.pts+=a.pts}
+  const end=weekOf(Math.min(t,dayNow())),L=[...m.values()];
+  for(const o of L){o.acts=[...o.by.values()].sort((a,b)=>b.pts-a.pts||b.n-a.n);o.kinds=o.acts.length;const w=wk.get(o.k);let n=0;while(w.has(end-n))n++;o.weeks=n;
+    o.badges=BADGES.map(b=>[b,b[4](o)]).filter(x=>x[1]>0)}
+  L.sort((a,b)=>b.pts-a.pts||b.n-a.n||(norm(a.name)<norm(b.name)?-1:1));
+  L.forEach((o,i)=>o.rank=i&&L[i-1].pts===o.pts?L[i-1].rank:i+1);
+  return L}
+const didText=o=>o.acts.map(x=>x.name+(x.n>1?" ×"+x.n:"")).join(", ");
+const badgeHtml=x=>`<span class="badge" style="--bc:${x[0][3]}" title="${esc(x[0][2])}"><i></i>${esc(x[0][1])}${x[1]>1?" ×"+x[1]:""}</span>`;
+
+/* ---------- drawing ---------- */
+let CUR=[];
+function render(){
+  if(!S.role)return;
+  const has=!!(S.log&&S.log.length);
+  $("giveBtn").hidden=!S.canEdit;
+  let newest=null;if(S.log)for(const a of S.log)if(!newest||a.at>newest.at)newest=a;
+  const live=S.log===null?"Loading…":has?`${nf(S.log.length,0)} ${S.log.length===1?"entry":"entries"} logged · last ${esc(stamp(newest.at))}${newest.byName?" by "+esc(newest.byName):""}`:"Nothing logged yet";
+  $("status").innerHTML=`<span><span class="dot ok"></span>${esc(S.myName||"")}${S.myName?" · ":""}${esc(S.grp||ROLE_LABEL[S.role])}</span><span>${live}</span>`;
+  const views=[["board","Leaderboard"],["badges","Badges"],["rec","Activity log"]];if(S.isFull)views.push(["set","Settings"]);
+  if(!views.some(v=>v[0]===S.view))S.view="board";
+  const setV=S.view==="set";
+  $("noData").hidden=has||S.log===null||setV;
+  if(!has&&!setV)$("noData").innerHTML=S.log===null?"":`<strong>Nothing logged yet</strong><span>People earn points for taking part: 5S of an area, bin checks, the Safety Committee and Employee Engagement meetings, weekend support and the like. ${S.canEdit?"Use <b>Log an activity</b> to record who took part, and the board builds from there.":"A supervisor records who took part, and the board builds from there."}</span>`;
+  $("views").innerHTML=views.map(v=>`<button type="button" class="view" role="tab" data-v="${v[0]}" aria-selected="${S.view===v[0]}">${v[1]}</button>`).join("");
+  $("rangeBtns").innerHTML=RANGES.map(r=>`<button type="button" data-r="${r[0]}" aria-pressed="${S.range===r[0]}">${r[1]}</button>`).join("");
+  $("rangeBtns").parentNode.hidden=setV||!has;
+  $("dayIn").value=iso(anchor());$("dayIn").classList.toggle("on",S.day!=null);
+  ["vBoard","vBadges","vRec","vSet"].forEach(id=>$(id).hidden=true);
+  if(setV){$("stats").innerHTML="";$("vSet").hidden=false;if(!S.setDrawn||!S.setDirty)renderSet();renderNote();return}
+  S.setDrawn=false;S.setDirty=false;
+  if(!has){$("stats").innerHTML="";CUR=[];renderNote();return}
+  const L=CUR=standings();let pts=0,n=0,bd=0;const cnt=new Map();for(const o of L){pts+=o.pts;n+=o.n;bd+=o.badges.length;for(const x of o.acts)cnt.set(x.name,(cnt.get(x.name)||0)+x.n)}
+  const top=[...cnt].sort((a,b)=>b[1]-a[1])[0];
+  $("stats").innerHTML=[["People taking part",nf(L.length,0)],["Activities logged",nf(n,0)],["Points earned",nf(pts,0)],["Badges earned",nf(bd,0)]]
+    .map(t=>`<div><dt>${t[0]}</dt><dd>${t[1]}</dd></div>`).join("")+`<div style="grid-column:span 2"><dt>Most common activity</dt><dd style="font-size:1.35em;line-height:1.55;white-space:normal">${top?esc(top[0])+" · "+nf(top[1],0):"—"}</dd></div>`;
+  $("tvText").textContent="Standings for "+periodText();
+  if(S.view==="board"||S.tv){$("vBoard").hidden=false;renderBoard(L)}else if(S.view==="badges"){$("vBadges").hidden=false;renderBadges(L)}else{$("vRec").hidden=false;renderRec()}
+  renderNote()}
+function renderBoard(L){
+  const top=L.filter(o=>o.rank<=3).slice(0,3);
+  $("podium").innerHTML=top.map((o,i)=>`<div class="pod r${i+1}" data-u="${esc(o.k)}"><span class="medal">${o.rank}</span><div class="nm">${esc(o.name)}</div><div class="pt">${nf(o.pts,0)}<small>points</small></div>
+    <div class="sub">${nf(o.n,0)} ${o.n===1?"activity":"activities"}</div><div class="bdg">${o.badges.map(badgeHtml).join("")}</div></div>`).join("");
+  $("podium").hidden=!top.length;
+  const q=norm(S.q);let rows=q&&!S.tv?L.filter(o=>o.k.includes(q)):L;if(S.tv)rows=rows.slice(0,S.cfg.top);
+  $("cBoard").textContent=S.tv?"Top "+rows.length:nf(rows.length,0);
+  const mx=Math.max(1,...L.map(o=>o.pts));
+  $("tBoard").innerHTML='<thead><tr><th class="t">Rank</th><th class="t">Name</th><th class="t">Points</th><th>Activities</th><th class="t">What they took part in</th><th class="t">Badges</th></tr></thead><tbody>'
+    +(rows.length?rows.map(o=>`<tr class="click" data-u="${esc(o.k)}"><td class="t"><span class="rank${o.rank<=3?" r"+o.rank:""}">${o.rank}</span></td><td class="t n">${esc(o.name)}</td>
+      <td class="t pts"><span class="meter" style="width:${(o.pts/mx*7).toFixed(2)}em"></span>${nf(o.pts,0)}</td><td>${o.n}</td><td class="t wrap">${esc(didText(o))}</td><td class="t"><div class="bdg">${o.badges.map(badgeHtml).join("")}</div></td></tr>`).join("")
+      :`<tr><td colspan="6" class="t" style="color:var(--muted)">${L.length?"Nobody matches that search.":"Nothing was logged for "+esc(periodText())+". Choose another date or period."}</td></tr>`)+"</tbody>"}
+function renderBadges(L){
+  $("bCards").innerHTML=BADGES.map(b=>{const who=L.map(o=>[o,b[4](o)]).filter(x=>x[1]>0).sort((x,y)=>y[1]-x[1]||x[0].rank-y[0].rank);
+    return `<div class="bcard" style="--bc:${b[3]}"><h3>${esc(b[1])}</h3><p>${esc(b[2])}</p><div class="who">${who.length?who.map(x=>`<span class="badge" style="--bc:${b[3]}"><i></i>${esc(x[0].name)}${x[1]>1?" ×"+x[1]:""}</span>`).join(""):`<span class="none">Nobody yet for ${esc(periodText())}.</span>`}</div></div>`}).join("")}
+function renderRec(){
+  const [f,t]=period(),names=nameMap(),inP=S.log.filter(a=>a.dt>=f&&a.dt<=t),kinds=[...new Set(inP.map(actName))].sort();
+  if(S.fAct&&!kinds.includes(S.fAct))S.fAct="";
+  $("fAct").innerHTML='<option value="">All activities</option>'+kinds.map(k=>`<option${S.fAct===k?" selected":""}>${esc(k)}</option>`).join("");
+  const A=inP.filter(a=>!S.fAct||actName(a)===S.fAct).sort((x,y)=>y.dt-x.dt||y.at-x.at),uid=S.authUser.uid,any=A.some(a=>S.isFull||(S.canEdit&&a.by===uid));
+  $("cRec").textContent=nf(A.length,0);$("recHint").textContent=S.canEdit?"Use Log an activity to add to it":"";
+  $("tRec").innerHTML=A.length?'<thead><tr><th class="t">Date</th><th class="t">Name</th><th class="t">Activity</th><th>Points</th><th class="t">Note</th><th class="t">Logged by</th>'+(any?"<th></th>":"")+"</tr></thead><tbody>"
+    +A.map(a=>`<tr><td class="t">${mdyDay(a.dt)}</td><td class="t n">${esc(names.get(norm(a.who))||a.who)}</td><td class="t"><span class="pill">${esc(actName(a))}</span></td><td class="n pos">+${nf(a.pts,0)}</td><td class="t wrap">${esc(a.note||"")}</td><td class="t">${esc(a.byName||"")}</td>${any?`<td>${S.isFull||(S.canEdit&&a.by===uid)?`<button type="button" class="linkbtn" data-del="${esc(a.id)}">${S.delAsk===a.id?"Select again to remove":"Remove"}</button>`:""}</td>`:""}</tr>`).join("")+"</tbody>"
+    :`<tbody><tr><td class="t" style="color:var(--muted)">Nothing was logged for ${esc(periodText())}.</td></tr></tbody>`}
+function actRow(a){return `<tr data-id="${esc(a.id)}"><td class="t"><input class="inp" maxlength="60" value="${esc(a.name)}" placeholder="Name of the activity" aria-label="Activity name"></td><td class="t"><input class="inp" type="number" min="1" max="1000" step="1" value="${a.pts}" style="max-width:7em" aria-label="Points"></td><td class="t"><input type="checkbox"${a.on?" checked":""} aria-label="In use"></td></tr>`}
+function renderSet(){
+  S.setDrawn=true;S.setDirty=false;$("cSet").textContent=nf(S.cfg.acts.length,0);
+  $("tSet").innerHTML='<thead><tr><th class="t">Activity</th><th class="t">Points</th><th class="t">In use</th></tr></thead><tbody>'+S.cfg.acts.map(actRow).join("")+"</tbody>";
+  $("sPeople").value=S.cfg.people.join("\n");$("sTop").value=S.cfg.top;
+  $("setText").innerHTML=S.cfgAt?"Settings last saved "+esc(stamp(S.cfgAt))+".":"This is the starting list. Nothing has been saved yet."}
+function renderNote(){
+  $("note").innerHTML=`<b style="color:var(--muted)">How points are earned.</b> Points come from taking part, not from productivity numbers: ${S.cfg.acts.filter(a=>a.on).map(a=>esc(a.name)+" "+nf(a.pts,0)).join(", ")}. A supervisor logs who took part. Weeks run Sunday to Saturday.`}
+
+/* ---------- one person: what the points are for ---------- */
+function openDlg(k){
+  const o=CUR.find(x=>x.k===k);if(!o||S.tv)return;
+  $("dTitle").textContent=o.name+" · "+periodText();
+  $("dFacts").innerHTML=[["Rank",o.rank+" of "+CUR.length],["Points",nf(o.pts,0)],["Activities",nf(o.n,0)],["Kinds of activity",nf(o.kinds,0)],["Weeks in a row",nf(o.weeks,0)]]
+    .map(f=>`<div><b>${f[0]}</b><span>${esc(f[1])}</span></div>`).join("");
+  $("dBdg").innerHTML=o.badges.map(badgeHtml).join("");
+  $("dPts").innerHTML='<thead><tr><th class="t">Activity</th><th>Times</th><th>Points</th></tr></thead><tbody>'+o.acts.map(x=>`<tr><td class="t">${esc(x.name)}</td><td>${x.n}</td><td class="n">${nf(x.pts,0)}</td></tr>`).join("")
+    +`<tr class="tot"><td class="t">Total</td><td>${o.n}</td><td>${nf(o.pts,0)}</td></tr></tbody>`;
+  $("dDays").innerHTML='<thead><tr><th class="t">Date</th><th class="t">Activity</th><th class="t">Note</th><th class="t">Logged by</th><th>Points</th></tr></thead><tbody>'
+    +o.list.slice().sort((a,b)=>b.dt-a.dt||b.at-a.at).map(a=>`<tr><td class="t">${mdyDay(a.dt)}</td><td class="t">${esc(actName(a))}</td><td class="t wrap">${esc(a.note||"")}</td><td class="t">${esc(a.byName||"")}</td><td class="n pos">+${nf(a.pts,0)}</td></tr>`).join("")+"</tbody>";
+  $("dlg").showModal()}
+
+/* ---------- logging an activity: one activity and date, as many people as took part ---------- */
+function openGive(){
+  if(!S.canEdit)return;const A=S.cfg.acts.filter(a=>a.on);
+  $("gAct").innerHTML='<option value="">Choose the activity</option>'+A.map(a=>`<option value="${esc(a.id)}">${esc(a.name)} · ${nf(a.pts,0)} points</option>`).join("");
+  S.gSel=new Set();S.gExtra=[];$("gFind").value="";$("gNew").value="";$("gNote").value="";$("gDay").value=iso(dayNow());$("gErr").hidden=true;drawPeople();$("gDlg").showModal()}
+function drawPeople(){
+  const q=norm($("gFind").value),all=[...new Map([...nameMap().values(),...S.gExtra].map(n=>[norm(n),n])).entries()].sort((a,b)=>a[0]<b[0]?-1:1),L=all.filter(([k])=>!q||k.includes(q)||S.gSel.has(k));
+  $("gPeople").innerHTML=L.length?L.map(([k,n])=>`<label><input type="checkbox" value="${esc(k)}"${S.gSel.has(k)?" checked":""}><span>${esc(n)}</span></label>`).join("")
+    :`<span class="none">${all.length?"No name matches. Add it below.":"No names yet. Add the people who took part below. Admins can keep a list on the Settings tab."}</span>`;
+  $("gCount").textContent=S.gSel.size?"· "+S.gSel.size+" chosen":"";$("gSave").textContent=S.gSel.size>1?"Log it for "+S.gSel.size+" people":"Log it"}
+$("gPeople").addEventListener("change",e=>{const c=e.target;if(c.type!=="checkbox")return;c.checked?S.gSel.add(c.value):S.gSel.delete(c.value);drawPeople()});
+$("gFind").addEventListener("input",drawPeople);
+function addName(){const n=str($("gNew").value,40);if(!n)return;const k=norm(n);if(!nameMap().has(k)&&!S.gExtra.some(x=>norm(x)===k))S.gExtra.push(n);S.gSel.add(k);$("gNew").value="";$("gFind").value="";drawPeople()}
+$("gAdd").addEventListener("click",addName);
+$("gNew").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();addName()}});
+$("gSave").addEventListener("click",async()=>{
+  const {Fs,fs}=S.fb,err=$("gErr"),act=S.cfg.acts.find(a=>a.id===$("gAct").value&&a.on),day=$("gDay").value,note=str($("gNote").value,300);err.hidden=true;
+  if(str($("gNew").value,40))addName();
+  const bad=!act?"Choose the activity.":!day?"Choose the date.":!S.gSel.size?"Choose who took part.":S.gSel.size>400?"Log 400 people or fewer at a time.":"";
+  if(bad){err.textContent=bad;err.hidden=false;return}
+  const dt=dayOf(day),names=new Map([...nameMap(),...S.gExtra.map(n=>[norm(n),n])]),have=new Set(S.log.filter(a=>a.dt===dt&&a.act===act.id).map(a=>norm(a.who)));
+  const who=[...S.gSel].filter(k=>!have.has(k)),skip=S.gSel.size-who.length;
+  if(!who.length){err.textContent=(skip===1?"That person is":"Those people are")+" already logged for this activity on that date.";err.hidden=false;return}
+  $("gSave").disabled=true;
+  try{const b=Fs.writeBatch(fs),at=Date.now();
+    for(const k of who)b.set(Fs.doc(Fs.collection(fs,"rewlog")),{who:names.get(k)||k,act:act.id,actName:act.name,pts:act.pts,note,dt,by:S.authUser.uid,byName:S.myName||S.authUser.email||"",at});
+    await b.commit();$("gDlg").close();
+    toast(act.name+" logged for "+(who.length===1?names.get(who[0]):who.length+" people")+", "+nf(act.pts,0)+" points each."+(skip?" "+skip+" already logged for that date "+(skip===1?"was":"were")+" skipped.":""),9000)}
+  catch(e){err.textContent=refused(e);err.hidden=false}
+  finally{$("gSave").disabled=false}});
+$("giveBtn").addEventListener("click",openGive);
+$("fAct").addEventListener("change",e=>{S.fAct=e.target.value;render()});
+$("tRec").addEventListener("click",async e=>{const b=e.target.closest("button[data-del]");if(!b||!S.canEdit)return;const id=b.dataset.del;
+  if(S.delAsk!==id){S.delAsk=id;render();return}
+  S.delAsk="";try{await S.fb.Fs.deleteDoc(S.fb.Fs.doc(S.fb.fs,"rewlog",id));toast("Removed.")}catch(x){toast(refused(x))}});
+
+/* ---------- settings ---------- */
+$("vSet").addEventListener("input",()=>{S.setDirty=true});
+$("addAct").addEventListener("click",()=>{S.setDirty=true;$("tSet").tBodies[0].insertAdjacentHTML("beforeend",actRow({id:"a"+Date.now().toString(36),name:"",pts:10,on:true}));const r=$("tSet").tBodies[0].lastElementChild;r.querySelector("input").focus()});
+$("setSave").addEventListener("click",async()=>{
+  if(!S.isFull)return;const {Fs,fs}=S.fb,acts=[],seen=new Set(),people=[];
+  document.querySelectorAll("#tSet tr[data-id]").forEach(tr=>{const i=tr.querySelectorAll("input"),name=str(i[0].value,60);if(name)acts.push({id:tr.dataset.id,name,pts:Math.round(num(i[1].value,1,1000,5)),on:i[2].checked})});
+  if(!acts.some(a=>a.on)){toast("Keep at least one activity in use.");return}
+  for(const l of $("sPeople").value.split("\n")){const n=str(l,40),k=norm(n);if(n&&!seen.has(k)){seen.add(k);people.push(n)}}
+  const doc={acts:JSON.stringify(acts),people:JSON.stringify(people),top:Math.round(num($("sTop").value,3,100,10)),by:S.authUser.uid,byName:S.myName||S.authUser.email||"",at:Date.now()};
+  if(doc.acts.length>50000||doc.people.length>90000){toast("That is too much to save. Shorten the lists.");return}
+  $("setSave").disabled=true;
+  try{await Fs.setDoc(Fs.doc(fs,"rewcfg","settings"),doc);S.setDirty=false;toast("Settings saved.")}catch(e){toast(refused(e),9000)}finally{$("setSave").disabled=false}});
+
+/* ---------- TV view ---------- */
+function setTv(on){S.tv=on;document.body.classList.toggle("tv",on);if(on){S.view="board";const el=document.documentElement;if(el.requestFullscreen)el.requestFullscreen().catch(()=>{})}
+  else if(document.fullscreenElement&&document.exitFullscreen)document.exitFullscreen().catch(()=>{});render()}
+$("tvBtn").addEventListener("click",()=>setTv(true));$("tvExit").addEventListener("click",()=>setTv(false));
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&S.tv&&!document.querySelector("dialog[open]"))setTv(false)});
+
+/* ---------- Excel ---------- */
+$("xlsBtn").addEventListener("click",()=>{
+  const L=CUR;if(!L.length)return;
+  const head=["Rank","Name","Points","Activities","What they took part in","Badges"];
+  const ws=XLSX.utils.aoa_to_sheet([head].concat(L.map(o=>[o.rank,o.name,o.pts,o.n,didText(o).replace(/×/g,"x"),o.badges.map(x=>x[0][1]+(x[1]>1?" x"+x[1]:"")).join(", ")])));ws["!cols"]=[6,24,9,10,70,40].map(w=>({wch:w}));
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Standings");
+  const [f,t]=period(),names=nameMap(),A=S.log.filter(a=>a.dt>=f&&a.dt<=t).sort((x,y)=>y.dt-x.dt);
+  const w2=XLSX.utils.aoa_to_sheet([["Date","Name","Activity","Points","Note","Logged by"]].concat(A.map(a=>[mdyDay(a.dt),names.get(norm(a.who))||a.who,actName(a),a.pts,a.note||"",a.byName||""])));w2["!cols"]=[12,24,34,8,50,20].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb,w2,"Activity log");
+  const d=new Date();XLSX.writeFile(wb,"CEVA Rewards Board "+d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate())+".xlsx");
+  toast("Exported the standings for "+periodText()+".")});
+
+/* ---------- clicks ---------- */
+$("views").addEventListener("click",e=>{const b=e.target.closest("button[data-v]");if(b){S.view=b.dataset.v;S.delAsk="";render()}});
+$("rangeBtns").addEventListener("click",e=>{const b=e.target.closest("button[data-r]");if(b){S.range=b.dataset.r;render()}});
+$("dayIn").addEventListener("change",e=>{const v=e.target.value;S.day=v?dayOf(v):null;if(S.range==="all")S.range="month";render()});
+let qT;$("q").addEventListener("input",e=>{clearTimeout(qT);qT=setTimeout(()=>{S.q=e.target.value;render()},150)});
+$("tBoard").addEventListener("click",e=>{const tr=e.target.closest("tr[data-u]");if(tr)openDlg(tr.dataset.u)});
+$("podium").addEventListener("click",e=>{const d=e.target.closest("[data-u]");if(d)openDlg(d.dataset.u)});
+/* ---------- sign-in gate (same accounts, roles and access requests as the other CEVA tools) ---------- */
+function showGate(mode,waitText){
+  const ready=mode==="ready";$("gate").hidden=ready;$("app").hidden=!ready;
+  $("gateWait").hidden=mode!=="wait";if(waitText)$("gateWait").textContent=waitText;
+  $("gateSetup").hidden=mode!=="setup";$("gateLogin").hidden=mode!=="login";$("gateRequest").hidden=mode!=="request";$("gateDenied").hidden=mode!=="denied";
+  if(mode==="denied")renderDenied();
+}
+function renderDenied(){const em=S.authUser?S.authUser.email||"":"";$("dEmail").textContent=em;$("dEmailP").textContent=em;$("dPending").hidden=!S.myReq;$("dNone").hidden=!!S.myReq}
+function reqErrMsg(c){return c==="auth/email-already-in-use"?"That email already has a login. Go back and sign in, or use Forgot password."
+  :c==="auth/invalid-email"?"That doesn’t look like an email address.":c==="auth/weak-password"?"Use a password of at least 8 characters."
+  :c==="auth/network-request-failed"?"No connection. Check the network and try again.":"Couldn’t send the request. Try again in a moment."}
+function fileRequest(user,name,note){const {Fs,fs}=S.fb;return Fs.setDoc(Fs.doc(fs,"requests",user.uid),{name:str(name,40),email:str(user.email||"",80),company:"ceva",note:str(note,120),at:Date.now()})}
+$("gateLogin").addEventListener("submit",async e=>{e.preventDefault();const email=$("lEmail").value.trim(),pass=$("lPass").value,err=$("lErr");err.hidden=true;
+  if(!email||!pass){err.textContent="Enter your email and password.";err.hidden=false;return}
+  if(!S.fb)return;$("lGo").disabled=true;
+  try{await S.fb.F.signInWithEmailAndPassword(S.fb.auth,email,pass);$("lPass").value=""}
+  catch(x){const c=x&&x.code;err.textContent=c==="auth/too-many-requests"?"Too many tries. Wait a few minutes, then try again.":c==="auth/network-request-failed"?"No connection. Check the network and try again.":"That email and password don’t match an account on this tool.";err.hidden=false}
+  finally{$("lGo").disabled=false}});
+$("lForgot").addEventListener("click",async()=>{const email=$("lEmail").value.trim(),err=$("lErr");err.hidden=true;
+  if(!email){err.textContent="Type your email above first, then select this again.";err.hidden=false;$("lEmail").focus();return}
+  if(!S.fb)return;
+  try{await S.fb.F.sendPasswordResetEmail(S.fb.auth,email);toast("Reset link sent to "+email+". Check spam too; the link expires, so use it soon.")}
+  catch(x){err.textContent="Couldn’t send the reset link. Check the email address and the connection, then try again.";err.hidden=false}});
+$("lRequest").addEventListener("click",()=>{$("qEmail").value=$("lEmail").value;showGate("request");setTimeout(()=>$("qName").focus(),30)});
+$("qBack").addEventListener("click",()=>showGate("login"));
+$("gateRequest").addEventListener("submit",async e=>{e.preventDefault();const name=str($("qName").value,40),email=$("qEmail").value.trim(),pass=$("qPass").value,note=str($("qNote").value,120),err=$("qErr");err.hidden=true;
+  const bad=!name?"Enter your name so the admin knows who is asking.":!email?"Enter your work email.":pass.length<8?"Use a password of at least 8 characters.":"";
+  if(bad){err.textContent=bad;err.hidden=false;return}
+  if(!S.fb)return;$("qGo").disabled=true;S.pendingReq={name,note};
+  try{await S.fb.F.createUserWithEmailAndPassword(S.fb.auth,email,pass);$("qPass").value=""}
+  catch(x){S.pendingReq=null;err.textContent=reqErrMsg(x&&x.code);err.hidden=false}
+  finally{$("qGo").disabled=false}});
+$("dRequest").addEventListener("submit",async e=>{e.preventDefault();const name=str($("dName").value,40),note=str($("dNote").value,120),err=$("dReqErr");err.hidden=true;
+  if(!name){err.textContent="Enter your name so the admin knows who is asking.";err.hidden=false;return}
+  if(!S.fb||!S.authUser)return;$("dReqGo").disabled=true;
+  try{await fileRequest(S.authUser,name,note);toast("Request sent")}catch(x){err.textContent=reqErrMsg(x&&x.code);err.hidden=false}finally{$("dReqGo").disabled=false}});
+const signOut=()=>{if(S.fb)S.fb.F.signOut(S.fb.auth)};
+$("dOut").addEventListener("click",signOut);$("signOut").addEventListener("click",signOut);
+
+(async function connect(){
+  const cfg=window.FIREBASE_CONFIG;
+  if(!cfg||!cfg.apiKey||/PASTE/i.test(cfg.apiKey+cfg.projectId)){showGate("setup");return}
+  let A,F,Fs;
+  try{[A,F,Fs]=await Promise.all([import(FB+"firebase-app.js"),import(FB+"firebase-auth.js"),import(FB+"firebase-firestore.js")])}
+  catch(_){showGate("wait","Can’t reach Firebase from this network. Ask IT to allow gstatic.com, googleapis.com and firebaseapp.com, then reload.");return}
+  const app=A.initializeApp(cfg),auth=F.getAuth(app);let fs;
+  try{fs=Fs.initializeFirestore(app,{localCache:Fs.persistentLocalCache({tabManager:Fs.persistentMultipleTabManager()})})}catch(_){fs=Fs.getFirestore(app)}
+  S.fb={auth,F,Fs,fs};
+  let roleUnsub=null,reqUnsub=null;
+  F.onAuthStateChanged(auth,user=>{
+    if(roleUnsub){roleUnsub();roleUnsub=null}if(reqUnsub){reqUnsub();reqUnsub=null}
+    stopData();S.authUser=user;S.role=null;S.canEdit=S.isFull=false;S.myReq=null;
+    if(!user){showGate("login");return}
+    if(S.pendingReq){const q=S.pendingReq;S.pendingReq=null;fileRequest(user,q.name,q.note).then(()=>toast("Request sent. An admin will approve it."),()=>toast("Signed up, but the request didn’t send. Fill in the form below."))}
+    showGate("wait","Checking access…");
+    reqUnsub=Fs.onSnapshot(Fs.doc(fs,"requests",user.uid),s=>{S.myReq=s.exists();if(!S.role&&!$("gateDenied").hidden)renderDenied()},()=>{});
+    roleUnsub=CevaAccess.watch(Fs,fs,user.uid,"rewards",snap=>{
+      const d=snap.exists()?(snap.data()||{}):{},role=d.role;
+      if(d.noAccess){S.role=null;stopData();showGate("wait",CevaAccess.NO_ACCESS);return}
+      if(!ROLE_LABEL[role]){if(snap.metadata.fromCache){showGate("wait","Waiting for the network…");return}S.role=null;stopData();showGate("denied");return}
+      const first=!S.role;S.role=role;S.myName=str(d.name,40);S.canEdit=role==="supervisor"||role==="admin";S.isFull=role==="admin";S.grp=d.groupName+" · "+CevaAccess.LEVEL_LABEL[d.level];
+      if(first){startData();showGate("ready")}
+      render();
+    },()=>{S.role=null;stopData();showGate("denied")});
+  });
+})();
+</script>
+</body>
+</html>
