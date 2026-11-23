@@ -73,7 +73,7 @@ button,input{font:inherit;color:inherit}
 .b-stats>div{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:1.1em 1.2em 1em;position:relative;overflow:hidden;margin:0}
 .b-stats>div::before{content:"";position:absolute;top:0;left:0;width:3px;height:100%;background:var(--kpi,var(--line-light))}
 .b-stats>div:nth-child(1){--kpi:var(--accent)}.b-stats>div:nth-child(2){--kpi:var(--info)}.b-stats>div:nth-child(3){--kpi:var(--purple)}
-.b-stats>div:nth-child(5){--kpi:var(--good)}
+.b-stats>div:nth-child(3){--kpi:var(--good)}
 .b-stats>div.warn{--kpi:var(--warn)}.b-stats>div.hot{--kpi:var(--bad)}
 .b-stats dt{font:700 .75em/1.2 var(--f);letter-spacing:.6px;text-transform:uppercase;color:var(--faint);white-space:nowrap}
 .b-stats dd{margin:.45em 0 0;font:800 2.1em/1 var(--f);font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -205,7 +205,8 @@ select.sel{max-width:15rem;min-height:2.4rem;padding:.3rem .6rem;font-size:13.5p
   #sheet th{background:#021D49!important;color:#fff!important;font:700 8pt/1.2 Arial,Helvetica,sans-serif;letter-spacing:.2px;text-transform:uppercase;text-align:left;padding:1.6mm 1.8mm;border:.2mm solid #021D49;white-space:nowrap;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   #sheet td{padding:1.5mm 1.8mm;border:.2mm solid #666666;text-align:left;white-space:nowrap;color:#000;height:7.5mm}
   #sheet th.r,#sheet td.r{text-align:right}#sheet th.c,#sheet td.c{text-align:center;width:11mm}
-  #sheet td.w{width:34%;white-space:normal}
+  #sheet td.w{width:30%;white-space:normal}
+  #sheet tr.blank td{height:9.5mm}
   #sheet .box{display:inline-block;width:4mm;height:4mm;border:.3mm solid #021D49;vertical-align:middle}
   .sh-foot{margin:3mm 0 0;font-size:8pt;color:#666666}
 }
@@ -282,8 +283,7 @@ select.sel{max-width:15rem;min-height:2.4rem;padding:.3rem .6rem;font-size:13.5p
     <div class="tools">
       <input class="inp" id="q" type="search" placeholder="Search product, bin, associate, order, task" aria-label="Search">
       <select class="inp sel" id="who" aria-label="Associate"></select>
-      <div class="chips" id="resChips" role="group" aria-label="Audit result"></div>
-      <span style="margin-left:auto;display:flex;gap:.6em;flex-wrap:wrap"><button type="button" class="btn" id="xlsBtn">Export to Excel</button><button type="button" class="btn primary" id="printBtn">Print audit sheet</button></span>
+      <span style="margin-left:auto;display:flex;gap:.6em;flex-wrap:wrap"><button type="button" class="btn" id="addVar" hidden>Enter a variance</button><button type="button" class="btn" id="xlsBtn">Export to Excel</button><button type="button" class="btn primary" id="printBtn">Print correct bins form</button></span>
     </div>
     <section class="b-panel"><header class="p-head"><h2 id="hList">Picks out of storage bins</h2><span class="p-count" id="cList"></span><span class="p-page" id="listHint"></span></header>
       <div class="p-body scroll"><table id="tList"></table><div class="more" id="more"></div></div></section>
@@ -291,9 +291,9 @@ select.sel{max-width:15rem;min-height:2.4rem;padding:.3rem .6rem;font-size:13.5p
 
   <!-- By associate -->
   <div class="panels" id="vUser" style="margin-top:1em" hidden>
-    <section class="b-panel"><header class="p-head"><h2>Errors by associate</h2><span class="p-count" id="cUser"></span><span class="p-page">Select a row to see that associate's picks, a heading to sort</span></header>
+    <section class="b-panel"><header class="p-head"><h2>Variances by associate</h2><span class="p-count" id="cUser"></span><span class="p-page">Select a row to see that associate's picks, a heading to sort</span></header>
       <div class="p-body scroll"><table id="tUser"></table></div></section>
-    <section class="b-panel"><header class="p-head"><h2>Errors by type</h2><span class="p-count" id="cType"></span></header>
+    <section class="b-panel"><header class="p-head"><h2>Variances by type</h2><span class="p-count" id="cType"></span></header>
       <div class="p-body scroll"><table id="tType"></table></div></section>
   </div>
 
@@ -302,7 +302,7 @@ select.sel{max-width:15rem;min-height:2.4rem;padding:.3rem .6rem;font-size:13.5p
     <section class="b-panel"><header class="p-head"><h2>Close out the audit</h2><span class="p-count" id="cClose"></span><span class="p-page">Uses the dates chosen above</span></header>
       <div class="p-body"><div class="ag" id="coTiles"></div>
         <div class="co-bar"><p id="coText"></p><button type="button" class="btn primary" id="coBtn" hidden></button></div></div></section>
-    <section class="b-panel"><header class="p-head"><h2>Errors entered</h2><span class="p-count" id="cCoErr"></span><span class="p-page">Check these against the audit sheets before closing out</span></header>
+    <section class="b-panel"><header class="p-head"><h2>Variances entered</h2><span class="p-count" id="cCoErr"></span><span class="p-page">Check these against the variance forms before closing out</span></header>
       <div class="p-body scroll"><table id="tCoErr"></table></div></section>
   </div>
 
@@ -317,7 +317,8 @@ select.sel{max-width:15rem;min-height:2.4rem;padding:.3rem .6rem;font-size:13.5p
   <div class="facts" id="dFacts"></div>
   <div class="fld"><label>Audit result</label><div class="segm" id="dRes" role="group" aria-label="Audit result"></div></div>
   <div id="dErrBox" hidden>
-    <div class="fld"><label>What was wrong</label><div class="segm" id="dType" role="group" aria-label="Error type"></div></div>
+    <div class="fld"><label>What was wrong</label><div class="segm" id="dType" role="group" aria-label="Variance type"></div></div>
+    <div class="fld" style="margin-top:.9rem"><label for="dFound">Quantity found in the bin (optional)</label><input class="inp" id="dFound" type="number" inputmode="decimal" min="0" step="any" style="max-width:12rem"></div>
   </div>
   <div class="fld"><label for="dNoteIn">Notes (what was found)</label><textarea class="inp" id="dNoteIn" maxlength="500"></textarea></div>
   <div class="who" id="dWho"></div>
@@ -325,9 +326,9 @@ select.sel{max-width:15rem;min-height:2.4rem;padding:.3rem .6rem;font-size:13.5p
   <div class="row"><button class="btn ghost" value="cancel" type="submit" formnovalidate>Close</button><button class="btn" type="button" id="dNext">Save and next</button><button class="btn primary" type="button" id="dSave">Save</button></div>
 </form></dialog>
 <dialog id="cDlg" aria-labelledby="cTitle"><form method="dialog" class="dlg">
-  <h2 id="cTitle">Have all errors been entered?</h2>
+  <h2 id="cTitle">Have all variances been entered?</h2>
   <p id="cText"></p>
-  <label class="chk" for="cOk"><input type="checkbox" id="cOk"><span>Yes, every error found on this audit has been entered.</span></label>
+  <label class="chk" for="cOk"><input type="checkbox" id="cOk"><span>Yes, every variance found on this audit has been entered.</span></label>
   <div class="err" id="cErr" role="alert" hidden></div>
   <div class="row"><button class="btn ghost" value="cancel" type="submit" formnovalidate>Not yet, go back</button><button class="btn primary" type="button" id="cGo" disabled></button></div>
 </form></dialog>
@@ -342,9 +343,9 @@ const FB='https://www.gstatic.com/firebasejs/10.14.1/';
 const ROLE_LABEL={viewer:'Viewer',supervisor:'Supervisor',user:'User',admin:'Admin'};
 const PAGE=300;
 const TYPES=[["bin","Wrong bin"],["qty","Wrong quantity"],["prod","Wrong product"],["missing","Bin count off"],["label","Label or handling unit"],["damage","Damaged"],["other","Other"]],TL=Object.fromEntries(TYPES);
-const RES=[["none","Not audited"],["ok","Correct"],["error","Error"]],RL=Object.fromEntries(RES);
+const RES=[["ok","Correct"],["error","Variance"]],RL=Object.fromEntries(RES);
 const RANGES=[["day","One day"],["7","7 days"],["30","30 days"],["all","All"]];
-const S={rows:null,days:new Map(),auds:new Map(),view:"list",range:"day",day:null,q:"",who:"",res:"all",sort:"dt",dir:1,show:PAGE,usort:"err",udir:-1,
+const S={rows:null,days:new Map(),auds:new Map(),view:"list",range:"day",day:null,q:"",who:"",res:"all",sort:"b",dir:1,show:PAGE,usort:"err",udir:-1,
   fb:null,authUser:null,role:null,myName:"",canLoad:false,canEdit:false,isAdmin:false,busy:false,pendingReq:null,unsubs:[],cur:null,dRes:"none",dType:"",coKeys:[],closing:false};
 const $=id=>document.getElementById(id),p2=n=>String(n).padStart(2,"0");
 const nf=(n,d)=>(+n||0).toLocaleString("en-US",{maximumFractionDigits:d==null?2:d});
@@ -399,17 +400,18 @@ function curDay(){return S.day!=null?S.day:latestDay()}
 function inRange(){if(S.range==="all")return S.rows;if(S.range==="day"){const d=curDay();return S.rows.filter(r=>r.dt===d)}
   const from=dayNow()-(+S.range-1);return S.rows.filter(r=>r.dt>=from)}
 function rangeText(){if(S.range==="all")return "all dates";if(S.range==="day")return mdyDay(curDay());return "last "+S.range+" days"}
-function enrich(rows){for(const r of rows){const a=S.auds.get(keyOf(r))||null;r._a=a;r._s=a&&RL[a.res]?a.res:"none"}}
-function listRows(R){
-  const q=norm(S.q);
+function enrich(rows){for(const r of rows){const a=S.auds.get(keyOf(r))||null;r._a=a;r._s=a&&a.res==="error"?"error":"ok";r._o=!(a&&(a.res==="ok"||a.res==="error"))}}
+/* the pick list is split in two: correct bins (view "list") and bins with a variance (view "var"); all=true keeps both */
+function listRows(R,all){
+  const q=norm(S.q),want=S.view==="var"?"error":"ok";
   return R.filter(r=>{
     if(S.who&&r.by!==S.who)return false;
-    if(S.res!=="all"&&r._s!==S.res)return false;
+    if(!all&&r._s!==want)return false;
     if(q){const a=r._a;const hay=norm([r.p,r.d,r.s,r.b,r.by,r.t,r.wo,r.wv,a&&a.note,a&&TL[a.type]].join(" "));if(!q.split(" ").every(w=>hay.includes(w)))return false}
     return true})}
-const SORTS={dt:r=>[r.dt,r.tm],by:r=>[r.by,r.dt,r.tm],p:r=>[r.p,r.s],b:r=>[r.s,r.dt,r.tm],q:r=>[-r.q],res:r=>[r._s==="error"?0:r._s==="ok"?1:2,r.by]};
+const SORTS={dt:r=>[r.dt,r.tm],by:r=>[r.by,r.dt,r.tm],p:r=>[r.p,r.s],b:r=>[r.s,r.dt,r.tm],q:r=>[-r.q],res:r=>[r._s==="error"?0:1,r.by]};
 function cmp(a,b){for(let i=0;i<a.length;i++){if(a[i]<b[i])return -1;if(a[i]>b[i])return 1}return 0}
-function sorted(R){const rows=listRows(R),f=SORTS[S.sort]||SORTS.dt;return rows.sort((a,b)=>S.dir*cmp(f(a),f(b)))}
+function sorted(R,all){const rows=listRows(R,all),f=SORTS[S.sort]||SORTS.dt;return rows.sort((a,b)=>S.dir*cmp(f(a),f(b)))}
 
 /* ---------- drawing ---------- */
 let CUR=[],LIST=[];
@@ -424,65 +426,73 @@ function render(){
   if(!has){$("noData").innerHTML=S.rows===null?"":`<strong>No picks loaded</strong><span>${S.canLoad?"Load the SAP warehouse task export with <b>Load SAP export</b>, on the <a href=\"../data/\" style=\"color:var(--info)\">Data upload</a> page, or drag the file onto this page. The page pulls out the picks from storage bins and keeps them.":"A supervisor loads the SAP warehouse task export. Once it is loaded, everyone signed in sees the picks."}</span>`;
     ["vList","vUser","vClose"].forEach(id=>$(id).hidden=true);$("stats").innerHTML="";$("views").innerHTML="";$("rangeBtns").innerHTML="";$("dayIn").hidden=true;renderNote();return}
   const R=CUR=inRange();enrich(R);
-  let ok=0,er=0,units=0;const users=new Set();for(const r of R){if(r._s==="ok")ok++;else if(r._s==="error")er++;units+=r.q;users.add(r.by)}
-  const aud=ok+er;
-  $("stats").innerHTML=[["Picks",nf(R.length,0),""],["Units picked",nf(units,0),""],["Audited",nf(aud,0),""],["Not audited",nf(R.length-aud,0),""],["Correct",nf(ok,0),""],["Errors",nf(er,0),er?"hot":""],["Error rate",aud?pct(er,aud):"—",er?"warn":""],["Associates",nf(users.size,0),""]]
+  let er=0,open=0,units=0;const users=new Set();for(const r of R){if(r._s==="error")er++;if(r._o)open++;units+=r.q;users.add(r.by)}
+  const ok=R.length-er;
+  $("stats").innerHTML=[["Picks",nf(R.length,0),""],["Units picked",nf(units,0),""],["Correct",nf(ok,0),""],["Variances",nf(er,0),er?"hot":""],["Variance rate",pct(er,R.length),er?"warn":""],["Associates",nf(users.size,0),""]]
     .map(t=>`<div class="${t[2]}"><dt>${t[0]}</dt><dd>${t[1]}</dd></div>`).join("");
   $("rangeBtns").innerHTML=RANGES.map(r=>`<button type="button" data-r="${r[0]}" aria-pressed="${S.range===r[0]}">${r[0]==="day"?(S.day==null||S.day===latestDay()?"Latest day":"One day"):r[1]}</button>`).join("");
   $("dayIn").hidden=false;$("dayIn").value=S.range==="day"&&curDay()>=0?iso(curDay()):"";$("dayIn").classList.toggle("on",S.range==="day");
-  $("views").innerHTML=[["list","Pick list",R.length],["user","Errors by associate",er],["close","Close out",R.length-aud]]
+  $("views").innerHTML=[["list","Correct bins",ok],["var","Variances",er],["user","Variances by associate",er],["close","Close out",open]]
     .map(v=>`<button type="button" class="view" role="tab" data-v="${v[0]}" aria-selected="${S.view===v[0]}">${v[1]}<span class="n">${nf(v[2],0)}</span></button>`).join("");
-  $("vList").hidden=S.view!=="list";$("vUser").hidden=S.view!=="user";$("vClose").hidden=S.view!=="close";
-  if(S.view==="list")renderList(R);else if(S.view==="close")renderClose(R);else renderUsers(R);
+  $("vList").hidden=S.view!=="list"&&S.view!=="var";$("vUser").hidden=S.view!=="user";$("vClose").hidden=S.view!=="close";
+  if(S.view==="list"||S.view==="var")renderList(R);else if(S.view==="close")renderClose(R);else renderUsers(R);
   renderNote()}
-function chip(val,label){return `<button type="button" class="tab" data-x="${val}" aria-pressed="${S.res===val}">${label}</button>`}
-function resPill(r){const a=r._a||{};return r._s==="error"?`<span class="pill p1">${esc(TL[a.type]||"Error")}</span>`:r._s==="ok"?`<span class="pill st-closed"${a.co?' title="Marked correct at close out"':""}>Correct</span>`:'<span class="pill p3">Not audited</span>'}
+function resPill(r){const a=r._a||{};return r._s==="error"?`<span class="pill p1">${esc(TL[a.type]||"Variance")}</span>`:`<span class="pill st-closed"${a.co?' title="Closed out as correct"':""}>Correct</span>`}
 function renderList(R){
-  const c={none:0,ok:0,error:0},names=new Map();for(const r of R){names.set(r.by,(names.get(r.by)||0)+1);if(!S.who||r.by===S.who)c[r._s]++}
+  const isVar=S.view==="var",want=isVar?"error":"ok",names=new Map();for(const r of R)if(r._s===want)names.set(r.by,(names.get(r.by)||0)+1);
   if(S.who&&!names.has(S.who))names.set(S.who,0);
   $("who").innerHTML=`<option value="">All associates</option>`+[...names].sort((a,b)=>a[0]<b[0]?-1:1).map(([n,k])=>`<option value="${esc(n)}"${S.who===n?" selected":""}>${esc(n)} · ${k}</option>`).join("");
-  $("resChips").innerHTML=chip("all","All")+chip("none","Not audited · "+nf(c.none,0))+chip("ok","Correct · "+nf(c.ok,0))+chip("error","Errors · "+nf(c.error,0));
   const rows=LIST=sorted(R);
-  $("cList").textContent=nf(rows.length,0);$("listHint").textContent=S.canEdit?"Select a row to enter its audit result":"Select a row to see its details";
+  $("hList").textContent=isVar?"Bins with variances":"Correct bins";$("printBtn").textContent=isVar?"Print variance form":"Print correct bins form";$("addVar").hidden=!isVar||!S.canEdit;
+  $("cList").textContent=nf(rows.length,0);$("listHint").textContent=isVar?(S.canEdit?"Select a row to change it or mark it correct":"Select a row to see its details"):S.canEdit?"Every bin counts as correct. Select a row to enter a variance":"Select a row to see its details";
   const th=(k,l,t)=>`<th class="s${t?" t":""}" data-s="${k}">${l}${S.sort===k?(S.dir>0?" ▲":" ▼"):""}</th>`;
-  let h="<thead><tr>"+th("dt","Picked",1)+th("by","Associate",1)+th("b","Picked from",1)+th("p","Product",1)+th("q","Qty")+'<th>Asked</th><th class="t">To</th><th class="t">Type</th><th class="t">Whse order</th><th class="t">Task</th>'+th("res","Audit",1)+'<th class="t">Notes</th></tr></thead><tbody>';
-  for(const r of rows.slice(0,S.show)){const a=r._a||{};
-    h+=`<tr class="click${r._s==="error"?" hot":""}" data-k="${esc(keyOf(r))}"><td class="t">${mdyDay(r.dt)} ${hm(r.tm)}</td><td class="t n">${esc(r.by)}</td><td class="t n">${esc(r.s)}</td><td class="t n" title="${esc(r.d||"")}">${esc(r.p||"(blank)")}</td><td>${nf(r.q)}</td>`
-      +`<td>${r.tg?`<span class="pill p2" title="${r.tg>r.q?"Short pick":"Over pick"}">${nf(r.tg)}</span>`:""}</td><td class="t">${esc(r.b)}</td><td class="t">${esc(r.pt)}</td><td class="t">${esc(r.wo)}</td><td class="t">${esc(r.t)}</td>`
-      +`<td class="t">${resPill(r)}</td><td class="t note" title="${esc(a.note||"")}">${esc(a.note||"")}</td></tr>`}
-  if(!rows.length)h+=`<tr><td colspan="12" class="t" style="color:var(--muted)">Nothing matches these filters.</td></tr>`;
+  const asked=r=>r.tg?`<span class="pill p2" title="${r.tg>r.q?"Short pick":"Over pick"}">${nf(r.tg)}</span>`:"";
+  let h;
+  if(isVar){
+    h="<thead><tr>"+th("b","Bin",1)+th("p","Product",1)+th("by","Associate",1)+th("dt","Picked",1)+th("q","Qty picked")+'<th>Qty found</th><th class="t">What was wrong</th><th class="t">Notes</th><th class="t">Whse order</th><th class="t">Entered by</th></tr></thead><tbody>';
+    for(const r of rows.slice(0,S.show)){const a=r._a||{};
+      h+=`<tr class="click hot" data-k="${esc(keyOf(r))}"><td class="t n">${esc(r.s)}</td><td class="t n" title="${esc(r.d||"")}">${esc(r.p||"(blank)")}</td><td class="t n">${esc(r.by)}</td><td class="t">${mdyDay(r.dt)} ${hm(r.tm)}</td><td>${nf(r.q)}</td><td class="n">${a.found==null?"":nf(a.found)}</td>`
+        +`<td class="t">${resPill(r)}</td><td class="t note" title="${esc(a.note||"")}">${esc(a.note||"")}</td><td class="t">${esc(r.wo)}</td><td class="t">${esc(a.byName||"")}</td></tr>`}
+    if(!rows.length)h+=`<tr><td colspan="10" class="t" style="color:var(--muted)">${S.q||S.who?"No variances match these filters.":"No variances are entered for these dates, so every bin counts as correct."+(S.canEdit?" To enter one, select Enter a variance and pick the bin from the Correct bins list.":"")}</td></tr>`;
+  }else{
+    h="<thead><tr>"+th("b","Bin",1)+th("p","Product",1)+th("q","Qty picked")+'<th>Asked</th>'+th("by","Associate",1)+th("dt","Picked",1)+'<th class="t">To</th><th class="t">Type</th><th class="t">Whse order</th><th class="t">Task</th><th class="t">Audit</th></tr></thead><tbody>';
+    for(const r of rows.slice(0,S.show))
+      h+=`<tr class="click" data-k="${esc(keyOf(r))}"><td class="t n">${esc(r.s)}</td><td class="t n" title="${esc(r.d||"")}">${esc(r.p||"(blank)")}</td><td>${nf(r.q)}</td><td>${asked(r)}</td><td class="t n">${esc(r.by)}</td><td class="t">${mdyDay(r.dt)} ${hm(r.tm)}</td>`
+        +`<td class="t">${esc(r.b)}</td><td class="t">${esc(r.pt)}</td><td class="t">${esc(r.wo)}</td><td class="t">${esc(r.t)}</td><td class="t">${resPill(r)}</td></tr>`;
+    if(!rows.length)h+=`<tr><td colspan="11" class="t" style="color:var(--muted)">Nothing matches these filters.</td></tr>`;
+  }
   $("tList").innerHTML=h+"</tbody>";
   $("more").innerHTML=rows.length>S.show?`<button type="button" class="btn" data-more="list">Show ${nf(Math.min(PAGE,rows.length-S.show),0)} more of ${nf(rows.length-S.show,0)}</button>`:""}
 function byUser(R){const m=new Map();
   for(const r of R){let o=m.get(r.by);if(!o){o={k:r.by,n:0,units:0,ok:0,err:0,types:{},last:-1};m.set(r.by,o)}
-    o.n++;o.units+=r.q;if(r._s==="ok")o.ok++;else if(r._s==="error"){o.err++;const t=r._a.type||"other";o.types[t]=(o.types[t]||0)+1;if(r.dt>o.last)o.last=r.dt}}
-  return [...m.values()]}
+    o.n++;o.units+=r.q;if(r._s==="error"){o.err++;const t=r._a.type||"other";o.types[t]=(o.types[t]||0)+1;if(r.dt>o.last)o.last=r.dt}}
+  for(const o of m.values())o.ok=o.n-o.err;return [...m.values()]}
 function renderUsers(R){
-  const L=byUser(R),ks={k:o=>o.k,n:o=>o.n,units:o=>o.units,aud:o=>o.ok+o.err,ok:o=>o.ok,err:o=>o.err,rate:o=>o.ok+o.err?o.err/(o.ok+o.err):-1,last:o=>o.last};
+  const L=byUser(R),ks={k:o=>o.k,n:o=>o.n,units:o=>o.units,ok:o=>o.ok,err:o=>o.err,rate:o=>o.n?o.err/o.n:-1,last:o=>o.last};
   const f=ks[S.usort]||ks.err;L.sort((a,b)=>{const x=f(a),y=f(b);return S.udir*(x<y?-1:x>y?1:0)||b.n-a.n});
   const th=(k,l,t)=>`<th class="s${t?" t":""}" data-us="${k}">${l}${S.usort===k?(S.udir>0?" ▲":" ▼"):""}</th>`;
   $("cUser").textContent=nf(L.length,0);
   const top=o=>Object.entries(o.types).sort((a,b)=>b[1]-a[1]).map(([t,n])=>(TL[t]||"Other")+(n>1?" ×"+n:"")).join(", ");
   let T={n:0,units:0,ok:0,err:0};for(const o of L){T.n+=o.n;T.units+=o.units;T.ok+=o.ok;T.err+=o.err}
-  $("tUser").innerHTML="<thead><tr>"+th("k","Associate",1)+th("n","Picks")+th("units","Units")+th("aud","Audited")+th("ok","Correct")+th("err","Errors")+th("rate","Error rate")+'<th class="t">What was wrong</th>'+th("last","Last error",1)+"</tr></thead><tbody>"
-    +L.map(o=>`<tr class="click${o.err?" hot":""}" data-u="${esc(o.k)}"><td class="t n">${esc(o.k)}</td><td>${nf(o.n,0)}</td><td>${nf(o.units,0)}</td><td>${o.ok+o.err||""}</td><td>${o.ok||""}</td><td class="n${o.err?" neg":""}">${o.err||""}</td><td>${o.ok+o.err?pct(o.err,o.ok+o.err):""}</td><td class="t">${esc(top(o))}</td><td class="t">${mdyDay(o.last)}</td></tr>`).join("")
-    +`<tr class="tot"><td class="t">Total</td><td>${nf(T.n,0)}</td><td>${nf(T.units,0)}</td><td>${T.ok+T.err}</td><td>${T.ok}</td><td>${T.err}</td><td>${pct(T.err,T.ok+T.err)}</td><td></td><td></td></tr></tbody>`;
+  $("tUser").innerHTML="<thead><tr>"+th("k","Associate",1)+th("n","Picks")+th("units","Units")+th("ok","Correct")+th("err","Variances")+th("rate","Variance rate")+'<th class="t">What was wrong</th>'+th("last","Last variance",1)+"</tr></thead><tbody>"
+    +L.map(o=>`<tr class="click${o.err?" hot":""}" data-u="${esc(o.k)}"><td class="t n">${esc(o.k)}</td><td>${nf(o.n,0)}</td><td>${nf(o.units,0)}</td><td>${nf(o.ok,0)}</td><td class="n${o.err?" neg":""}">${o.err||""}</td><td>${pct(o.err,o.n)}</td><td class="t">${esc(top(o))}</td><td class="t">${mdyDay(o.last)}</td></tr>`).join("")
+    +`<tr class="tot"><td class="t">Total</td><td>${nf(T.n,0)}</td><td>${nf(T.units,0)}</td><td>${nf(T.ok,0)}</td><td>${T.err}</td><td>${pct(T.err,T.n)}</td><td></td><td></td></tr></tbody>`;
   const tc={};let te=0;for(const r of R)if(r._s==="error"){const t=TL[r._a.type]?r._a.type:"other";tc[t]=(tc[t]||0)+1;te++}
   const tl=Object.entries(tc).sort((a,b)=>b[1]-a[1]),mx=Math.max(1,...tl.map(x=>x[1]));$("cType").textContent=nf(te,0);
-  $("tType").innerHTML=tl.length?'<thead><tr><th class="t">What was wrong</th><th class="t">Errors</th><th>Share</th></tr></thead><tbody>'+tl.map(([t,n])=>`<tr><td class="t n">${TL[t]}</td><td class="t"><span class="meter" style="width:${(n/mx*9).toFixed(2)}em"></span>${n}</td><td>${pct(n,te)}</td></tr>`).join("")+"</tbody>"
-    :'<tbody><tr><td class="t" style="color:var(--muted)">No errors entered for these dates.</td></tr></tbody>'}
+  $("tType").innerHTML=tl.length?'<thead><tr><th class="t">What was wrong</th><th class="t">Variances</th><th>Share</th></tr></thead><tbody>'+tl.map(([t,n])=>`<tr><td class="t n">${TL[t]}</td><td class="t"><span class="meter" style="width:${(n/mx*9).toFixed(2)}em"></span>${n}</td><td>${pct(n,te)}</td></tr>`).join("")+"</tbody>"
+    :'<tbody><tr><td class="t" style="color:var(--muted)">No variances entered for these dates.</td></tr></tbody>'}
 function renderNote(){
-  $("note").innerHTML=`A pick here is a confirmed stock removal task out of a storage bin, shown with the bin it was picked from and the associate who confirmed it. The drop into the goods issue zone, the goods issue posting and open tasks are left out. When the quantity confirmed is not the quantity the task asked for, the quantity asked is shown beside it. Each pick is kept once on its confirmation date; loading another export adds to the list and never removes a line or its audit result. Error rate is errors out of the picks audited, not out of all picks. Close out marks every line for the chosen dates that has no result as correct, after asking to confirm that all errors are entered. 7 days and 30 days include today.`}
+  $("note").innerHTML=`A pick here is a confirmed stock removal task out of a storage bin, shown with the bin it was picked from and the associate who confirmed it. The drop into the goods issue zone, the goods issue posting and open tasks are left out. When the quantity confirmed is not the quantity the task asked for, the quantity asked is shown beside it. Each pick is kept once on its confirmation date; loading another export adds to the list and never removes a line or its audit result. Every bin counts as correct unless a variance is entered against it, so only the variances need entering. Correct bins lists the picks with no variance and Variances the ones with one; each prints as its own form. Variance rate is variances out of all the picks shown. Close out records that the audit for the chosen dates is finished, after asking to confirm that all variances are entered. 7 days and 30 days include today.`}
 
 /* ---------- entering an audit result ---------- */
 function openDlg(k){
-  const r=CUR.find(x=>keyOf(x)===k);if(!r)return;S.cur=r;const a=r._a||{};S.dRes=r._s;S.dType=TL[a.type]?a.type:"";
+  const r=CUR.find(x=>keyOf(x)===k);if(!r)return;S.cur=r;const a=r._a||{};S.dRes=r._s==="error"||S.canEdit?"error":"ok";S.dType=TL[a.type]?a.type:"";
   $("dTitle").textContent=(r.p||"(blank product)")+" · picked from "+r.s;
   const F=[["Associate",r.by||"—"],["Picked",mdyDay(r.dt)+" "+hm(r.tm)],["Picked from",r.s],["Quantity picked",nf(r.q)],["Product",r.p||"—"],["Description",r.d||"—"],
     ["Warehouse order",r.wo||"—"],["Task",r.t],["Process type",r.pt||"—"]];
   if(r.tg)F.splice(4,0,["Quantity asked",nf(r.tg)]);if(r.b)F.push(["To",r.b]);if(r.wv)F.push(["Wave",r.wv]);
   $("dFacts").innerHTML=F.map(f=>`<div><b>${f[0]}</b><span>${esc(f[1])}</span></div>`).join("");
-  $("dNoteIn").value=a.note||"";
+  $("dNoteIn").value=a.note||"";$("dFound").value=a.found==null?"":a.found;$("dFound").disabled=!S.canEdit;
   $("dWho").textContent=a.at?"Entered "+stamp(a.at)+(a.byName?" by "+a.byName:""):"";
   $("dNoteIn").disabled=!S.canEdit;$("dSave").hidden=$("dNext").hidden=!S.canEdit;$("dErr").hidden=true;
   drawD();if(!$("dlg").open)$("dlg").showModal()}
@@ -497,89 +507,97 @@ async function saveDlg(next){
   if(S.dRes==="error"&&!S.dType){err.textContent="Choose what was wrong.";err.hidden=false;return}
   const i=LIST.findIndex(x=>keyOf(x)===k),nx=next&&i>=0?LIST[i+1]:null,nk=nx?keyOf(nx):null;
   $("dSave").disabled=$("dNext").disabled=true;
-  try{await Fs.setDoc(Fs.doc(fs,"pickaud",docId(k)),audDoc(r,S.dRes,S.dRes==="error"?S.dType:"",str($("dNoteIn").value,500)));
+  try{await Fs.setDoc(Fs.doc(fs,"pickaud",docId(k)),audDoc(r,S.dRes,S.dRes==="error"?S.dType:"",str($("dNoteIn").value,500),false,S.dRes==="error"&&$("dFound").value!==""&&isFinite(+$("dFound").value)&&+$("dFound").value>=0?+$("dFound").value:null));
     if(nk&&CUR.some(x=>keyOf(x)===nk)){toast("Saved");enrich(CUR);openDlg(nk)}else{$("dlg").close();toast(next?"Saved. That was the last line in the list.":"Saved")}}
   catch(e){err.textContent=e&&e.code==="permission-denied"?"Firebase refused the change. Your user group may be view only, or the latest security rules have not been published yet.":"Couldn’t save. Check the connection and try again.";err.hidden=false}
   finally{$("dSave").disabled=$("dNext").disabled=false}}
 $("dSave").addEventListener("click",()=>saveDlg(false));$("dNext").addEventListener("click",()=>saveDlg(true));
 
-/* ---------- close out: once the errors are entered, every line left without a result is marked correct in one step ---------- */
-function audDoc(r,res,type,note,co){const k=keyOf(r),o={k:k.slice(0,600),res,type,note,who:String(r.by||"").slice(0,40),
-  p:String(r.p||"").slice(0,60),b:String(r.s||"").slice(0,60),dt:r.dt,by:S.authUser.uid,byName:S.myName||S.authUser.email||"",at:Date.now()};if(co)o.co=true;return o}
+/* ---------- close out: every line already counts as correct; closing out saves that for the lines with no result and records that the audit for those dates is finished ---------- */
+function audDoc(r,res,type,note,co,found){const k=keyOf(r),o={k:k.slice(0,600),res,type,note,who:String(r.by||"").slice(0,40),
+  p:String(r.p||"").slice(0,60),b:String(r.s||"").slice(0,60),dt:r.dt,by:S.authUser.uid,byName:S.myName||S.authUser.email||"",at:Date.now()};if(co)o.co=true;if(found!=null)o.found=found;return o}
 function renderClose(R){
-  const left=[],errs=[];let ok=0,co=0,last=null;
-  for(const r of R){if(r._s==="none")left.push(r);else if(r._s==="error")errs.push(r);else{ok++;const a=r._a;if(a.co){co++;if(!last||a.at>last.at)last=a}}}
+  const left=[],errs=[];let co=0,last=null;
+  for(const r of R){if(r._s==="error")errs.push(r);if(r._o)left.push(r);else if(r._a.co){co++;if(!last||r._a.at>last.at)last=r._a}}
   const n=left.length,one=x=>x===1?"pick":"picks";
   $("cClose").textContent=rangeText();
-  $("coTiles").innerHTML=[["Picks",R.length,""],["Errors entered",errs.length,errs.length?"p1":""],["Marked correct",ok,"ok"],["Not audited yet",n,n?"p2":""]]
+  $("coTiles").innerHTML=[["Picks",R.length,""],["Variances entered",errs.length,errs.length?"p1":""],["Correct",R.length-errs.length,"ok"],["Not closed out yet",n,n?"p2":""]]
     .map(t=>`<div class="${t[2]}"><div class="k">${t[0]}</div><div class="v">${nf(t[1],0)}</div></div>`).join("");
-  const was=co?` ${nf(co,0)} ${co===1?"line was":"lines were"} marked correct at close out, last on ${esc(stamp(last.at))}${last.byName?" by "+esc(last.byName):""}.`:"";
-  $("coText").innerHTML=!n?`<span class="co-done">This audit is closed out.</span> Every ${one(1)} for ${esc(rangeText())} has a result.${was}`
-    :S.canEdit?`Enter every error from the audit sheets first. Closing out then marks the <b>${nf(n,0)}</b> ${one(n)} for <b>${esc(rangeText())}</b> that ${n===1?"has":"have"} no result as <b>Correct</b>. Lines that already have a result are not changed.${was}`
-    :`<b>${nf(n,0)}</b> ${one(n)} for ${esc(rangeText())} ${n===1?"has":"have"} no result yet. Someone in a group that can enter audit results closes out the audit.${was}`;
-  const b=$("coBtn");b.hidden=!S.canEdit||!n;b.textContent=`Close out: mark ${nf(n,0)} correct`;
+  const was=co?` ${nf(co,0)} ${co===1?"line was":"lines were"} closed out as correct, last on ${esc(stamp(last.at))}${last.byName?" by "+esc(last.byName):""}.`:"";
+  $("coText").innerHTML=!n?`<span class="co-done">This audit is closed out.</span> Every ${one(1)} for ${esc(rangeText())} is correct or has a variance entered.${was}`
+    :S.canEdit?`Every ${one(1)} counts as <b>Correct</b> unless a variance is entered against it, so only the variances need entering. Closing out records that the audit for <b>${esc(rangeText())}</b> is finished and saves the <b>${nf(n,0)}</b> ${one(n)} with no variance as correct.${was}`
+    :`<b>${nf(n,0)}</b> ${one(n)} for ${esc(rangeText())} ${n===1?"is":"are"} not closed out yet. Someone in a group that can enter audit results closes out the audit.${was}`;
+  const b=$("coBtn");b.hidden=!S.canEdit||!n;b.textContent=`Close out ${nf(n,0)} ${one(n)}`;
   errs.sort((a,b)=>cmp([a.by,a.dt,a.tm],[b.by,b.dt,b.tm]));$("cCoErr").textContent=nf(errs.length,0);
   $("tCoErr").innerHTML=errs.length?'<thead><tr><th class="t">Associate</th><th class="t">Picked</th><th class="t">Product</th><th>Qty</th><th class="t">Bin</th><th class="t">What was wrong</th><th class="t">Notes</th><th class="t">Entered by</th></tr></thead><tbody>'
-    +errs.map(r=>{const a=r._a;return `<tr class="click hot" data-k="${esc(keyOf(r))}"><td class="t n">${esc(r.by)}</td><td class="t">${mdyDay(r.dt)} ${hm(r.tm)}</td><td class="t n">${esc(r.p||"(blank)")}</td><td>${nf(r.q)}</td><td class="t n">${esc(r.s||"")}</td><td class="t"><span class="pill p1">${esc(TL[a.type]||"Error")}</span></td><td class="t note" title="${esc(a.note||"")}">${esc(a.note||"")}</td><td class="t">${esc(a.byName||"")}</td></tr>`}).join("")+"</tbody>"
-    :'<tbody><tr><td class="t" style="color:var(--muted)">No errors are entered for these dates.</td></tr></tbody>'}
+    +errs.map(r=>{const a=r._a;return `<tr class="click hot" data-k="${esc(keyOf(r))}"><td class="t n">${esc(r.by)}</td><td class="t">${mdyDay(r.dt)} ${hm(r.tm)}</td><td class="t n">${esc(r.p||"(blank)")}</td><td>${nf(r.q)}</td><td class="t n">${esc(r.s||"")}</td><td class="t"><span class="pill p1">${esc(TL[a.type]||"Variance")}</span></td><td class="t note" title="${esc(a.note||"")}">${esc(a.note||"")}</td><td class="t">${esc(a.byName||"")}</td></tr>`}).join("")+"</tbody>"
+    :'<tbody><tr><td class="t" style="color:var(--muted)">No variances are entered for these dates.</td></tr></tbody>'}
 function openClose(){
-  if(!S.canEdit)return;enrich(CUR);const left=CUR.filter(r=>r._s==="none"),n=left.length;if(!n)return;
+  if(!S.canEdit)return;enrich(CUR);const left=CUR.filter(r=>r._o),n=left.length;if(!n)return;
   let er=0;const days=new Set();for(const r of CUR){if(r._s==="error")er++}for(const r of left)days.add(r.dt);
   S.coKeys=left.map(keyOf);
-  $("cText").innerHTML=`${er?`<b>${nf(er,0)}</b> ${er===1?"error is":"errors are"} entered`:"<b>No errors</b> are entered"} for ${esc(rangeText())}. Closing out marks the other <b>${nf(n,0)}</b> ${n===1?"pick":"picks"}${days.size>1?" across "+days.size+" days":""} as <b>Correct</b>. Any error not entered yet would be recorded as correct.`;
-  $("cOk").checked=false;$("cGo").disabled=true;$("cGo").textContent=`Mark ${nf(n,0)} correct`;$("cErr").hidden=true;$("cDlg").showModal()}
+  $("cText").innerHTML=`${er?`<b>${nf(er,0)}</b> ${er===1?"variance is":"variances are"} entered`:"<b>No variances</b> are entered"} for ${esc(rangeText())}. Closing out saves the other <b>${nf(n,0)}</b> ${n===1?"pick":"picks"}${days.size>1?" across "+days.size+" days":""} as <b>Correct</b> and finishes the audit for these dates. Any variance not entered yet stays recorded as correct.`;
+  $("cOk").checked=false;$("cGo").disabled=true;$("cGo").textContent=`Close out ${nf(n,0)}`;$("cErr").hidden=true;$("cDlg").showModal()}
 $("coBtn").addEventListener("click",openClose);
 $("cOk").addEventListener("change",e=>{if(!S.closing)$("cGo").disabled=!e.target.checked});
 $("cDlg").addEventListener("cancel",e=>{if(S.closing)e.preventDefault()});
 $("cGo").addEventListener("click",async()=>{
   if(!S.canEdit||S.closing||!$("cOk").checked)return;const {Fs,fs}=S.fb,err=$("cErr");err.hidden=true;
-  enrich(CUR);const want=new Set(S.coKeys),rows=CUR.filter(r=>r._s==="none"&&want.has(keyOf(r)));
+  enrich(CUR);const want=new Set(S.coKeys),rows=CUR.filter(r=>r._o&&want.has(keyOf(r)));
   if(!rows.length){$("cDlg").close();render();return}
   S.closing=true;$("cGo").disabled=true;let done=0;
   try{for(let i=0;i<rows.length;i+=400){const b=Fs.writeBatch(fs);for(const r of rows.slice(i,i+400))b.set(Fs.doc(fs,"pickaud",docId(keyOf(r))),audDoc(r,"ok","","",true));
       $("cGo").textContent=`Saving ${nf(Math.min(i+400,rows.length),0)} of ${nf(rows.length,0)}…`;await b.commit();done=Math.min(i+400,rows.length)}
-    $("cDlg").close();toast(`Closed out. ${nf(done,0)} ${done===1?"pick":"picks"} marked correct.`,10000)}
-  catch(e){err.textContent=(done?nf(done,0)+" marked correct, then it stopped. ":"")+(e&&e.code==="permission-denied"?"Firebase refused the change. Your user group may be view only, or the latest security rules have not been published yet.":"Couldn’t save. Check the connection and try again.");err.hidden=false;
+    $("cDlg").close();toast(`Closed out. ${nf(done,0)} ${done===1?"pick":"picks"} saved as correct.`,10000)}
+  catch(e){err.textContent=(done?nf(done,0)+" closed out, then it stopped. ":"")+(e&&e.code==="permission-denied"?"Firebase refused the change. Your user group may be view only, or the latest security rules have not been published yet.":"Couldn’t save. Check the connection and try again.");err.hidden=false;
     $("cGo").textContent="Try again";$("cGo").disabled=false}
   finally{S.closing=false;render()}});
 $("tCoErr").addEventListener("click",e=>{const tr=e.target.closest("tr[data-k]");if(tr)openDlg(tr.dataset.k)});
 
-/* ---------- printed audit sheet: every line of the list as filtered and sorted, with room to mark the result by hand ---------- */
+/* ---------- printed forms: one for the correct bins (a tick as each is checked) and one for the bins with a variance (where the details are written) ---------- */
 function buildSheet(){
-  const rows=sorted(CUR),who=S.who||"All associates";
-  const flt=[rangeText(),who,S.res!=="all"?RL[S.res]+" only":"",S.q?"search “"+S.q+"”":""].filter(Boolean).join(" · ");
-  $("sheet").innerHTML=`<div class="sh-head"><div><h1>PICKING AUDIT SHEET</h1><div class="sh-band"><i></i><b></b></div><p>${esc(flt)} · ${nf(rows.length,0)} ${rows.length===1?"pick":"picks"} out of storage bins</p></div><img src="../assets/ceva-logo.svg" alt="CEVA Logistics"></div>
-    <div class="sh-sign"><span>Audited by</span><i></i><span>Date</span><i class="sm"></i><span>Shift</span><i class="sm"></i></div>
-    <table><thead><tr><th>#</th><th>Picked</th><th>Associate</th><th>Bin</th><th>Product</th><th class="r">Qty picked</th><th>Whse order</th><th class="c">OK</th><th class="c">Error</th><th>What was found (bin, quantity, product)</th></tr></thead><tbody>`
-    +rows.map((r,i)=>`<tr><td>${i+1}</td><td>${mdyDay(r.dt).slice(0,5)} ${hm(r.tm)}</td><td>${esc(r.by)}</td><td><b>${esc(r.s)}</b></td><td><b>${esc(r.p||"")}</b></td><td class="r">${nf(r.q)}${r.tg?" of "+nf(r.tg):""}</td><td>${esc(r.wo)}</td><td class="c"><span class="box"></span></td><td class="c"><span class="box"></span></td><td class="w">${r._s==="error"?esc((TL[r._a.type]||"Error")+(r._a.note?": "+r._a.note:"")):r._s==="ok"?"Correct":""}</td></tr>`).join("")
-    +`</tbody></table><p class="sh-foot">Error types: ${TYPES.map(t=>t[1]).join(", ")}. Enter the results in the Picking audit tool.</p>`;
+  const isVar=S.view==="var",rows=S.view==="list"||isVar?sorted(CUR):sorted(CUR,true).filter(r=>r._s==="ok"),who=S.who||"All associates";
+  const flt=[rangeText(),who,S.q?"search “"+S.q+"”":""].filter(Boolean).join(" · ");
+  const head=(t,sub)=>`<div class="sh-head"><div><h1>${t}</h1><div class="sh-band"><i></i><b></b></div><p>${esc(flt)} · ${sub}</p></div><img src="../assets/ceva-logo.svg" alt="CEVA Logistics"></div>
+    <div class="sh-sign"><span>Audited by</span><i></i><span>Date</span><i class="sm"></i><span>Shift</span><i class="sm"></i></div>`;
+  if(isVar){const blank=Math.max(8,16-rows.length);
+    $("sheet").innerHTML=head("PICKING AUDIT: VARIANCE FORM",`${nf(rows.length,0)} ${rows.length===1?"variance":"variances"} entered so far`)
+      +`<table><thead><tr><th>Bin</th><th>Product</th><th>Associate</th><th>Picked</th><th class="r">Qty picked</th><th class="r">Qty found</th><th>What was wrong</th><th>Notes (what was found)</th></tr></thead><tbody>`
+      +rows.map(r=>{const a=r._a||{};return `<tr><td><b>${esc(r.s)}</b></td><td><b>${esc(r.p||"")}</b></td><td>${esc(r.by)}</td><td>${mdyDay(r.dt).slice(0,5)} ${hm(r.tm)}</td><td class="r">${nf(r.q)}${r.tg?" of "+nf(r.tg):""}</td><td class="r">${a.found==null?"":nf(a.found)}</td><td>${esc(TL[a.type]||"")}</td><td class="w">${esc(a.note||"")}</td></tr>`}).join("")
+      +'<tr class="blank"><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td class="w"></td></tr>'.repeat(blank)
+      +`</tbody></table><p class="sh-foot">Write up only the bins that do not match; every bin not on this form counts as correct. What was wrong: ${TYPES.map(t=>t[1]).join(", ")}. Enter each line in the Picking audit tool under Variances, then close out.</p>`;
+    return 1}
+  $("sheet").innerHTML=head("PICKING AUDIT: CORRECT BINS",`${nf(rows.length,0)} ${rows.length===1?"pick":"picks"} out of storage bins`)
+    +`<table><thead><tr><th>#</th><th>Bin</th><th>Product</th><th class="r">Qty picked</th><th>Picked</th><th>Associate</th><th>Whse order</th><th class="c">Checked</th></tr></thead><tbody>`
+    +rows.map((r,i)=>`<tr><td>${i+1}</td><td><b>${esc(r.s)}</b></td><td><b>${esc(r.p||"")}</b></td><td class="r">${nf(r.q)}${r.tg?" of "+nf(r.tg):""}</td><td>${mdyDay(r.dt).slice(0,5)} ${hm(r.tm)}</td><td>${esc(r.by)}</td><td>${esc(r.wo)}</td><td class="c"><span class="box"></span></td></tr>`).join("")
+    +`</tbody></table><p class="sh-foot">Tick each bin as it is checked. Every bin on this form counts as correct; nothing needs entering for it. Write a bin that does not match on the Variance form instead.</p>`;
   return rows.length}
 $("printBtn").addEventListener("click",()=>{if(!buildSheet()){toast("There are no picks in the list to print.");return}window.print()});
+$("addVar").addEventListener("click",()=>{S.view="list";S.sort="b";S.dir=1;S.show=PAGE;render();$("q").focus();toast("Find the bin in the Correct bins list and select it to enter the variance.")});
 window.addEventListener("beforeprint",()=>{if(S.role&&CUR.length)buildSheet()});
 
 /* ---------- Excel ---------- */
 $("xlsBtn").addEventListener("click",()=>{
-  const rows=sorted(CUR);if(!rows.length)return;
-  const head=["Picked on","Time","Associate","Picked from","Product","Description","Qty picked","Qty asked","To","Process type","Warehouse order","Wave","Task","Audit result","What was wrong","Notes","Entered by","Entered on"];
-  const out=[head].concat(rows.map(r=>{const a=r._a||{};return [mdyDay(r.dt),hm(r.tm),r.by,r.s,r.p,r.d||"",r.q,r.tg||r.q,r.b,r.pt,r.wo,r.wv||"",r.t,RL[r._s],r._s==="error"?TL[a.type]||"":"",a.note||"",a.byName||"",a.at?stamp(a.at):""]}));
-  const ws=XLSX.utils.aoa_to_sheet(out);ws["!cols"]=head.map((h,i)=>({wch:[12,7,14,14,16,26,9,9,14,8,14,12,14,12,20,40,16,16][i]||14}));ws["!autofilter"]={ref:"A1:"+XLSX.utils.encode_col(head.length-1)+"1"};
+  const rows=sorted(CUR,true);if(!rows.length)return;
+  const head=["Picked on","Time","Associate","Picked from","Product","Description","Qty picked","Qty asked","To","Process type","Warehouse order","Wave","Task","Audit result","What was wrong","Qty found","Notes","Entered by","Entered on"];
+  const out=[head].concat(rows.map(r=>{const a=r._a||{};return [mdyDay(r.dt),hm(r.tm),r.by,r.s,r.p,r.d||"",r.q,r.tg||r.q,r.b,r.pt,r.wo,r.wv||"",r.t,RL[r._s],r._s==="error"?TL[a.type]||"":"",r._s==="error"&&a.found!=null?a.found:"",a.note||"",a.byName||"",a.at?stamp(a.at):""]}));
+  const ws=XLSX.utils.aoa_to_sheet(out);ws["!cols"]=head.map((h,i)=>({wch:[12,7,14,14,16,26,9,9,14,8,14,12,14,12,20,10,40,16,16][i]||14}));ws["!autofilter"]={ref:"A1:"+XLSX.utils.encode_col(head.length-1)+"1"};
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Picks");
   const L=byUser(CUR).sort((a,b)=>b.err-a.err||b.n-a.n);
-  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([["Associate","Picks","Units","Audited","Correct","Errors","Error rate"]].concat(L.map(o=>[o.k,o.n,o.units,o.ok+o.err,o.ok,o.err,o.ok+o.err?Math.round(o.err/(o.ok+o.err)*1000)/1000:""]))),"By associate");
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([["Associate","Picks","Units","Correct","Variances","Variance rate"]].concat(L.map(o=>[o.k,o.n,o.units,o.ok,o.err,o.n?Math.round(o.err/o.n*1000)/1000:""]))),"By associate");
   const t=new Date();XLSX.writeFile(wb,"CEVA Picking Audit "+t.getFullYear()+"-"+p2(t.getMonth()+1)+"-"+p2(t.getDate())+".xlsx");
   toast("Exported "+nf(rows.length,0)+" picks.")});
 
 /* ---------- clicks ---------- */
-$("views").addEventListener("click",e=>{const b=e.target.closest("button[data-v]");if(b){S.view=b.dataset.v;render()}});
+$("views").addEventListener("click",e=>{const b=e.target.closest("button[data-v]");if(b){S.view=b.dataset.v;S.show=PAGE;render()}});
 $("rangeBtns").addEventListener("click",e=>{const b=e.target.closest("button[data-r]");if(b){S.range=b.dataset.r;if(S.range==="day")S.day=null;S.show=PAGE;render()}});
 $("dayIn").addEventListener("change",e=>{const v=e.target.value;if(!v){S.day=null}else{S.day=Math.floor(Date.parse(v+"T00:00:00Z")/86400000)}S.range="day";S.show=PAGE;render()});
-$("resChips").addEventListener("click",e=>{const b=e.target.closest("button[data-x]");if(!b)return;S.res=b.dataset.x;S.show=PAGE;render()});
 $("who").addEventListener("change",e=>{S.who=e.target.value;S.show=PAGE;render()});
 let qT;$("q").addEventListener("input",e=>{clearTimeout(qT);qT=setTimeout(()=>{S.q=e.target.value;S.show=PAGE;render()},150)});
 $("tList").addEventListener("click",e=>{const th=e.target.closest("th[data-s]");if(th){const k=th.dataset.s;if(S.sort===k)S.dir=-S.dir;else{S.sort=k;S.dir=1}render();return}
   const tr=e.target.closest("tr[data-k]");if(tr)openDlg(tr.dataset.k)});
 $("tUser").addEventListener("click",e=>{const th=e.target.closest("th[data-us]");if(th){const k=th.dataset.us;if(S.usort===k)S.udir=-S.udir;else{S.usort=k;S.udir=k==="k"?1:-1}render();return}
-  const tr=e.target.closest("tr[data-u]");if(tr){S.who=tr.dataset.u;S.q="";$("q").value="";const o=byUser(CUR).find(x=>x.k===S.who);S.res=o&&o.err?"error":"all";S.view="list";S.show=PAGE;render()}});
+  const tr=e.target.closest("tr[data-u]");if(tr){S.who=tr.dataset.u;S.q="";$("q").value="";const o=byUser(CUR).find(x=>x.k===S.who);S.view=o&&o.err?"var":"list";S.show=PAGE;render()}});
 document.addEventListener("click",e=>{const b=e.target.closest("button[data-more]");if(!b)return;S.show+=PAGE;render()});
 /* ---------- sign-in gate (same accounts, roles and access requests as the other CEVA tools) ---------- */
 function showGate(mode,waitText){

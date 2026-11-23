@@ -73,7 +73,7 @@ button,input{font:inherit;color:inherit}
 .b-stats>div{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:1.1em 1.2em 1em;position:relative;overflow:hidden;margin:0}
 .b-stats>div::before{content:"";position:absolute;top:0;left:0;width:3px;height:100%;background:var(--kpi,var(--line-light))}
 .b-stats>div:nth-child(1){--kpi:var(--accent)}.b-stats>div:nth-child(2){--kpi:var(--info)}.b-stats>div:nth-child(3){--kpi:var(--purple)}
-.b-stats>div:nth-child(5){--kpi:var(--good)}
+.b-stats>div:nth-child(3){--kpi:var(--good)}
 .b-stats>div.warn{--kpi:var(--warn)}.b-stats>div.hot{--kpi:var(--bad)}
 .b-stats dt{font:700 .75em/1.2 var(--f);letter-spacing:.6px;text-transform:uppercase;color:var(--faint);white-space:nowrap}
 .b-stats dd{margin:.45em 0 0;font:800 2.1em/1 var(--f);font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -205,7 +205,7 @@ select.sel{max-width:15rem;min-height:2.4rem;padding:.3rem .6rem;font-size:13.5p
   #sheet th{background:#021D49!important;color:#fff!important;font:700 8pt/1.2 Arial,Helvetica,sans-serif;letter-spacing:.2px;text-transform:uppercase;text-align:left;padding:1.6mm 1.8mm;border:.2mm solid #021D49;white-space:nowrap;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   #sheet td{padding:1.5mm 1.8mm;border:.2mm solid #666666;text-align:left;white-space:nowrap;color:#000;height:7.5mm}
   #sheet th.r,#sheet td.r{text-align:right}#sheet th.c,#sheet td.c{text-align:center;width:11mm}
-  #sheet td.w{width:34%;white-space:normal}
+  #sheet td.w{width:38%;white-space:normal}
   #sheet .box{display:inline-block;width:4mm;height:4mm;border:.3mm solid #021D49;vertical-align:middle}
   .sh-foot{margin:3mm 0 0;font-size:8pt;color:#666666}
 }
@@ -342,7 +342,7 @@ const FB='https://www.gstatic.com/firebasejs/10.14.1/';
 const ROLE_LABEL={viewer:'Viewer',supervisor:'Supervisor',user:'User',admin:'Admin'};
 const PAGE=300;
 const TYPES=[["bin","Wrong bin"],["qty","Wrong quantity"],["prod","Wrong product"],["missing","Not found in bin"],["label","Label or handling unit"],["damage","Damaged"],["other","Other"]],TL=Object.fromEntries(TYPES);
-const RES=[["none","Not audited"],["ok","Correct"],["error","Error"]],RL=Object.fromEntries(RES);
+const RES=[["ok","Correct"],["error","Error"]],RL=Object.fromEntries(RES);
 const RANGES=[["day","One day"],["7","7 days"],["30","30 days"],["all","All"]];
 const S={rows:null,days:new Map(),auds:new Map(),view:"list",range:"day",day:null,q:"",who:"",res:"all",sort:"dt",dir:1,show:PAGE,usort:"err",udir:-1,
   fb:null,authUser:null,role:null,myName:"",canLoad:false,canEdit:false,isAdmin:false,busy:false,pendingReq:null,unsubs:[],cur:null,dRes:"none",dType:"",coKeys:[],closing:false};
@@ -399,7 +399,7 @@ function curDay(){return S.day!=null?S.day:latestDay()}
 function inRange(){if(S.range==="all")return S.rows;if(S.range==="day"){const d=curDay();return S.rows.filter(r=>r.dt===d)}
   const from=dayNow()-(+S.range-1);return S.rows.filter(r=>r.dt>=from)}
 function rangeText(){if(S.range==="all")return "all dates";if(S.range==="day")return mdyDay(curDay());return "last "+S.range+" days"}
-function enrich(rows){for(const r of rows){const a=S.auds.get(keyOf(r))||null;r._a=a;r._s=a&&RL[a.res]?a.res:"none"}}
+function enrich(rows){for(const r of rows){const a=S.auds.get(keyOf(r))||null;r._a=a;r._s=a&&a.res==="error"?"error":"ok";r._o=!(a&&(a.res==="ok"||a.res==="error"))}}
 function listRows(R){
   const q=norm(S.q);
   return R.filter(r=>{
@@ -407,7 +407,7 @@ function listRows(R){
     if(S.res!=="all"&&r._s!==S.res)return false;
     if(q){const a=r._a;const hay=norm([r.p,r.d,r.b,r.by,r.t,r.t2,r.wo,a&&a.note,a&&TL[a.type]].join(" "));if(!q.split(" ").every(w=>hay.includes(w)))return false}
     return true})}
-const SORTS={dt:r=>[r.dt,r.tm],by:r=>[r.by,r.dt,r.tm],p:r=>[r.p,r.b],b:r=>[r.b,r.p],q:r=>[-r.q],res:r=>[r._s==="error"?0:r._s==="ok"?1:2,r.by]};
+const SORTS={dt:r=>[r.dt,r.tm],by:r=>[r.by,r.dt,r.tm],p:r=>[r.p,r.b],b:r=>[r.b,r.p],q:r=>[-r.q],res:r=>[r._s==="error"?0:1,r.by]};
 function cmp(a,b){for(let i=0;i<a.length;i++){if(a[i]<b[i])return -1;if(a[i]>b[i])return 1}return 0}
 function sorted(R){const rows=listRows(R),f=SORTS[S.sort]||SORTS.dt;return rows.sort((a,b)=>S.dir*cmp(f(a),f(b)))}
 
@@ -424,26 +424,26 @@ function render(){
   if(!has){$("noData").innerHTML=S.rows===null?"":`<strong>No putaways loaded</strong><span>${S.canLoad?"Load the SAP warehouse task export with <b>Load SAP export</b>, on the <a href=\"../data/\" style=\"color:var(--info)\">Data upload</a> page, or drag the file onto this page. The page picks out the putaways that left the GR-ZONE and keeps them.":"A supervisor loads the SAP warehouse task export. Once it is loaded, everyone signed in sees the putaways."}</span>`;
     ["vList","vUser","vClose"].forEach(id=>$(id).hidden=true);$("stats").innerHTML="";$("views").innerHTML="";$("rangeBtns").innerHTML="";$("dayIn").hidden=true;renderNote();return}
   const R=CUR=inRange();enrich(R);
-  let ok=0,er=0,units=0;const users=new Set();for(const r of R){if(r._s==="ok")ok++;else if(r._s==="error")er++;units+=r.q;users.add(r.by)}
-  const aud=ok+er;
-  $("stats").innerHTML=[["Putaways",nf(R.length,0),""],["Units put away",nf(units,0),""],["Audited",nf(aud,0),""],["Not audited",nf(R.length-aud,0),""],["Correct",nf(ok,0),""],["Errors",nf(er,0),er?"hot":""],["Error rate",aud?pct(er,aud):"—",er?"warn":""],["Associates",nf(users.size,0),""]]
+  let er=0,open=0,units=0;const users=new Set();for(const r of R){if(r._s==="error")er++;if(r._o)open++;units+=r.q;users.add(r.by)}
+  const ok=R.length-er;
+  $("stats").innerHTML=[["Putaways",nf(R.length,0),""],["Units put away",nf(units,0),""],["Correct",nf(ok,0),""],["Errors",nf(er,0),er?"hot":""],["Error rate",pct(er,R.length),er?"warn":""],["Associates",nf(users.size,0),""]]
     .map(t=>`<div class="${t[2]}"><dt>${t[0]}</dt><dd>${t[1]}</dd></div>`).join("");
   $("rangeBtns").innerHTML=RANGES.map(r=>`<button type="button" data-r="${r[0]}" aria-pressed="${S.range===r[0]}">${r[0]==="day"?(S.day==null||S.day===latestDay()?"Latest day":"One day"):r[1]}</button>`).join("");
   $("dayIn").hidden=false;$("dayIn").value=S.range==="day"&&curDay()>=0?iso(curDay()):"";$("dayIn").classList.toggle("on",S.range==="day");
-  $("views").innerHTML=[["list","Putaway list",R.length],["user","Errors by associate",er],["close","Close out",R.length-aud]]
+  $("views").innerHTML=[["list","Putaway list",R.length],["user","Errors by associate",er],["close","Close out",open]]
     .map(v=>`<button type="button" class="view" role="tab" data-v="${v[0]}" aria-selected="${S.view===v[0]}">${v[1]}<span class="n">${nf(v[2],0)}</span></button>`).join("");
   $("vList").hidden=S.view!=="list";$("vUser").hidden=S.view!=="user";$("vClose").hidden=S.view!=="close";
   if(S.view==="list")renderList(R);else if(S.view==="close")renderClose(R);else renderUsers(R);
   renderNote()}
 function chip(val,label){return `<button type="button" class="tab" data-x="${val}" aria-pressed="${S.res===val}">${label}</button>`}
-function resPill(r){const a=r._a||{};return r._s==="error"?`<span class="pill p1">${esc(TL[a.type]||"Error")}</span>`:r._s==="ok"?`<span class="pill st-closed"${a.co?' title="Marked correct at close out"':""}>Correct</span>`:'<span class="pill p3">Not audited</span>'}
+function resPill(r){const a=r._a||{};return r._s==="error"?`<span class="pill p1">${esc(TL[a.type]||"Error")}</span>`:`<span class="pill st-closed"${a.co?' title="Closed out as correct"':""}>Correct</span>`}
 function renderList(R){
   const c={none:0,ok:0,error:0},names=new Map();for(const r of R){names.set(r.by,(names.get(r.by)||0)+1);if(!S.who||r.by===S.who)c[r._s]++}
   if(S.who&&!names.has(S.who))names.set(S.who,0);
   $("who").innerHTML=`<option value="">All associates</option>`+[...names].sort((a,b)=>a[0]<b[0]?-1:1).map(([n,k])=>`<option value="${esc(n)}"${S.who===n?" selected":""}>${esc(n)} · ${k}</option>`).join("");
-  $("resChips").innerHTML=chip("all","All")+chip("none","Not audited · "+nf(c.none,0))+chip("ok","Correct · "+nf(c.ok,0))+chip("error","Errors · "+nf(c.error,0));
+  $("resChips").innerHTML=chip("all","All")+chip("ok","Correct · "+nf(c.ok,0))+chip("error","Errors · "+nf(c.error,0));
   const rows=LIST=sorted(R);
-  $("cList").textContent=nf(rows.length,0);$("listHint").textContent=S.canEdit?"Select a row to enter its audit result":"Select a row to see its details";
+  $("cList").textContent=nf(rows.length,0);$("listHint").textContent=S.canEdit?"Every line counts as correct. Select a row to enter an error":"Select a row to see its details";
   const th=(k,l,t)=>`<th class="s${t?" t":""}" data-s="${k}">${l}${S.sort===k?(S.dir>0?" ▲":" ▼"):""}</th>`;
   let h="<thead><tr>"+th("dt","Put away",1)+th("by","Associate",1)+th("p","Product",1)+th("q","Qty")+th("b","Put away to",1)+'<th class="t">From</th><th class="t">Move</th><th class="t">Whse order</th><th class="t">Task</th>'+th("res","Audit",1)+'<th class="t">Notes</th></tr></thead><tbody>';
   for(const r of rows.slice(0,S.show)){const a=r._a||{};
@@ -455,28 +455,28 @@ function renderList(R){
   $("more").innerHTML=rows.length>S.show?`<button type="button" class="btn" data-more="list">Show ${nf(Math.min(PAGE,rows.length-S.show),0)} more of ${nf(rows.length-S.show,0)}</button>`:""}
 function byUser(R){const m=new Map();
   for(const r of R){let o=m.get(r.by);if(!o){o={k:r.by,n:0,units:0,ok:0,err:0,types:{},last:-1};m.set(r.by,o)}
-    o.n++;o.units+=r.q;if(r._s==="ok")o.ok++;else if(r._s==="error"){o.err++;const t=r._a.type||"other";o.types[t]=(o.types[t]||0)+1;if(r.dt>o.last)o.last=r.dt}}
-  return [...m.values()]}
+    o.n++;o.units+=r.q;if(r._s==="error"){o.err++;const t=r._a.type||"other";o.types[t]=(o.types[t]||0)+1;if(r.dt>o.last)o.last=r.dt}}
+  for(const o of m.values())o.ok=o.n-o.err;return [...m.values()]}
 function renderUsers(R){
-  const L=byUser(R),ks={k:o=>o.k,n:o=>o.n,units:o=>o.units,aud:o=>o.ok+o.err,ok:o=>o.ok,err:o=>o.err,rate:o=>o.ok+o.err?o.err/(o.ok+o.err):-1,last:o=>o.last};
+  const L=byUser(R),ks={k:o=>o.k,n:o=>o.n,units:o=>o.units,ok:o=>o.ok,err:o=>o.err,rate:o=>o.n?o.err/o.n:-1,last:o=>o.last};
   const f=ks[S.usort]||ks.err;L.sort((a,b)=>{const x=f(a),y=f(b);return S.udir*(x<y?-1:x>y?1:0)||b.n-a.n});
   const th=(k,l,t)=>`<th class="s${t?" t":""}" data-us="${k}">${l}${S.usort===k?(S.udir>0?" ▲":" ▼"):""}</th>`;
   $("cUser").textContent=nf(L.length,0);
   const top=o=>Object.entries(o.types).sort((a,b)=>b[1]-a[1]).map(([t,n])=>(TL[t]||"Other")+(n>1?" ×"+n:"")).join(", ");
   let T={n:0,units:0,ok:0,err:0};for(const o of L){T.n+=o.n;T.units+=o.units;T.ok+=o.ok;T.err+=o.err}
-  $("tUser").innerHTML="<thead><tr>"+th("k","Associate",1)+th("n","Putaways")+th("units","Units")+th("aud","Audited")+th("ok","Correct")+th("err","Errors")+th("rate","Error rate")+'<th class="t">What was wrong</th>'+th("last","Last error",1)+"</tr></thead><tbody>"
-    +L.map(o=>`<tr class="click${o.err?" hot":""}" data-u="${esc(o.k)}"><td class="t n">${esc(o.k)}</td><td>${nf(o.n,0)}</td><td>${nf(o.units,0)}</td><td>${o.ok+o.err||""}</td><td>${o.ok||""}</td><td class="n${o.err?" neg":""}">${o.err||""}</td><td>${o.ok+o.err?pct(o.err,o.ok+o.err):""}</td><td class="t">${esc(top(o))}</td><td class="t">${mdyDay(o.last)}</td></tr>`).join("")
-    +`<tr class="tot"><td class="t">Total</td><td>${nf(T.n,0)}</td><td>${nf(T.units,0)}</td><td>${T.ok+T.err}</td><td>${T.ok}</td><td>${T.err}</td><td>${pct(T.err,T.ok+T.err)}</td><td></td><td></td></tr></tbody>`;
+  $("tUser").innerHTML="<thead><tr>"+th("k","Associate",1)+th("n","Putaways")+th("units","Units")+th("ok","Correct")+th("err","Errors")+th("rate","Error rate")+'<th class="t">What was wrong</th>'+th("last","Last error",1)+"</tr></thead><tbody>"
+    +L.map(o=>`<tr class="click${o.err?" hot":""}" data-u="${esc(o.k)}"><td class="t n">${esc(o.k)}</td><td>${nf(o.n,0)}</td><td>${nf(o.units,0)}</td><td>${nf(o.ok,0)}</td><td class="n${o.err?" neg":""}">${o.err||""}</td><td>${pct(o.err,o.n)}</td><td class="t">${esc(top(o))}</td><td class="t">${mdyDay(o.last)}</td></tr>`).join("")
+    +`<tr class="tot"><td class="t">Total</td><td>${nf(T.n,0)}</td><td>${nf(T.units,0)}</td><td>${nf(T.ok,0)}</td><td>${T.err}</td><td>${pct(T.err,T.n)}</td><td></td><td></td></tr></tbody>`;
   const tc={};let te=0;for(const r of R)if(r._s==="error"){const t=TL[r._a.type]?r._a.type:"other";tc[t]=(tc[t]||0)+1;te++}
   const tl=Object.entries(tc).sort((a,b)=>b[1]-a[1]),mx=Math.max(1,...tl.map(x=>x[1]));$("cType").textContent=nf(te,0);
   $("tType").innerHTML=tl.length?'<thead><tr><th class="t">What was wrong</th><th class="t">Errors</th><th>Share</th></tr></thead><tbody>'+tl.map(([t,n])=>`<tr><td class="t n">${TL[t]}</td><td class="t"><span class="meter" style="width:${(n/mx*9).toFixed(2)}em"></span>${n}</td><td>${pct(n,te)}</td></tr>`).join("")+"</tbody>"
     :'<tbody><tr><td class="t" style="color:var(--muted)">No errors entered for these dates.</td></tr></tbody>'}
 function renderNote(){
-  $("note").innerHTML=`A putaway here is confirmed stock that left the goods receipt zone (a source bin ending in GR-ZONE, such as 9010-GR-ZONE) for another bin. When SAP lists the pick-up from the zone and the drop into the bin as two tasks in one warehouse order, they are shown as one line with the final bin, and the associate is the person who confirmed the drop. Moves that stay inside the GR-ZONE, posting changes and open tasks are left out. Each putaway is kept once on its confirmation date; loading another export adds to the list and never removes a line or its audit result. Error rate is errors out of the putaways audited, not out of all putaways. Close out marks every line for the chosen dates that has no result as correct, after asking to confirm that all errors are entered. 7 days and 30 days include today.`}
+  $("note").innerHTML=`A putaway here is confirmed stock that left the goods receipt zone (a source bin ending in GR-ZONE, such as 9010-GR-ZONE) for another bin. When SAP lists the pick-up from the zone and the drop into the bin as two tasks in one warehouse order, they are shown as one line with the final bin, and the associate is the person who confirmed the drop. Moves that stay inside the GR-ZONE, posting changes and open tasks are left out. Each putaway is kept once on its confirmation date; loading another export adds to the list and never removes a line or its audit result. Every putaway counts as correct unless an error is entered against it, so only the errors need entering. Error rate is errors out of all the putaways shown. Close out records that the audit for the chosen dates is finished, after asking to confirm that all errors are entered. 7 days and 30 days include today.`}
 
 /* ---------- entering an audit result ---------- */
 function openDlg(k){
-  const r=CUR.find(x=>keyOf(x)===k);if(!r)return;S.cur=r;const a=r._a||{};S.dRes=r._s;S.dType=TL[a.type]?a.type:"";
+  const r=CUR.find(x=>keyOf(x)===k);if(!r)return;S.cur=r;const a=r._a||{};S.dRes=r._s==="error"||S.canEdit?"error":"ok";S.dType=TL[a.type]?a.type:"";
   $("dTitle").textContent=(r.p||"(blank product)")+" · put away to "+(r.b||"—");
   const F=[["Associate",r.by||"—"],["Put away",mdyDay(r.dt)+" "+hm(r.tm)],["Quantity",nf(r.q)],["Put away to",r.b||"(not in export)"],["From",r.s],["Product",r.p||"—"],["Description",r.d||"—"],
     ["Warehouse order",r.wo||"—"],["Task",r.t2?r.t+" / "+r.t2:r.t],["Move",[r.cat,r.pt].filter(Boolean).join(" · ")||"—"]];
@@ -503,43 +503,43 @@ async function saveDlg(next){
   finally{$("dSave").disabled=$("dNext").disabled=false}}
 $("dSave").addEventListener("click",()=>saveDlg(false));$("dNext").addEventListener("click",()=>saveDlg(true));
 
-/* ---------- close out: once the errors are entered, every line left without a result is marked correct in one step ---------- */
+/* ---------- close out: every line already counts as correct; closing out saves that for the lines with no result and records that the audit for those dates is finished ---------- */
 function audDoc(r,res,type,note,co){const k=keyOf(r),o={k:k.slice(0,600),res,type,note,who:String(r.by||"").slice(0,40),
   p:String(r.p||"").slice(0,60),b:String(r.b||"").slice(0,60),dt:r.dt,by:S.authUser.uid,byName:S.myName||S.authUser.email||"",at:Date.now()};if(co)o.co=true;return o}
 function renderClose(R){
-  const left=[],errs=[];let ok=0,co=0,last=null;
-  for(const r of R){if(r._s==="none")left.push(r);else if(r._s==="error")errs.push(r);else{ok++;const a=r._a;if(a.co){co++;if(!last||a.at>last.at)last=a}}}
+  const left=[],errs=[];let co=0,last=null;
+  for(const r of R){if(r._s==="error")errs.push(r);if(r._o)left.push(r);else if(r._a.co){co++;if(!last||r._a.at>last.at)last=r._a}}
   const n=left.length,one=x=>x===1?"putaway":"putaways";
   $("cClose").textContent=rangeText();
-  $("coTiles").innerHTML=[["Putaways",R.length,""],["Errors entered",errs.length,errs.length?"p1":""],["Marked correct",ok,"ok"],["Not audited yet",n,n?"p2":""]]
+  $("coTiles").innerHTML=[["Putaways",R.length,""],["Errors entered",errs.length,errs.length?"p1":""],["Correct",R.length-errs.length,"ok"],["Not closed out yet",n,n?"p2":""]]
     .map(t=>`<div class="${t[2]}"><div class="k">${t[0]}</div><div class="v">${nf(t[1],0)}</div></div>`).join("");
-  const was=co?` ${nf(co,0)} ${co===1?"line was":"lines were"} marked correct at close out, last on ${esc(stamp(last.at))}${last.byName?" by "+esc(last.byName):""}.`:"";
-  $("coText").innerHTML=!n?`<span class="co-done">This audit is closed out.</span> Every ${one(1)} for ${esc(rangeText())} has a result.${was}`
-    :S.canEdit?`Enter every error from the audit sheets first. Closing out then marks the <b>${nf(n,0)}</b> ${one(n)} for <b>${esc(rangeText())}</b> that ${n===1?"has":"have"} no result as <b>Correct</b>. Lines that already have a result are not changed.${was}`
-    :`<b>${nf(n,0)}</b> ${one(n)} for ${esc(rangeText())} ${n===1?"has":"have"} no result yet. Someone in a group that can enter audit results closes out the audit.${was}`;
-  const b=$("coBtn");b.hidden=!S.canEdit||!n;b.textContent=`Close out: mark ${nf(n,0)} correct`;
+  const was=co?` ${nf(co,0)} ${co===1?"line was":"lines were"} closed out as correct, last on ${esc(stamp(last.at))}${last.byName?" by "+esc(last.byName):""}.`:"";
+  $("coText").innerHTML=!n?`<span class="co-done">This audit is closed out.</span> Every ${one(1)} for ${esc(rangeText())} is correct or has an error entered.${was}`
+    :S.canEdit?`Every ${one(1)} counts as <b>Correct</b> unless an error is entered against it, so only the errors need entering. Closing out records that the audit for <b>${esc(rangeText())}</b> is finished and saves the <b>${nf(n,0)}</b> ${one(n)} with no error as correct.${was}`
+    :`<b>${nf(n,0)}</b> ${one(n)} for ${esc(rangeText())} ${n===1?"is":"are"} not closed out yet. Someone in a group that can enter audit results closes out the audit.${was}`;
+  const b=$("coBtn");b.hidden=!S.canEdit||!n;b.textContent=`Close out ${nf(n,0)} ${one(n)}`;
   errs.sort((a,b)=>cmp([a.by,a.dt,a.tm],[b.by,b.dt,b.tm]));$("cCoErr").textContent=nf(errs.length,0);
   $("tCoErr").innerHTML=errs.length?'<thead><tr><th class="t">Associate</th><th class="t">Put away</th><th class="t">Product</th><th>Qty</th><th class="t">Bin</th><th class="t">What was wrong</th><th class="t">Notes</th><th class="t">Entered by</th></tr></thead><tbody>'
     +errs.map(r=>{const a=r._a;return `<tr class="click hot" data-k="${esc(keyOf(r))}"><td class="t n">${esc(r.by)}</td><td class="t">${mdyDay(r.dt)} ${hm(r.tm)}</td><td class="t n">${esc(r.p||"(blank)")}</td><td>${nf(r.q)}</td><td class="t n">${esc(r.b||"")}</td><td class="t"><span class="pill p1">${esc(TL[a.type]||"Error")}</span></td><td class="t note" title="${esc(a.note||"")}">${esc(a.note||"")}</td><td class="t">${esc(a.byName||"")}</td></tr>`}).join("")+"</tbody>"
     :'<tbody><tr><td class="t" style="color:var(--muted)">No errors are entered for these dates.</td></tr></tbody>'}
 function openClose(){
-  if(!S.canEdit)return;enrich(CUR);const left=CUR.filter(r=>r._s==="none"),n=left.length;if(!n)return;
+  if(!S.canEdit)return;enrich(CUR);const left=CUR.filter(r=>r._o),n=left.length;if(!n)return;
   let er=0;const days=new Set();for(const r of CUR){if(r._s==="error")er++}for(const r of left)days.add(r.dt);
   S.coKeys=left.map(keyOf);
-  $("cText").innerHTML=`${er?`<b>${nf(er,0)}</b> ${er===1?"error is":"errors are"} entered`:"<b>No errors</b> are entered"} for ${esc(rangeText())}. Closing out marks the other <b>${nf(n,0)}</b> ${n===1?"putaway":"putaways"}${days.size>1?" across "+days.size+" days":""} as <b>Correct</b>. Any error not entered yet would be recorded as correct.`;
-  $("cOk").checked=false;$("cGo").disabled=true;$("cGo").textContent=`Mark ${nf(n,0)} correct`;$("cErr").hidden=true;$("cDlg").showModal()}
+  $("cText").innerHTML=`${er?`<b>${nf(er,0)}</b> ${er===1?"error is":"errors are"} entered`:"<b>No errors</b> are entered"} for ${esc(rangeText())}. Closing out saves the other <b>${nf(n,0)}</b> ${n===1?"putaway":"putaways"}${days.size>1?" across "+days.size+" days":""} as <b>Correct</b> and finishes the audit for these dates. Any error not entered yet stays recorded as correct.`;
+  $("cOk").checked=false;$("cGo").disabled=true;$("cGo").textContent=`Close out ${nf(n,0)}`;$("cErr").hidden=true;$("cDlg").showModal()}
 $("coBtn").addEventListener("click",openClose);
 $("cOk").addEventListener("change",e=>{if(!S.closing)$("cGo").disabled=!e.target.checked});
 $("cDlg").addEventListener("cancel",e=>{if(S.closing)e.preventDefault()});
 $("cGo").addEventListener("click",async()=>{
   if(!S.canEdit||S.closing||!$("cOk").checked)return;const {Fs,fs}=S.fb,err=$("cErr");err.hidden=true;
-  enrich(CUR);const want=new Set(S.coKeys),rows=CUR.filter(r=>r._s==="none"&&want.has(keyOf(r)));
+  enrich(CUR);const want=new Set(S.coKeys),rows=CUR.filter(r=>r._o&&want.has(keyOf(r)));
   if(!rows.length){$("cDlg").close();render();return}
   S.closing=true;$("cGo").disabled=true;let done=0;
   try{for(let i=0;i<rows.length;i+=400){const b=Fs.writeBatch(fs);for(const r of rows.slice(i,i+400))b.set(Fs.doc(fs,"putaud",docId(keyOf(r))),audDoc(r,"ok","","",true));
       $("cGo").textContent=`Saving ${nf(Math.min(i+400,rows.length),0)} of ${nf(rows.length,0)}…`;await b.commit();done=Math.min(i+400,rows.length)}
-    $("cDlg").close();toast(`Closed out. ${nf(done,0)} ${done===1?"putaway":"putaways"} marked correct.`,10000)}
-  catch(e){err.textContent=(done?nf(done,0)+" marked correct, then it stopped. ":"")+(e&&e.code==="permission-denied"?"Firebase refused the change. Your user group may be view only, or the latest security rules have not been published yet.":"Couldn’t save. Check the connection and try again.");err.hidden=false;
+    $("cDlg").close();toast(`Closed out. ${nf(done,0)} ${done===1?"putaway":"putaways"} saved as correct.`,10000)}
+  catch(e){err.textContent=(done?nf(done,0)+" closed out, then it stopped. ":"")+(e&&e.code==="permission-denied"?"Firebase refused the change. Your user group may be view only, or the latest security rules have not been published yet.":"Couldn’t save. Check the connection and try again.");err.hidden=false;
     $("cGo").textContent="Try again";$("cGo").disabled=false}
   finally{S.closing=false;render()}});
 $("tCoErr").addEventListener("click",e=>{const tr=e.target.closest("tr[data-k]");if(tr)openDlg(tr.dataset.k)});
@@ -550,9 +550,9 @@ function buildSheet(){
   const flt=[rangeText(),who,S.res!=="all"?RL[S.res]+" only":"",S.q?"search “"+S.q+"”":""].filter(Boolean).join(" · ");
   $("sheet").innerHTML=`<div class="sh-head"><div><h1>PUTAWAY AUDIT SHEET</h1><div class="sh-band"><i></i><b></b></div><p>${esc(flt)} · ${nf(rows.length,0)} ${rows.length===1?"putaway":"putaways"} out of the GR-ZONE</p></div><img src="../assets/ceva-logo.svg" alt="CEVA Logistics"></div>
     <div class="sh-sign"><span>Audited by</span><i></i><span>Date</span><i class="sm"></i><span>Shift</span><i class="sm"></i></div>
-    <table><thead><tr><th>#</th><th>Put away</th><th>Associate</th><th>Product</th><th class="r">Qty</th><th>Bin</th><th>Whse order</th><th class="c">OK</th><th class="c">Error</th><th>What was found (bin, quantity, product)</th></tr></thead><tbody>`
-    +rows.map((r,i)=>`<tr><td>${i+1}</td><td>${mdyDay(r.dt).slice(0,5)} ${hm(r.tm)}</td><td>${esc(r.by)}</td><td><b>${esc(r.p||"")}</b></td><td class="r">${nf(r.q)}</td><td><b>${esc(r.b||"")}</b></td><td>${esc(r.wo)}</td><td class="c"><span class="box"></span></td><td class="c"><span class="box"></span></td><td class="w">${r._s==="error"?esc((TL[r._a.type]||"Error")+(r._a.note?": "+r._a.note:"")):r._s==="ok"?"Correct":""}</td></tr>`).join("")
-    +`</tbody></table><p class="sh-foot">Error types: ${TYPES.map(t=>t[1]).join(", ")}. Enter the results in the Putaway audit tool.</p>`;
+    <table><thead><tr><th>#</th><th>Put away</th><th>Associate</th><th>Product</th><th class="r">Qty</th><th>Bin</th><th>Whse order</th><th class="c">Error</th><th>What was found (bin, quantity, product). Leave blank when correct</th></tr></thead><tbody>`
+    +rows.map((r,i)=>`<tr><td>${i+1}</td><td>${mdyDay(r.dt).slice(0,5)} ${hm(r.tm)}</td><td>${esc(r.by)}</td><td><b>${esc(r.p||"")}</b></td><td class="r">${nf(r.q)}</td><td><b>${esc(r.b||"")}</b></td><td>${esc(r.wo)}</td><td class="c"><span class="box"></span></td><td class="w">${r._s==="error"?esc((TL[r._a.type]||"Error")+(r._a.note?": "+r._a.note:"")):""}</td></tr>`).join("")
+    +`</tbody></table><p class="sh-foot">Every line counts as correct unless Error is ticked. Error types: ${TYPES.map(t=>t[1]).join(", ")}. Enter only the errors in the Putaway audit tool, then close out.</p>`;
   return rows.length}
 $("printBtn").addEventListener("click",()=>{if(!buildSheet()){toast("There are no putaways in the list to print.");return}window.print()});
 window.addEventListener("beforeprint",()=>{if(S.role&&CUR.length)buildSheet()});
@@ -565,7 +565,7 @@ $("xlsBtn").addEventListener("click",()=>{
   const ws=XLSX.utils.aoa_to_sheet(out);ws["!cols"]=head.map((h,i)=>({wch:[12,7,14,16,26,8,14,14,14,8,14,14,14,12,20,40,16,16][i]||14}));ws["!autofilter"]={ref:"A1:"+XLSX.utils.encode_col(head.length-1)+"1"};
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Putaways");
   const L=byUser(CUR).sort((a,b)=>b.err-a.err||b.n-a.n);
-  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([["Associate","Putaways","Units","Audited","Correct","Errors","Error rate"]].concat(L.map(o=>[o.k,o.n,o.units,o.ok+o.err,o.ok,o.err,o.ok+o.err?Math.round(o.err/(o.ok+o.err)*1000)/1000:""]))),"By associate");
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([["Associate","Putaways","Units","Correct","Errors","Error rate"]].concat(L.map(o=>[o.k,o.n,o.units,o.ok,o.err,o.n?Math.round(o.err/o.n*1000)/1000:""]))),"By associate");
   const t=new Date();XLSX.writeFile(wb,"CEVA Putaway Audit "+t.getFullYear()+"-"+p2(t.getMonth()+1)+"-"+p2(t.getDate())+".xlsx");
   toast("Exported "+nf(rows.length,0)+" putaways.")});
 
