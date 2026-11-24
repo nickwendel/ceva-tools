@@ -251,8 +251,8 @@ service cloud.firestore {
 
     // ───────── HU consolidation ─────────
 
-    // hucons/current holds the newest SAP stock export cut down to the locations that hold more
-    // than one handling unit, as JSON text. Each load replaces it. Anyone with a role reads;
+    // hucons/current holds the newest SAP stock export cut down to the SKUs that sit on two or
+    // more handling units, as JSON text. Each load replaces it. Anyone with a role reads;
     // supervisors and admins load.
     match /hucons/{docId} {
       allow read: if canView('consolidation') || canEdit('data');
@@ -265,8 +265,9 @@ service cloud.firestore {
       allow delete: if canFull('consolidation');
     }
 
-    // huconsst/{bin} is the status of one location: open, consolidated (done) or leave as is,
-    // with notes and the handling units it held when it was set. Supervisors and admins set it.
+    // huconsst/{product|stock type} is the status of one SKU: open, consolidated (done) or leave
+    // as is, with notes, the partial handling units it had when it was set and, when someone
+    // set it, the quantity a full handling unit holds. Supervisors and admins set it.
     match /huconsst/{binId} {
       allow read: if canView('consolidation');
       allow create, update: if canEdit('consolidation')

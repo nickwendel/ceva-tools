@@ -10,7 +10,7 @@ Operational tools for CEVA sites, served with GitHub Pages.
 | Inventory differences | [`inventory-differences/`](inventory-differences/) | Pulls the lines with a quantity difference (short and over picks) out of the SAP warehouse task export, keeps them as a running list by bin, product and associate, and tracks status, owner and notes on each one. Exports an action list for the Inventory Action Tracker. |
 | Putaway audit | [`putaway-audit/`](putaway-audit/) | Lists every putaway out of the GR-ZONE from the SAP warehouse task export, prints an audit sheet, takes the audit results and tracks the errors by associate. |
 | Picking audit | [`picking-audit/`](picking-audit/) | Lists every pick out of a storage bin from the SAP warehouse task export, prints a correct bins form and a variance form, takes the variances and tracks them by associate. |
-| HU consolidation | [`consolidation/`](consolidation/) | Finds every location that holds more than one handling unit in the SAP stock export, shows which handling unit to keep and which to merge into it, prints a work sheet and tracks what has been consolidated. |
+| HU consolidation | [`consolidation/`](consolidation/) | Works out from the SAP stock export how to get each SKU onto as few handling units as possible: which partial handling units to merge, a printed move sheet, and tracking of what is done. |
 | Training documents | [`training-docs/`](training-docs/) | The site's training library: work instructions, procedures and guides by category, uploaded as files (up to 20 MB) or links, with every version kept. Supervisors and admins add and update; everyone at CEVA with a login can open and download. |
 | Rewards board | [`rewards/`](rewards/) | Rewards people for taking part, not for productivity numbers: points for 5S, bin checks, the Safety Committee and Employee Engagement meetings, weekend support and the like, with a leaderboard, badges and a TV view for the floor. |
 | Data upload | [`data/`](data/) | One place to load the SAP warehouse task export. The file is read once and every tool that uses it (warehouse transactions, inventory differences, putaway audit, picking audit) is updated together. Also takes the SAP stock export for HU consolidation. Shows what each tool holds now. |
@@ -324,17 +324,16 @@ A board that rewards people for taking part in the things that make the site bet
 
 **Live page:** `https://nickwendel.github.io/ceva-tools/consolidation/`
 
-Lists every location that holds more than one handling unit (HU), so the stock can be merged and one HU left in the location. It is fed by the SAP stock export (stock by storage bin and handling unit), which is a different file from the warehouse task export. Load it with **Load stock export** on the page, or on the Data upload page; the shared loader tells the two files apart by their columns.
+Shows, SKU by SKU, how to get the stock onto as few handling units (HUs) as possible. It is fed by the SAP stock export (stock by storage bin and handling unit), which is a different file from the warehouse task export. Load it with **Load stock export** on the page, or on the Data upload page; the shared loader tells the two files apart by their columns.
 
-- **What is listed:** a storage bin with two or more different handling units. Stock with no handling unit is not counted.
-- **What to merge:** for each product in the location, the HU with the most stock is the one to keep (the oldest goods receipt when equal) and the others are merged into it. A location with different products is listed too, because it still holds more than one HU, but only HUs of the same product are suggested for merging. A flag shows when the HUs of one product hold different stock types.
-- **List:** location, storage type, HUs, product, total quantity, the HU to keep, the HUs to merge into it and how many HUs come out. Search; filter by storage type, status and same product or different products; sort by any heading.
-- **Status:** select a location to see every HU in it and mark it Open, Consolidated or Leave as is, with notes. **Save and next** moves down the list. Consolidated holds only while the location keeps the same HUs: on the next load it drops off the list when SAP shows one HU, and opens again if the HUs changed. Leave as is stays, for locations meant to hold several HUs.
-- **Print work sheet:** the list as filtered and sorted (landscape, CEVA document style) with the HU to keep, the HUs to merge, a Done box and room for notes.
-- **Export to Excel:** one row per handling unit with what to do, and a Locations tab.
+- **What a SKU is here:** a product in one stock type, so unrestricted, quality and blocked stock are never merged together. Stock with no handling unit, and HUs that hold more than one product or stock type, are left out.
+- **Full HU quantity:** the export does not say how much a full HU holds, so it is worked out from the stock: the quantity most of the SKU's units sit at. HUs below it are partial. Select a SKU to set the full quantity by hand when the worked-out one is wrong; the plan is redone with it.
+- **The plan:** largest first, each partial HU is merged into the first kept partial it still fits in without going over the full quantity. An HU is never split. The HUs merged away are the HUs freed.
+- **List:** SKU, stock type, HUs now, full HU quantity, partial HUs, quantity in partials, HUs after and HUs freed, biggest opportunity first. Search; filter by status; sort by any heading. Choosing a storage type plans only the HUs in that storage type.
+- **Status:** select a SKU to see every partial HU with its location and what to do with it, and mark the SKU Open, Consolidated or Leave as is, with notes. **Save and next** moves down the list. Consolidated holds only while the SKU keeps the same partial HUs: on the next load it drops off once they are gone, and opens again if they changed.
+- **Print move sheet:** one line per HU to move (landscape, CEVA document style): the HU and its location, the HU and location it goes into, the quantity after, a Done box and room for notes.
+- **Export to Excel:** a SKUs tab, a Moves tab and a Handling units tab.
 
 **Columns used:** `Storage Bin`, `Handling Unit`, `Product`, `Quantity`, `Product Short Description`, `Stock Type`, `Storage Type` and `Goods Receipt Date`.
 
-**Roles.** Viewers see everything. Supervisors and admins load the stock export and set status.
-
-**Data.** `hucons/current` holds the locations from the newest stock export (each load replaces it), `huconsst/{bin}` the status of each location. Publish [`firestore.rules`](firestore.rules) after merging, or loading and saving will be refused.
+**Data.** `hucons/current` holds the SKUs on two or more HUs from the newest stock export (each load replaces it), `huconsst/{product|stock type}` the status of each SKU and any full quantity set by hand. The rules for both did not change when the tool moved from locations to SKUs.

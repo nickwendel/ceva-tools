@@ -327,7 +327,7 @@ function render(){
     +`<tr><td><a href="../inventory-differences/">Inventory differences</a></td>${cells(S.inv,S.inv?mdy(S.inv.date)+", "+nf(S.inv.n)+(+S.inv.n===1?" difference":" differences")+" that day":"")}</tr>`
     +`<tr><td><a href="../putaway-audit/">Putaway audit</a></td>${cells(S.put,S.put?mdy(S.put.date)+", "+nf(S.put.n)+(+S.put.n===1?" putaway":" putaways")+" that day":"")}</tr>`
     +`<tr><td><a href="../picking-audit/">Picking audit</a></td>${cells(S.pick,S.pick?mdy(S.pick.date)+", "+nf(S.pick.n)+(+S.pick.n===1?" pick":" picks")+" that day":"")}</tr>`
-    +`<tr><td><a href="../consolidation/">HU consolidation</a>, from the stock export</td>${cells(S.hu,S.hu?nf(S.hu.n)+(+S.hu.n===1?" location":" locations")+" over one HU, of "+nf(S.hu.bins)+" with stock":"")}</tr></tbody>`;
+    +`<tr><td><a href="../consolidation/">HU consolidation</a>, from the stock export</td>${cells(S.hu,S.hu?S.hu.free==null?"Saved by location; load it again":nf(S.hu.n)+(+S.hu.n===1?" SKU":" SKUs")+" to consolidate, "+nf(S.hu.free)+" of "+nf(S.hu.hus)+" HUs can be freed":"")}</tr></tbody>`;
 }
 
 /* ---------- sign-in gate (same accounts, roles and access requests as the other CEVA tools) ---------- */
