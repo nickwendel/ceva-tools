@@ -29,7 +29,7 @@ const TOOLS=[
   {key:"differences",name:"Inventory differences",href:"inventory-differences/",view:"View the differences",edit:"Work the differences",full:"Work differences, remove days, set thresholds"},
   {key:"putaway",name:"Putaway audit",href:"putaway-audit/",view:"View putaways and errors",edit:"Print sheets, enter audit results and close out",full:"Enter audit results, remove days and results"},
   {key:"picking",name:"Picking audit",href:"picking-audit/",view:"View picks and variances",edit:"Print sheets, enter audit results and close out",full:"Enter audit results, remove days and results"},
-  {key:"consolidation",name:"HU consolidation",href:"consolidation/",view:"View the locations to consolidate",edit:"Print sheets and set status",full:"Set status, remove the loaded data"},
+  {key:"consolidation",name:"HU consolidation",href:"consolidation/",view:"View the SKUs to consolidate",edit:"Print sheets and set status",full:"Set status, remove the loaded data"},
   {key:"tracker",name:"Inventory action tracker",href:"action-tracker/",view:"View actions and export Excel",edit:"Add and update actions, import Excel",full:"Update, import, delete, set the site name"},
   {key:"training",name:"Training documents",href:"training-docs/",view:"Open and download documents",edit:"Add documents and upload new versions",full:"Add, update, archive, delete, set categories"},
   {key:"rewards",name:"Rewards board",href:"rewards/",view:"View the board",edit:"Log who took part in an activity",full:"Log and remove entries, set the activities, points and names"},

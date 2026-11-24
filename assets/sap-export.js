@@ -6,7 +6,7 @@
      Picking audit            pickdays/{YYYY-MM-DD} (the picks out of a storage bin, added to what is already there)
    So loading the export on any page, or on the Data upload page, updates all of them.
    The SAP stock export (stock by storage bin and handling unit) is a different file. loadAll tells the two apart by their columns:
-     HU consolidation         hucons/current (the locations holding more than one handling unit; each load replaces it)
+     HU consolidation         hucons/current (every SKU on two or more handling units; each load replaces it)
    To feed a new tool from the export, add its parse and save step here and one entry to loadAll's result.
    Needs SheetJS (window.XLSX) loaded first. */
 (function(){
@@ -196,29 +196,47 @@ async function savePicks(ctx,d,say){
   return {found:d.rows.length,added,days:dates.length,minDay:d.minDay,maxDay:d.maxDay}}
 
 /* ---------- HU consolidation ----------
-   Reads the SAP stock export: one line per product, stock type and handling unit in a storage bin. Keeps the bins that hold more than
-   one handling unit, each with its stock lines [HU, product, stock type, quantity, goods receipt day], so the page can show which
-   handling units to merge. Stock with no handling unit does not count as one. */
+   Reads the SAP stock export: one line per product, stock type and handling unit in a storage bin. Keeps every SKU (a product in one
+   stock type) that sits on two or more handling units, with each handling unit as [HU, bin, storage type, quantity, goods receipt day],
+   so the page can show how to get the SKU onto as few handling units as possible. Stock with no handling unit is left out, and so is
+   a handling unit that holds more than one product or stock type, since it cannot simply be merged into another. */
 const STOCK_COLS=["Storage Bin","Handling Unit","Product","Quantity"];
 const stockSheet=sheets=>sheets.find(x=>{const h=heads(x);return STOCK_COLS.every(n=>h.includes(n))&&!h.includes("Warehouse Task")});
 function parseStock(sheets,name){
   const a=stockSheet(sheets);if(!a)throw new Error("This file is missing these columns: "+STOCK_COLS.filter(n=>!heads(sheets[0]||[]).includes(n)).join(", ")+". Load the SAP stock export.");
   const h=heads(a),c=n=>h.indexOf(n),v=(r,n)=>c(n)<0?"":r[c(n)],g=(r,n)=>String(v(r,n)??"").trim();
-  const bins=new Map(),all=new Set();let lines=0;
-  for(let i=1;i<a.length;i++){const r=a[i],b=g(r,"Storage Bin"),p=g(r,"Product");if(!b||!p)continue;lines++;
-    const hu=g(r,"Handling Unit");let o=bins.get(b);if(!o){o={b,st:g(r,"Storage Type"),q:[],d:{},hu:new Set()};bins.set(b,o)}
-    if(hu){o.hu.add(hu);all.add(hu)}o.d[p]=g(r,"Product Short Description").slice(0,60);
-    o.q.push([hu,p,g(r,"Stock Type"),Math.round((+v(r,"Quantity")||0)*1000)/1000,toDayNum(v(r,"Goods Receipt Date"))])}
+  const hus=new Map(),bins=new Set(),desc={};let lines=0;
+  for(let i=1;i<a.length;i++){const r=a[i],b=g(r,"Storage Bin"),p=g(r,"Product");if(!b||!p)continue;lines++;bins.add(b);
+    const hu=g(r,"Handling Unit");if(!hu)continue;const gr=toDayNum(v(r,"Goods Receipt Date"));
+    let o=hus.get(hu);if(!o){o={hu,b,st:g(r,"Storage Type"),q:0,gr:-1,p:new Set(),sk:new Set()};hus.set(hu,o)}
+    o.q+=+v(r,"Quantity")||0;o.p.add(p);o.sk.add(g(r,"Stock Type"));if(gr>=0&&(o.gr<0||gr<o.gr))o.gr=gr;
+    if(!desc[p])desc[p]=g(r,"Product Short Description").slice(0,60)}
   if(!lines)throw new Error("No stock lines were found in this file.");
-  const locs=[],desc={};
-  for(const o of bins.values()){if(o.hu.size<2)continue;locs.push({b:o.b,st:o.st,q:o.q});Object.assign(desc,o.d)}
-  locs.sort((x,y)=>x.b<y.b?-1:1);
-  return {file:fileName(name),lines,bins:bins.size,hus:all.size,locs,desc}}
+  const m=new Map();let mixed=0;
+  for(const o of hus.values()){if(o.p.size>1||o.sk.size>1){mixed++;continue}
+    const p=[...o.p][0],sk=[...o.sk][0],k=p+"|"+sk;let s=m.get(k);if(!s){s={p,sk,d:desc[p]||"",h:[]};m.set(k,s)}
+    s.h.push([o.hu,o.b,o.st,Math.round(o.q*1000)/1000,o.gr])}
+  const skus=[...m.values()].filter(s=>s.h.length>1).sort((x,y)=>x.p<y.p?-1:x.p>y.p?1:x.sk<y.sk?-1:1);
+  return {file:fileName(name),lines,bins:bins.size,hus:hus.size,mixed,skuAll:m.size,skus}}
+/* The quantity a full handling unit of a SKU holds is not in the export, so it is worked out from the stock: the quantity that most
+   of the SKU's units sit at (the most common handling unit quantity, weighted by quantity, so a few picked-down leftovers do not win). */
+function fullQty(h){const m=new Map();for(const x of h)m.set(x[3],(m.get(x[3])||0)+x[3]);
+  let best=0,bw=-1;for(const [q,w] of m)if(w>bw||(w===bw&&q>best)){best=q;bw=w}return best}
+/* The plan for one SKU. Handling units below the full quantity are partial. Largest first, each partial is merged into the first
+   kept partial it still fits in without going over the full quantity; one that fits nowhere is kept. A handling unit is never split.
+   h: the SKU's handling units. full: the full handling unit quantity, or 0 to work it out. */
+function planSku(h,full){
+  full=full>0?full:fullQty(h);
+  const part=h.filter(x=>x[3]<full).sort((a,b)=>b[3]-a[3]||a[4]-b[4]||(a[0]<b[0]?-1:1)),keep=[],moves=[];let partQty=0;
+  for(const x of part){partQty+=x[3];const k=keep.find(k=>k.q+x[3]<=full);
+    if(k){k.q=Math.round((k.q+x[3])*1000)/1000;k.in.push(x);moves.push({x,to:k})}else keep.push({x,q:x[3],in:[]})}
+  return {full,n:h.length,part:part.length,partQty:Math.round(partQty*1000)/1000,keep,moves,freed:moves.length,after:h.length-moves.length}}
 /* Each load replaces the list: the stock export is a picture of the warehouse at one moment. */
 async function saveStock(ctx,d){
-  const {Fs,fs}=ctx,rows=JSON.stringify({locs:d.locs,desc:d.desc});if(rows.length>900000)throw new Error("too-big");
-  await Fs.setDoc(Fs.doc(fs,"hucons","current"),{n:d.locs.length,bins:d.bins,hus:d.hus,lines:d.lines,rows,file:d.file,by:ctx.uid,byName:ctx.byName,at:Date.now()});
-  return {lines:d.lines,bins:d.bins,hus:d.hus,found:d.locs.length,inThem:d.locs.reduce((s,l)=>s+new Set(l.q.map(x=>x[0]).filter(Boolean)).size,0)}}
+  const {Fs,fs}=ctx,rows=JSON.stringify({v:2,skus:d.skus});if(rows.length>900000)throw new Error("too-big");
+  let found=0,free=0;for(const s of d.skus){const f=planSku(s.h,0).freed;if(f){found++;free+=f}}
+  await Fs.setDoc(Fs.doc(fs,"hucons","current"),{n:found,free,bins:d.bins,hus:d.hus,lines:d.lines,rows,file:d.file,by:ctx.uid,byName:ctx.byName,at:Date.now()});
+  return {lines:d.lines,bins:d.bins,hus:d.hus,found,free}}
 
 /* ---------- one load for every tool ----------
    ctx: {Fs, fs, uid, byName}. buf: the file as a Uint8Array. say: called with short progress text.
@@ -229,14 +247,14 @@ function failText(e,what){
   if(e&&e.message==="too-big")return what==="tasks"?"One day in this file has too many task lines to save. Split the export into smaller date ranges and load them one at a time."
     :what==="putaways"?"One day in this file has too many putaways to save. Tell the tool owner."
     :what==="picks"?"One day in this file has too many picks to save. Tell the tool owner."
-    :what==="stock"?"This export has too many locations with more than one handling unit to save. Tell the tool owner."
+    :what==="stock"?"This export has too many handling units to save in one piece. Tell the tool owner."
     :"One day in this file has too many differences to save. Tell the tool owner.";
   return "The file could not be saved"+(e&&e.code==="permission-denied"?" because Firebase refused it. Either your account is not a supervisor or admin, or the latest security rules have not been published yet.":". Check the connection and load it again.")}
 async function loadAll(ctx,buf,name,say){
   say=say||(()=>{});const sheets=readSheets(buf);
   if(stockSheet(sheets)){const s=parseStock(sheets,name),why="This file is the SAP stock export, so it was read for HU consolidation only. Load the SAP warehouse task export to update this tool.";
     const o={file:s.file,stock:null,tasks:{skipped:why,dates:[],dup:{same:0,legs:0}},diffs:{skipped:why},putaways:{skipped:why},picks:{skipped:why}};
-    say("Saving "+nf(s.locs.length)+" locations…");try{o.stock=await saveStock(ctx,s)}catch(e){o.stock={error:failText(e,"stock")}}
+    say("Saving "+nf(s.skus.length)+" SKUs…");try{o.stock=await saveStock(ctx,s)}catch(e){o.stock={error:failText(e,"stock")}}
     return o}
   const d=parseTasks(sheets,name),out={file:d.file,tasks:null,diffs:null,putaways:null,picks:null};let x=null;
   try{x=parseDiffs(sheets,name)}catch(_){out.diffs={skipped:"This layout of the export has no difference quantity column, so no differences were read from it."}}
@@ -256,7 +274,7 @@ async function loadAll(ctx,buf,name,say){
 function describe(r){
   const out=[],t=r.tasks,x=r.diffs,w=r.putaways,k=r.picks,s=r.stock;
   if(s)return [s.error?{tool:"HU consolidation",ok:false,text:s.error}
-    :{tool:"HU consolidation",ok:true,text:"Read "+nf(s.bins)+" locations with stock and "+nf(s.hus)+" handling units. "+(s.found?nf(s.found)+(s.found===1?" location holds":" locations hold")+" more than one handling unit ("+nf(s.inThem)+" handling units in them).":"No location holds more than one handling unit.")}];
+    :{tool:"HU consolidation",ok:true,text:"Read "+nf(s.bins)+" locations with stock and "+nf(s.hus)+" handling units. "+(s.found?nf(s.found)+(s.found===1?" SKU":" SKUs")+" can go onto fewer handling units, which would free "+nf(s.free)+(s.free===1?" handling unit.":" handling units."):"No SKU can go onto fewer handling units.")}];
   if(t.error)out.push({tool:"Warehouse transactions",ok:false,text:t.error});
   else{const dup=t.dup.same+t.dup.legs;
     out.push({tool:"Warehouse transactions",ok:true,text:(t.dates.length?"Loaded "+(t.dates.length===1?mdy(t.dates[0]):t.dates.length+" days, "+mdy(t.dates[0])+" to "+mdy(t.dates[t.dates.length-1]))
@@ -276,5 +294,5 @@ function describe(r){
   return out}
 const summary=r=>describe(r).map(x=>x.tool+": "+x.text).join(" ");
 
-window.SapExport={loadAll,describe,summary,typ,readSheets,parseTasks,parseDiffs,parsePutaways,parsePicks,parseStock,mdyDay};
+window.SapExport={loadAll,describe,summary,typ,readSheets,parseTasks,parseDiffs,parsePutaways,parsePicks,parseStock,planSku,fullQty,mdyDay};
 })();
