@@ -1,0 +1,556 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Inventory Operations Dashboard</title>
+<link rel="icon" href="../assets/ceva-logo.svg" type="image/svg+xml">
+<style>
+/* Visual system shared with the other CEVA tools (matched to the Whitsett KPI dashboard): dark navy, card panels, CEVA red accent, system type.
+   Layout: header with the date range, headline tiles, then one card panel per tool. Dark only. */
+:root{
+  --bg:#0a1626; --card:#122A47; --row:#0e2038; --line:#1f3d61; --line-light:#2a4a73;
+  --fg:#e7eef7; --muted:#93a8c4; --faint:#5f7796;
+  --accent:#e2231a; --good:#2fbf71; --warn:#e8a33d; --bad:#e2231a; --info:#3d9fe8; --purple:#a78bfa;
+  --s1:#e7eef7; --s2:#3d9fe8; --s3:#2fbf71; --s4:#5f7796; --s5:#a78bfa; --s6:#4fd0e0; --s7:#3a5273;
+  --radius:10px;
+  --f:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{height:100%;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{min-height:100%;margin:0;color:var(--fg);font-family:var(--f);font-size:13.5px;line-height:1.45;-webkit-font-smoothing:antialiased;
+  background:radial-gradient(1200px 600px at 10% -10%,#123156 0%,var(--bg) 55%) fixed,var(--bg)}
+[hidden]{display:none!important}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--info);outline-offset:2px}
+::-webkit-scrollbar{height:8px;width:8px}
+::-webkit-scrollbar-thumb{background:var(--line-light);border-radius:4px}
+.gut{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.btn{background:var(--card);color:var(--fg);border:1px solid var(--line-light);border-radius:8px;min-height:2.6rem;padding:0 .95rem;font:600 13px/1 var(--f);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:.45rem;white-space:nowrap;position:relative;transition:filter .15s,border-color .15s}
+.btn:hover{border-color:var(--accent);filter:brightness(1.08)}
+.btn.primary{background:var(--accent);border-color:transparent;color:#fff}
+.btn.ghost{background:transparent;color:var(--muted)}
+.btn.ghost:hover{color:var(--fg)}
+.btn:disabled,.btn.busy{opacity:.45;cursor:default;filter:none}
+.btn input[type=file]{position:absolute;opacity:0;width:1px;height:1px}
+.btn:focus-within{outline:2px solid var(--info);outline-offset:2px}
+.inp{width:100%;min-height:2.6rem;background:var(--bg);color:var(--fg);border:1px solid var(--line-light);border-radius:8px;padding:.5rem .75rem;font-size:14px;outline:none}
+.inp:focus{border-color:var(--accent)}
+.fld{display:flex;flex-direction:column;gap:.35rem;min-width:0}
+.fld>label{font:600 10.5px/1 var(--f);letter-spacing:.5px;text-transform:uppercase;color:var(--faint)}
+.err{color:#f97066;font-weight:600;font-size:12px}
+
+/* sign-in gate */
+.gate{min-height:100vh;display:flex;align-items:center;justify-content:center;padding-block:2rem}
+.gate-card{width:100%;max-width:400px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:2.2rem 2.2rem 2rem;box-shadow:0 8px 40px rgba(0,0,0,.55);display:flex;flex-direction:column}
+.gate-head{display:flex;flex-direction:column;align-items:center;text-align:center;gap:.5rem;margin-bottom:1.4rem}
+.gate-head img{height:2.3rem;width:auto;display:block}
+.gate-site{font-size:12px;color:var(--faint);letter-spacing:.02em}
+.gate-body{display:flex;flex-direction:column;gap:.9rem}
+.gate-title{margin:0;font:700 20px/1.2 var(--f)}
+.gate-p{margin:0;color:var(--muted);line-height:1.5;font-size:12.5px}
+.gate-p b{color:var(--fg)}
+.gate form{display:flex;flex-direction:column;gap:.85rem}
+.gate .btn{width:100%;min-height:2.75rem;font-size:14px}
+.gate .btn.ghost{min-height:2.4rem;font-size:12.5px}
+.gate-alt{border-top:1px solid var(--line);padding-top:.85rem}
+
+/* app */
+.app{max-width:1500px;margin:0 auto;padding-bottom:3rem;font-size:14px}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:1.2em 1.6em;flex-wrap:wrap;padding-block:1.4em 1.1em;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:.9em;min-width:0}
+.logo-plate{height:2.6em;display:flex;align-items:center;flex:none}
+.logo-plate img{height:100%;width:auto;max-width:12em;object-fit:contain;display:block}
+.b-title{margin:0;font:700 1.35em/1.15 var(--f);letter-spacing:.2px}
+.status-line{display:flex;flex-wrap:wrap;align-items:center;gap:.3em 1em;margin-top:.45em;font-size:.85em;color:var(--faint)}
+.status-line b{color:var(--muted);font-weight:600}
+.dot{width:.6em;height:.6em;border-radius:50%;background:var(--warn);display:inline-block;margin-right:.4em}
+.dot.ok{background:var(--good)}.dot.bad{background:var(--bad)}
+.controls{display:flex;gap:.6em;align-items:center;flex-wrap:wrap}
+.b-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(9.5em,1fr));gap:.7em;margin:1.2em 0 0;padding:0}
+.b-stats>div{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:1.1em 1.2em 1em;position:relative;overflow:hidden;margin:0}
+.b-stats>div::before{content:"";position:absolute;top:0;left:0;width:3px;height:100%;background:var(--kpi,var(--line-light))}
+.b-stats>div:nth-child(1){--kpi:var(--accent)}.b-stats>div:nth-child(2){--kpi:var(--info)}.b-stats>div:nth-child(3){--kpi:var(--purple)}
+.b-stats>div:nth-child(5){--kpi:var(--good)}
+.b-stats>div.warn{--kpi:var(--warn)}.b-stats>div.hot{--kpi:var(--bad)}
+.b-stats dt{font:700 .75em/1.2 var(--f);letter-spacing:.6px;text-transform:uppercase;color:var(--faint);white-space:nowrap}
+.b-stats dd{margin:.45em 0 0;font:800 2.1em/1 var(--f);font-variant-numeric:tabular-nums;white-space:nowrap}
+.b-stats .hot dd{color:#ff6b61}.b-stats .warn dd{color:var(--warn)}
+.bar{display:flex;flex-wrap:wrap;gap:.6em;align-items:center;margin:1.2em 0 1em}
+.tab{background:transparent;border:1px solid var(--line-light);color:var(--muted);border-radius:2rem;min-height:2.3rem;padding:0 .9rem;font:600 13px/1 var(--f);cursor:pointer}
+.tab:hover{color:var(--fg)}
+.tab[aria-pressed="true"]{background:var(--accent);border-color:transparent;color:#fff}
+.msg{border:1px solid rgba(226,35,26,.5);color:#f97066;border-radius:8px;padding:.7rem 1rem;font-weight:600;margin-bottom:1em}
+.panels{display:flex;flex-direction:column;gap:1em}
+.b-panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);display:flex;flex-direction:column;min-width:0;padding:1em 1.1em .9em}
+.p-head{display:flex;align-items:baseline;flex-wrap:wrap;gap:.55em;padding-bottom:.6em;border-bottom:1px solid var(--line-light)}
+.p-head h2{margin:0;font:700 1.05em/1.2 var(--f)}
+.p-count{font:700 1.05em/1 var(--f);color:var(--muted);font-variant-numeric:tabular-nums}
+.p-page{margin-left:auto;font:600 .75em/1 var(--f);letter-spacing:.5px;text-transform:uppercase;color:var(--faint)}
+.p-body{padding-top:.7em}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:1em}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th{font:700 .72em/1 var(--f);letter-spacing:.5px;text-transform:uppercase;color:var(--faint);text-align:right;padding:.5em .7em;white-space:nowrap;border-bottom:1px solid var(--line)}
+th.s{cursor:pointer}th.s:hover{color:var(--fg)}
+th:first-child,td:first-child,th.t,td.t{text-align:left}
+td{padding:.5em .7em;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line)}
+tbody tr:last-child td{border-bottom:0}
+td.n{font-weight:700}
+tr.click{cursor:pointer}tr.click:hover td{background:var(--row)}tr.sel td{background:rgba(61,159,232,.14)}
+tr.tot td{font-weight:700;border-top:1px solid var(--line-light)}
+tr.hot td{background:rgba(226,35,26,.1)}
+.meter{display:inline-block;height:.4em;background:var(--info);vertical-align:middle;margin-right:.5em;border-radius:2px;opacity:.7}
+.pill{display:inline-block;padding:.2em .55em;border-radius:5px;font:700 .85em/1 var(--f);background:var(--row);color:var(--muted);border:1px solid var(--line-light)}
+.pill.p1{background:rgba(226,35,26,.16);color:#ff6b61;border-color:rgba(226,35,26,.5)}
+.pill.p2{background:rgba(232,163,61,.16);color:var(--warn);border-color:rgba(232,163,61,.5)}
+.legend{display:flex;flex-wrap:wrap;gap:.5em 1.2em;margin-top:.5em}
+.legend span{display:inline-flex;align-items:center;gap:.4em;font:600 .78em/1 var(--f);color:var(--muted)}
+.legend i{display:inline-block;width:.9em;height:.7em;border-radius:2px}
+svg text{font-family:var(--f);font-size:11px;fill:var(--muted)}svg .tl{fill:var(--fg);font-weight:700;paint-order:stroke;stroke:var(--card);stroke-width:3px;stroke-linejoin:round}
+.empty{border:1px dashed var(--line-light);border-radius:var(--radius);padding:1.2em;color:var(--muted);display:flex;flex-direction:column;gap:.35em}
+.empty strong{font:700 1.05em/1.2 var(--f);color:var(--fg)}
+.empty span{line-height:1.5;max-width:75ch}
+.ag{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.6em;margin-bottom:.8em}
+.ag>div{background:var(--row);border:1px solid var(--line);border-radius:8px;padding:.7em .9em;position:relative;overflow:hidden}
+.ag>div::before{content:"";position:absolute;top:0;left:0;width:3px;height:100%;background:var(--line-light)}
+.ag>div.ok::before{background:var(--good)}.ag>div.p2::before{background:var(--warn)}.ag>div.p1::before{background:var(--bad)}
+.ag .k{font:700 .72em/1.2 var(--f);letter-spacing:.5px;text-transform:uppercase;color:var(--faint)}
+.ag .v{font:800 1.7em/1 var(--f);font-variant-numeric:tabular-nums;margin-top:.3em}
+.ag .b{height:.35em;background:var(--line);border-radius:2px;margin-top:.55em;overflow:hidden}.ag .b i{display:block;height:100%;background:var(--muted)}
+.note{color:var(--faint);font-size:.88em;line-height:1.5;max-width:120ch;margin-top:1.2em;border-top:1px solid var(--line);padding-top:1em}
+.drop{outline:2px dashed var(--info);outline-offset:-6px}
+.views{display:flex;gap:.4em;flex-wrap:wrap}
+.view{background:var(--card);border:1px solid var(--line-light);color:var(--muted);border-radius:8px;min-height:2.6rem;padding:0 1rem;font:700 13.5px/1 var(--f);cursor:pointer;display:inline-flex;align-items:center;gap:.5em}
+.view:hover{color:var(--fg)}
+.view[aria-selected="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.view .n{font:700 .85em/1 var(--f);background:var(--row);color:var(--fg);border-radius:1rem;padding:.25em .55em;font-variant-numeric:tabular-nums}
+.view[aria-selected="true"] .n{background:var(--bg)}
+.navrow{display:flex;flex-wrap:wrap;gap:.7em 1em;align-items:center;justify-content:space-between;margin-top:1.2em}
+.range{display:flex;flex-wrap:wrap;gap:.5em;align-items:center}
+.segm{display:flex;background:var(--card);border:1px solid var(--line-light);border-radius:8px;padding:3px;gap:2px}
+.segm button{background:transparent;border:0;border-radius:6px;min-height:2.1rem;padding:0 .8rem;font:600 13px/1 var(--f);color:var(--muted);cursor:pointer}
+.segm button:hover{color:var(--fg)}
+.segm button[aria-pressed="true"]{background:var(--accent);color:#fff}
+.dayinp{background:var(--card);border:1px solid var(--line-light);border-radius:8px;min-height:2.5rem;padding:0 .6rem;font:600 13px/1 var(--f);color:var(--fg)}
+.dayinp.on{border-color:var(--accent)}
+.grid4{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:1em}
+.trbar{display:flex;flex-wrap:wrap;gap:.6em 1em;align-items:center;justify-content:space-between}
+.cap{display:flex;flex-wrap:wrap;gap:.3em 1.3em;margin-top:.5em;font:600 .82em/1.35 var(--f);color:var(--muted)}
+.cap b{color:var(--fg)}
+.cap i{display:inline-block;width:1.5em;height:0;border-top:2px dashed var(--warn);vertical-align:middle;margin-right:.45em}
+.cap i.t{border-top:3px solid var(--accent)}
+.cap i.c{border-top:2px dotted var(--info)}
+.linkbtn{background:none;border:0;padding:0;color:var(--info);font:inherit;font-weight:600;cursor:pointer;text-decoration:underline}
+.toast{position:fixed;left:50%;bottom:calc(1.2rem + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:30;background:var(--card);color:var(--fg);border:1px solid var(--line-light);padding:.75rem 1.1rem;border-radius:8px;font:600 13px/1.35 var(--f);box-shadow:0 8px 24px rgba(0,0,0,.45);max-width:calc(100% - 32px)}
+/* inventory dashboard */
+.hero{display:grid;grid-template-columns:repeat(auto-fit,minmax(11.5em,1fr));gap:.7em;margin:1.2em 0 0;padding:0}
+.hero a{display:block;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:1em 1.1em .9em;position:relative;overflow:hidden;color:inherit;text-decoration:none;transition:border-color .15s}
+.hero a::before{content:"";position:absolute;top:0;left:0;width:3px;height:100%;background:var(--kpi,var(--line-light))}
+.hero a:hover,.hero a:focus-visible{border-color:var(--info)}
+.hero a.good{--kpi:var(--good)}.hero a.warn{--kpi:var(--warn)}.hero a.hot{--kpi:var(--bad)}.hero a.info{--kpi:var(--info)}
+.hero .k{font:700 .72em/1.2 var(--f);letter-spacing:.6px;text-transform:uppercase;color:var(--faint)}
+  .hero .v{font:800 1.75em/1 var(--f);font-variant-numeric:tabular-nums;margin-top:.4em;white-space:nowrap}
+.hero .s{font-size:.82em;color:var(--muted);margin-top:.45em;line-height:1.35}
+.hero a.hot .v{color:#ff6b61}.hero a.warn .v{color:var(--warn)}
+.hero a.off .v{color:var(--faint)}
+.dgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));gap:1em;margin-top:1.2em;align-items:start}
+.b-panel.wide{grid-column:1/-1}
+.p-head a.open{margin-left:auto;font:600 .82em/1 var(--f);color:var(--info);text-decoration:none;white-space:nowrap}
+.p-head a.open:hover{text-decoration:underline}
+.p-sub{font-size:.82em;color:var(--faint);margin-top:.55em}
+.p-sub b{color:var(--muted);font-weight:600}
+.ag{margin-top:.2em}
+.ag>div.info::before{background:var(--info)}
+.sec{font:700 .72em/1 var(--f);letter-spacing:.5px;text-transform:uppercase;color:var(--faint);margin:1.1em 0 .4em}
+.quiet{color:var(--muted);padding:.4em 0;line-height:1.5}
+td.pos{color:var(--good)}td.neg{color:#ff6b61}
+td.w{white-space:normal;min-width:14em;max-width:26em}
+.pill.late{background:rgba(226,35,26,.16);color:#ff6b61;border-color:rgba(226,35,26,.5)}
+.pill.soon{background:rgba(232,163,61,.16);color:var(--warn);border-color:rgba(232,163,61,.5)}
+@media print{body{background:#fff;color:#000}.controls,.range{display:none}}
+</style>
+</head>
+<body>
+<noscript><p style="padding:1rem">This tool needs JavaScript turned on.</p></noscript>
+
+<!-- SIGN-IN GATE -->
+<section id="gate" class="gate gut" aria-label="Sign in">
+  <div class="gate-card">
+    <div class="gate-head"><img src="../assets/ceva-logo-whitered.png" alt="CEVA Logistics"><div class="gate-site">Inventory operations dashboard</div></div>
+    <div class="gate-body">
+      <h1 class="gate-title">Sign in</h1>
+      <p class="gate-p" id="gateWait">Connecting…</p>
+      <p class="gate-p" id="gateSetup" hidden>This tool isn’t connected to its database yet. Add the Firebase web config to <code>dashboard/firebase-config.js</code> in the repository.</p>
+      <form id="gateLogin" novalidate hidden>
+        <p class="gate-p">Sign in with the same account you use on the other CEVA tools.</p>
+        <div class="fld"><label for="lEmail">Email</label><input class="inp" id="lEmail" type="email" autocomplete="username" inputmode="email"></div>
+        <div class="fld"><label for="lPass">Password</label><input class="inp" id="lPass" type="password" autocomplete="current-password"></div>
+        <div class="err" id="lErr" role="alert" hidden></div>
+        <button class="btn primary" type="submit" id="lGo">Sign in</button>
+        <button class="btn ghost" type="button" id="lForgot">Forgot password? Email me a reset link</button>
+        <div class="gate-alt"><button class="btn" type="button" id="lRequest">New here? Request access</button></div>
+      </form>
+      <form id="gateRequest" novalidate hidden>
+        <p class="gate-p">Tell us who you are and create a password. An admin approves requests, and you’re let in automatically once approved.</p>
+        <div class="fld"><label for="qName">Your name</label><input class="inp" id="qName" maxlength="40" autocomplete="name"></div>
+        <div class="fld"><label for="qEmail">Work email</label><input class="inp" id="qEmail" type="email" autocomplete="username" inputmode="email"></div>
+        <div class="fld"><label for="qPass">Create a password (8+ characters)</label><input class="inp" id="qPass" type="password" autocomplete="new-password" minlength="8"></div>
+        <div class="fld"><label for="qNote">Role or site (optional)</label><input class="inp" id="qNote" maxlength="120" autocomplete="off"></div>
+        <div class="err" id="qErr" role="alert" hidden></div>
+        <button class="btn primary" type="submit" id="qGo">Send request</button>
+        <button class="btn ghost" type="button" id="qBack">Back to sign in</button>
+      </form>
+      <div id="gateDenied" hidden>
+        <p class="gate-p" id="dPending" hidden><b>Request sent.</b> Signed in as <b id="dEmailP"></b>, waiting for an admin to approve. Keep this page open or come back later; it opens on its own once approved.</p>
+        <div id="dNone" hidden>
+          <p class="gate-p">Signed in as <b id="dEmail"></b>, but this account hasn’t been added to the tools yet. Ask for access and an admin will approve it.</p>
+          <form id="dRequest" novalidate style="margin-top:.7rem">
+            <div class="fld"><label for="dName">Your name</label><input class="inp" id="dName" maxlength="40" autocomplete="name"></div>
+            <div class="fld"><label for="dNote">Role or site (optional)</label><input class="inp" id="dNote" maxlength="120" autocomplete="off"></div>
+            <div class="err" id="dReqErr" role="alert" hidden></div>
+            <button class="btn primary" type="submit" id="dReqGo">Request access</button>
+          </form>
+        </div>
+        <button type="button" class="btn ghost" id="dOut" style="margin-top:.7rem">Sign out</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TOOL -->
+<div id="app" class="app gut" hidden>
+  <header class="top">
+    <div class="brand">
+      <div class="logo-plate"><img src="../assets/ceva-logo-whitered.png" alt="CEVA Logistics"></div>
+      <div><h1 class="b-title">Inventory operations dashboard</h1><div class="status-line" id="status"></div></div>
+    </div>
+    <div class="controls">
+      <div class="range"><div class="segm" id="rangeBtns" role="group" aria-label="Date range"></div></div>
+      <a class="btn" href="../data/" id="dataBtn" hidden>Data upload</a>
+      <a class="btn" href="../">All tools</a>
+      <button type="button" class="btn ghost" id="signOut">Sign out</button>
+    </div>
+  </header>
+  <div class="hero" id="hero"></div>
+  <div class="dgrid" id="grid"></div>
+  <div class="note" id="note"></div>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script src="firebase-config.js"></script>
+<script src="../assets/access.js"></script>
+<script src="../assets/sap-export.js"></script>
+<script type="module">
+const FB='https://www.gstatic.com/firebasejs/10.14.1/';
+const ROLE_LABEL={viewer:'Viewer',supervisor:'Supervisor',user:'User',admin:'Admin'};
+const RANGES=[["7","7 days"],["30","30 days"],["90","90 days"]];
+const DEF_CFG={q1:500,q2:50};
+/* Each part of the dashboard reads the data of one tool, so it follows that tool's access level. */
+const PARTS={differences:"Inventory differences",picking:"Picking audit",putaway:"Putaway audit",consolidation:"HU consolidation",tracker:"Inventory action tracker",transactions:"Warehouse transactions"};
+const S={range:"30",lv:{},D:{},unsubs:[],dayUnsubs:[],fb:null,authUser:null,role:null,myName:"",who:"",canLoad:false,pendingReq:null};
+const $=id=>document.getElementById(id),p2=n=>String(n).padStart(2,"0");
+const nf=(n,d)=>(+n||0).toLocaleString("en-US",{maximumFractionDigits:d==null?0:d});
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const str=(v,n)=>typeof v==="string"?v.trim().slice(0,n||200):"";
+const dayNow=()=>Math.floor((Date.now()/1000-new Date().getTimezoneOffset()*60)/86400);
+const iso=d=>new Date(d*86400000).toISOString().slice(0,10);
+const mdyDay=d=>{if(d==null||d<0||!isFinite(d))return "";const x=new Date(d*86400000);return p2(x.getUTCMonth()+1)+"/"+p2(x.getUTCDate())+"/"+x.getUTCFullYear()};
+const mdIso=s=>+s.slice(5,7)+"/"+ +s.slice(8,10);
+const stamp=t=>t?new Date(t).toLocaleString("en-US",{month:"numeric",day:"numeric",hour:"numeric",minute:"2-digit"}):"";
+const pct=(a,b)=>b?(a/b*100).toFixed(a===b?0:1)+"%":"n/a";
+const todayIso=()=>{const d=new Date();return d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate())};
+const isIso=s=>/^\d{4}-\d{2}-\d{2}$/.test(s||"");
+const dayNo=s=>Math.round(Date.UTC(+s.slice(0,4),+s.slice(5,7)-1,+s.slice(8,10))/864e5);
+function hash(s){let h=5381;for(let i=0;i<s.length;i++)h=(h*33^s.charCodeAt(i))>>>0;return h.toString(36)}
+let toastT;function toast(t,keep){const e=$("toast");e.textContent=t;e.hidden=false;clearTimeout(toastT);if(!keep)toastT=setTimeout(()=>e.hidden=true,typeof keep==="number"?keep:6000)}
+
+/* ---------- shared data ----------
+   The dashboard keeps nothing of its own. It reads what the other tools already hold and adds it up:
+     invdays, invact, invcfg     Inventory differences (short and over picks, the action on each one, priority limits)
+     pickdays, pickaud           Picking audit (picks out of storage bins, audit results)
+     putdays, putaud             Putaway audit (putaways out of the GR-ZONE, audit results)
+     hucons, huconsst            HU consolidation (the newest stock export, status by SKU)
+     atrk                        Inventory action tracker
+     wtdays, wt/open             Warehouse transactions (completed work by day, open tasks)
+     ccount/current              Cycle counts, from the SAP physical inventory export (loaded on the Data upload page)
+   In S.D a value is undefined while loading, null when it could not be read, false when a single document does not exist yet.
+   The day collections are read for the chosen date range only. */
+function startData(){
+  const {Fs,fs}=S.fb,can=k=>S.lv[k]&&S.lv[k]!=="none";
+  const coll=(col,key,keyed)=>S.unsubs.push(Fs.onSnapshot(Fs.collection(fs,col),snap=>{
+    if(keyed){const m=new Map();snap.docs.forEach(x=>{const a=x.data()||{};m.set(str(a.k,600)||decodeURIComponent(x.id),a)});S.D[key]=m}
+    else S.D[key]=snap.docs.map(x=>({...(x.data()||{}),id:x.id}));draw()},()=>{S.D[key]=null;draw()}));
+  const one=(col,id,key)=>S.unsubs.push(Fs.onSnapshot(Fs.doc(fs,col,id),snap=>{S.D[key]=snap.exists()?(snap.data()||{}):false;draw()},()=>{S.D[key]=null;draw()}));
+  if(can("differences")){coll("invact","invact",true);one("invcfg","settings","invcfg")}
+  if(can("picking"))coll("pickaud","pickaud",true);
+  if(can("putaway"))coll("putaud","putaud",true);
+  if(can("consolidation")){one("hucons","current","hu");coll("huconsst","husts",true)}
+  if(can("tracker"))coll("atrk","atrk");
+  if(can("transactions"))one("wt","open","open");
+  one("ccount","current","cc");
+  startDays()}
+function startDays(){
+  const {Fs,fs}=S.fb,can=k=>S.lv[k]&&S.lv[k]!=="none",start=iso(dayNow()-(+S.range-1));
+  S.dayUnsubs.forEach(u=>{try{u()}catch(_){}});S.dayUnsubs=[];
+  const days=(col,key,parse)=>{S.D[key]=undefined;S.dayUnsubs.push(Fs.onSnapshot(Fs.query(Fs.collection(fs,col),Fs.where("date",">=",start),Fs.orderBy("date")),
+    snap=>{S.D[key]=snap.docs.map(x=>parse(x.data()||{},x.id));draw()},()=>{S.D[key]=null;draw()}))};
+  const rowsOf=(d,id)=>{let rows=[];try{rows=JSON.parse(d.rows||"[]")}catch(_){}return {date:str(d.date,10)||id,at:+d.at||0,file:str(d.file,80),byName:str(d.byName,40),rows:Array.isArray(rows)?rows:[]}};
+  const cubeOf=(d,id)=>{let cube=[];try{cube=JSON.parse(d.cube||"[]")}catch(_){}return {date:str(d.date,10)||id,at:+d.at||0,file:str(d.file,80),byName:str(d.byName,40),n:+d.n||0,units:+d.units||0,cube:Array.isArray(cube)?cube:[]}};
+  if(can("differences"))days("invdays","inv",rowsOf);
+  if(can("picking"))days("pickdays","pick",rowsOf);
+  if(can("putaway"))days("putdays","put",rowsOf);
+  if(can("transactions"))days("wtdays","wt",cubeOf);
+  draw()}
+function stopData(){S.unsubs.concat(S.dayUnsubs).forEach(u=>{try{u()}catch(_){}});S.unsubs=[];S.dayUnsubs=[];S.D={}}
+
+/* ---------- adding it up ----------
+   Each function returns null when its data is not there yet, otherwise the numbers for one part of the dashboard.
+   The rules are the ones the tools themselves use, so a number here matches the number on the tool's own page. */
+const newest=L=>{let n=null;for(const d of L)if(!n||d.at>n.at)n=d;return n};
+function calcDiff(){
+  const L=S.D.inv;if(!L)return null;const acts=S.D.invact||new Map(),c=S.D.invcfg||{},cfg={};for(const k in DEF_CFG)cfg[k]=typeof c[k]==="number"&&c[k]>=0?c[k]:DEF_CFG[k];
+  const o={n:0,open:0,p1:0,sn:0,sq:0,on:0,oq:0,days:[],top:[],last:newest(L)},bins=new Map();
+  for(const d of L){let s=0,v=0;
+    for(const r of d.rows){const df=+r.df||0;if(!df)continue;o.n++;if(df>0){o.sn++;o.sq+=df;s++}else{o.on++;o.oq-=df;v++}
+      const a=acts.get([r.t,r.p,r.b].join("|")),closed=a&&a.status==="closed";if(!closed){o.open++;if(Math.abs(df)>=cfg.q1)o.p1++}
+      const k=r.b+"|"+r.p;let b=bins.get(k);if(!b){b={b:r.b,p:r.p,n:0,open:0,sq:0,oq:0};bins.set(k,b)}b.n++;if(!closed)b.open++;if(df>0)b.sq+=df;else b.oq-=df}
+    if(s||v)o.days.push([d.date,s,v])}
+  o.top=[...bins.values()].sort((x,y)=>y.n-x.n||y.sq+y.oq-x.sq-x.oq).slice(0,6);o.cfg=cfg;return o}
+/* A pick is a variance when SAP confirmed a different quantity than the task asked for, or when an audit entered one. */
+function calcPick(){
+  const L=S.D.pick;if(!L)return null;const aud=S.D.pickaud||new Map(),o={n:0,er:0,sh:0,ov:0,found:0,left:0,units:0,days:[],last:newest(L)};
+  for(const d of L){let e=0;
+    for(const r of d.rows){const a=aud.get(r.t+"|"+r.s),err=!!(a&&a.res==="error");o.n++;o.units+=+r.q||0;
+      if(r.tg){if(r.tg>r.q)o.sh++;else o.ov++}else if(err)o.found++;
+      if(r.tg||err){o.er++;e++}if(!(a&&(a.res==="ok"||a.res==="error")))o.left++}
+    if(d.rows.length)o.days.push([d.date,d.rows.length,e])}
+  return o}
+function calcPut(){
+  const L=S.D.put;if(!L)return null;const aud=S.D.putaud||new Map(),o={n:0,er:0,left:0,units:0,types:{},days:[],last:newest(L)};
+  for(const d of L){let e=0;
+    for(const r of d.rows){const a=aud.get(r.t+"|"+r.p);o.n++;o.units+=+r.q||0;
+      if(a&&a.res==="error"){o.er++;e++;const t=a.type||"other";o.types[t]=(o.types[t]||0)+1}if(!(a&&(a.res==="ok"||a.res==="error")))o.left++}
+    if(d.rows.length)o.days.push([d.date,d.rows.length,e])}
+  return o}
+/* An item is a storage bin, product and stock type; its result is its latest count. */
+function calcCC(){
+  const d=S.D.cc;if(!d)return null;let x={};try{x=JSON.parse(d.rows||"{}")}catch(_){}
+  const I=(Array.isArray(x.items)?x.items:[]).filter(Array.isArray),o={n:I.length,ok:0,net:0,abs:0,book:0,over:0,short:0,pend:0,re:0,open:+d.open||0,from:+d.from,to:+d.to,at:+d.at||0,file:str(d.file,80),byName:str(d.byName,40)};
+  for(const r of I){const df=+r[6]||0;o.book+=+r[4]||0;if(!df)o.ok++;else{o.net+=df;o.abs+=Math.abs(df);if(df>0)o.over++;else o.short++}if(r[7]>1)o.re++;if(r[10])o.pend++}
+  o.top=I.filter(r=>r[6]).sort((a,b)=>Math.abs(b[6])-Math.abs(a[6])).slice(0,8);return o}
+/* The same plan the HU consolidation page shows with every storage type chosen. */
+function calcHu(){
+  const d=S.D.hu;if(!d)return null;let x={};try{x=JSON.parse(d.rows||"{}")}catch(_){}
+  const sts=S.D.husts||new Map(),o={skus:0,free:0,done:0,doneFree:0,leave:0,hus:+d.hus||0,bins:+d.bins||0,at:+d.at||0,file:str(d.file,80),byName:str(d.byName,40),top:[],old:!Array.isArray(x.skus)};
+  for(const s of Array.isArray(x.skus)?x.skus:[]){if(!s||!Array.isArray(s.h))continue;
+    const a=sts.get(s.p+"|"+s.sk)||null,full=a&&+a.full>0?+a.full:0;if(s.h.length<2&&!full)continue;
+    const pl=SapExport.planSku(s.h,full);if(!pl.freed)continue;
+    const sig=hash(pl.keep.map(k=>k.x[0]).concat(pl.moves.map(m=>m.x[0])).sort().join(","))+"."+pl.part,st=a&&a.st==="leave"?"leave":a&&a.st==="done"&&a.sig===sig?"done":"open";
+    if(st==="done"){o.done++;o.doneFree+=pl.freed}else if(st==="leave")o.leave++;else{o.skus++;o.free+=pl.freed;o.top.push({p:s.p,sk:s.sk,d:s.d,n:pl.n,part:pl.part,after:pl.after,freed:pl.freed})}}
+  o.top.sort((a,b)=>b.freed-a.freed||(a.p<b.p?-1:1));o.top=o.top.slice(0,6);return o}
+/* Stock on hand, added up by the loader when the stock export was read. */
+function calcSnap(){
+  const d=S.D.hu;if(!d||!d.snap)return null;let x=null;try{x=JSON.parse(d.snap)}catch(_){}
+  if(!x||!Array.isArray(x.st))return null;const arr=k=>Array.isArray(x[k])?x[k].filter(Array.isArray):[];
+  return {lines:+x.lines||0,units:+x.units||0,bins:+x.bins||0,hus:+x.hus||0,prods:+x.prods||0,noHu:+x.noHu||0,exp:+x.exp||0,exp90:+x.exp90||0,day:+x.day,st:arr("st"),sty:arr("sty"),age:arr("age"),top:arr("top"),at:+d.at||0,file:str(d.file,80),byName:str(d.byName,40)}}
+function calcTrk(){
+  const A=S.D.atrk;if(!A)return null;const today=dayNo(todayIso()),closed=a=>a.status==="Complete"||a.status==="Cancelled",left=a=>!isIso(a.due)||closed(a)?null:dayNo(a.due)-today;
+  const o={total:A.length,open:0,late:0,soon:0,hold:0,co:0,pct:A.length?A.reduce((t,a)=>t+(+a.pct||0),0)/A.length:0,list:[]};
+  for(const a of A){if(a.status==="Complete")o.co++;if(closed(a))continue;o.open++;if(a.status==="On Hold"||a.status==="Blocked")o.hold++;
+    const d=left(a);if(d!=null&&d<0)o.late++;else if(d!=null&&d<=7)o.soon++;if(d!=null&&d<=7)o.list.push({a,d})}
+  o.list.sort((x,y)=>x.d-y.d);o.more=Math.max(0,o.list.length-8);o.list=o.list.slice(0,8);return o}
+const TYPES=[["Pick","--s2"],["Putaway","--s3"],["Internal move","--s5"],["Other","--s4"]];
+function calcWt(){
+  const L=S.D.wt;if(!L)return null;const o={n:0,units:0,days:[],by:{},users:new Set(),last:newest(L)};
+  for(const d of L){const t={};for(const c of d.cube){const k=TYPES.some(x=>x[0]===c[1])?c[1]:"Other";t[k]=(t[k]||0)+(+c[4]||0);o.by[k]=(o.by[k]||0)+(+c[4]||0);o.users.add(c[0])}
+    o.n+=d.n;o.units+=d.units;if(d.n)o.days.push([d.date,t])}
+  return o}
+
+/* ---------- drawing ---------- */
+/* Stacked bars, one per day. days: ISO dates. stacks: [{name, c: CSS colour variable, v: one value per day}]. */
+function bars(days,stacks,label){
+  const w=640,h=190,L=44,B=22,T=16,pw=w-L-8,ph=h-B-T,n=Math.max(1,days.length),bw=pw/n;
+  const tot=days.map((_,i)=>stacks.reduce((a,s)=>a+(s.v[i]||0),0)),mx=Math.max(1,...tot),e=Math.pow(10,Math.floor(Math.log10(mx))),fr=mx/e,step=Math.max(1,e*(fr>5?2:fr>2?1:.5));
+  const ax=v=>!v?"0":mx>=1e6?+(v/1e6).toFixed(2)+"M":mx>=1e4?+(v/1e3).toFixed(1)+"k":nf(v);
+  let sv=`<svg viewBox="0 0 ${w} ${h}" width="100%" role="img" aria-label="${esc(label)}">`,top="";
+  for(let v=0;v<=mx*1.0001;v+=step){const y=T+ph-ph*v/mx;sv+=`<line x1="${L}" x2="${w-8}" y1="${y}" y2="${y}" stroke="var(--line)"/><text x="${L-6}" y="${y+4}" text-anchor="end">${ax(v)}</text>`}
+  const every=Math.ceil(n/12),lab=n<=16;
+  days.forEach((d,i)=>{let y=T+ph;const bwid=Math.min(46,Math.max(1,bw*.7)),x=L+i*bw+(bw-bwid)/2;
+    stacks.forEach(s=>{const val=s.v[i]||0,bh=ph*val/mx;if(bh>0){y-=bh;sv+=`<rect x="${x}" y="${y}" width="${bwid}" height="${bh}" fill="var(${s.c})"><title>${mdIso(d)} ${esc(s.name)}: ${nf(val)}</title></rect>`}});
+    if(lab&&tot[i])top+=`<text class="tl" x="${x+bwid/2}" y="${y-4}" text-anchor="middle">${ax(tot[i])}</text>`;
+    if(i%every===0)sv+=`<text x="${x+bwid/2}" y="${h-5}" text-anchor="middle">${mdIso(d)}</text>`});
+  return sv+top+"</svg>"+(stacks.length>1?`<div class="legend">${stacks.map(s=>`<span><i style="background:var(${s.c})"></i>${esc(s.name)}</span>`).join("")}</div>`:"")}
+const tiles=L=>`<div class="ag">${L.map(t=>`<div class="${t[2]||""}"><div class="k">${t[0]}</div><div class="v">${t[1]}</div></div>`).join("")}</div>`;
+const loaded=x=>x&&x.at?`<div class="p-sub">Last load <b>${esc(x.file||"")}</b> ${esc(stamp(x.at))}${x.byName?" by "+esc(x.byName):""}</div>`:"";
+const rangeWords=()=>"the last "+S.range+" days";
+/* What to say in place of a part that has nothing to show. key: the tool whose access level applies, or "" for the dashboard's own data. */
+function gap(key,v,none){
+  if(key&&(!S.lv[key]||S.lv[key]==="none"))return `<div class="quiet">Your user group does not have access to ${esc(PARTS[key])}, so this part is not shown. An admin sets that on the Access page.</div>`;
+  if(v===undefined)return '<div class="quiet">Loading…</div>';
+  if(v===null)return '<div class="quiet">This could not be read. Check the connection; if it stays like this, the latest security rules may not be published yet.</div>';
+  return `<div class="quiet">${none}</div>`}
+function panel(title,href,body,wide){return `<section class="b-panel${wide?" wide":""}"><header class="p-head"><h2>${title}</h2><a class="open" href="${href}">Open the tool →</a></header><div class="p-body">${body}</div></section>`}
+const loadHint=file=>S.canLoad?`Load the ${file} on the <a class="linkbtn" href="../data/">Data upload</a> page.`:`Someone with edit access loads the ${file} on the Data upload page.`;
+
+let drawT=0;function draw(){if(!drawT)drawT=requestAnimationFrame(()=>{drawT=0;render()})}
+function render(){
+  if(!S.role)return;
+  $("status").innerHTML=`<span><span class="dot ok"></span>${esc(S.myName||(S.authUser&&S.authUser.email)||"")} · ${S.who||ROLE_LABEL[S.role]}</span><span>Numbers by day cover <b>${rangeWords()}</b></span>`;
+  $("rangeBtns").innerHTML=RANGES.map(r=>`<button type="button" data-r="${r[0]}" aria-pressed="${S.range===r[0]}">${r[1]}</button>`).join("");
+  $("dataBtn").hidden=!S.canLoad;
+  const D=S.D,df=calcDiff(),pk=calcPick(),pw=calcPut(),cc=calcCC(),hu=calcHu(),sn=calcSnap(),tk=calcTrk(),wt=calcWt(),open=D.open;
+  const off=k=>!S.lv[k]||S.lv[k]==="none";
+
+  /* headline numbers */
+  const H=[];
+  const h=(k,v,s,cls,href)=>H.push(`<a href="${href}" class="${cls||""}"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s}</div></a>`);
+  const na=(k,key,v,href,none)=>h(k,"n/a",key&&off(key)?"No access for your group":v===undefined?"Loading…":v===null?"Could not be read":none,"off",href);
+  if(sn)h("Stock on hand",nf(sn.units),`${nf(sn.prods)} products in ${nf(sn.bins)} bins, ${nf(sn.hus)} HUs`,"info","#stock");else na("Stock on hand","consolidation",D.hu,"#stock","No stock export loaded");
+  if(cc&&cc.n)h("Cycle count accuracy",pct(cc.ok,cc.n),`${nf(cc.ok)} of ${nf(cc.n)} items with no variance`,"info","#cc");else na("Cycle count accuracy","",D.cc,"#cc","No counts loaded");
+  if(pk&&pk.n)h("Pick accuracy",pct(pk.n-pk.er,pk.n),`${nf(pk.er)} ${pk.er===1?"variance":"variances"} in ${nf(pk.n)} picks`,"info","../picking-audit/");else na("Pick accuracy","picking",D.pick,"../picking-audit/","No picks in these dates");
+  if(pw&&pw.n)h("Putaway accuracy",pct(pw.n-pw.er,pw.n),`${nf(pw.er)} ${pw.er===1?"error":"errors"} in ${nf(pw.n)} putaways`,"info","../putaway-audit/");else na("Putaway accuracy","putaway",D.put,"../putaway-audit/","No putaways in these dates");
+  if(df)h("Open differences",nf(df.open),df.p1?`${nf(df.p1)} at priority 1`:`of ${nf(df.n)} short and over picks`,df.p1?"hot":df.open?"warn":"good","../inventory-differences/");else na("Open differences","differences",D.inv,"../inventory-differences/","");
+  if(hu)h("HUs that can be freed",nf(hu.free),`across ${nf(hu.skus)} ${hu.skus===1?"SKU":"SKUs"} still open`,hu.free?"warn":"good","../consolidation/");else na("HUs that can be freed","consolidation",D.hu,"../consolidation/","No stock export loaded");
+  if(tk)h("Overdue actions",nf(tk.late),`${nf(tk.open)} open, ${nf(tk.soon)} due in 7 days`,tk.late?"hot":"good","../action-tracker/");else na("Overdue actions","tracker",D.atrk,"../action-tracker/","");
+  if(open)h("Open warehouse tasks",nf(open.count),"as of the newest export","","../transactions/");else na("Open warehouse tasks","transactions",open,"../transactions/","No export loaded");
+  if(wt&&wt.n)h("Tasks confirmed",nf(wt.n),`${nf(wt.units)} units over ${wt.days.length} ${wt.days.length===1?"day":"days"}`,"","../transactions/");else na("Tasks confirmed","transactions",D.wt,"../transactions/","None in these dates");
+  $("hero").innerHTML=H.join("");
+
+  const P=[];
+  /* cycle counts */
+  P.push(`<section class="b-panel wide" id="cc"><header class="p-head"><h2>Cycle counts</h2>${cc&&cc.n?`<span class="p-count">${mdyDay(cc.from)}${cc.to!==cc.from?" to "+mdyDay(cc.to):""}</span>`:""}<a class="open" href="../data/">Data upload →</a></header><div class="p-body">`
+    +(cc&&cc.n?tiles([["Items counted",nf(cc.n)],["No variance",nf(cc.ok),"ok"],["Location accuracy",pct(cc.ok,cc.n),"info"],["Items short",nf(cc.short),cc.short?"p1":""],["Items over",nf(cc.over),cc.over?"p2":""],
+        ["Net variance, units",(cc.net>0?"+":"")+nf(cc.net,2),cc.net?"p1":""],["Absolute variance, units",nf(cc.abs,2)],["Unit accuracy",cc.book?Math.max(0,(1-cc.abs/cc.book)*100).toFixed(1)+"%":"n/a","info"],["Recounted",nf(cc.re)],["Recount still owed",nf(cc.pend),cc.pend?"p2":""],["Open count documents",nf(cc.open),cc.open?"p2":""]])
+      +(cc.top.length?`<div class="sec">Largest variances</div><div class="scroll"><table><thead><tr><th class="t">Bin</th><th class="t">Product</th><th class="t">Description</th><th class="t">Stock type</th><th>Book</th><th>Counted</th><th>Difference</th><th>Times counted</th><th class="t">Counted</th><th class="t">Counter</th></tr></thead><tbody>`
+        +cc.top.map(r=>`<tr><td class="t n">${esc(r[0])}</td><td class="t">${esc(r[1])}</td><td class="t">${esc(r[2])}</td><td class="t">${esc(r[3])}</td><td>${nf(r[4],2)}</td><td>${nf(r[5],2)}</td><td class="n ${r[6]>0?"pos":"neg"}">${r[6]>0?"+":""}${nf(r[6],2)}</td><td>${r[7]}${r[10]?' <span class="pill soon">Recount owed</span>':""}</td><td class="t">${mdyDay(r[8])}</td><td class="t">${esc(r[9])}</td></tr>`).join("")+"</tbody></table></div>":'<div class="quiet">Every item counted matched the book quantity.</div>')
+      +loaded(cc)
+      :gap("",D.cc,D.cc&&!cc.n?"The physical inventory export that was loaded has no counted lines.":"No cycle counts loaded yet. "+loadHint("SAP physical inventory export")))+"</div></section>");
+
+  /* stock on hand */
+  const share=(v,t)=>`<span class="meter" style="width:${(t?v/t*8:0).toFixed(2)}em"></span>${pct(v,t)}`;
+  const tbl=(head,rows)=>`<div class="scroll"><table><thead><tr>${head.map((x,i)=>`<th${i<head.t?' class="t"':""}>${x}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody></table></div>`;
+  const H1=["Stock type","SAP description","Lines","Units","Share of units"];H1.t=2;const H2=["Storage type","Lines","Bins","Units","Share of lines"];H2.t=1;const H3=["Since goods receipt","Lines","Units","Share of lines"];H3.t=1;const H4=["Product","Description","Lines","Bins","Units"];H4.t=2;
+  const aged=sn?sn.age.slice(3).reduce((t,a)=>t+a[1],0):0;
+  P.push(`<section class="b-panel wide" id="stock"><header class="p-head"><h2>Stock on hand</h2>${sn?`<span class="p-count">as of ${mdyDay(sn.day)}</span>`:""}<a class="open" href="../data/">Data upload →</a></header><div class="p-body">`
+    +(sn?tiles([["Units on hand",nf(sn.units),"info"],["Products",nf(sn.prods)],["Bins with stock",nf(sn.bins)],["Handling units",nf(sn.hus)],["Stock lines",nf(sn.lines)],["Lines with no HU",nf(sn.noHu),sn.noHu?"p2":""],["Lines over 180 days old",nf(aged),aged?"p2":""],["Past shelf life",nf(sn.exp),sn.exp?"p1":""],["Shelf life ends in 90 days",nf(sn.exp90),sn.exp90?"p2":""]])
+      +`<div class="two" style="margin-top:.3em"><div><div class="sec">By stock type</div>${tbl(H1,sn.st.map(r=>`<tr><td class="t n">${esc(r[0])}</td><td class="t">${esc(r[1])}</td><td>${nf(r[2])}</td><td>${nf(r[3],2)}</td><td class="t">${share(r[3],sn.units)}</td></tr>`))}
+        <div class="sec">Age of stock</div>${tbl(H3,sn.age.map(r=>`<tr><td class="t n">${esc(r[0])}</td><td>${nf(r[1])}</td><td>${nf(r[2],2)}</td><td class="t">${share(r[1],sn.lines)}</td></tr>`))}</div>
+        <div><div class="sec">By storage type</div>${tbl(H2,sn.sty.map(r=>`<tr><td class="t n">${esc(r[0])}</td><td>${nf(r[1])}</td><td>${nf(r[2])}</td><td>${nf(r[3],2)}</td><td class="t">${share(r[1],sn.lines)}</td></tr>`))}</div></div>`
+      +`<div class="sec">Products on the most stock lines</div>${tbl(H4,sn.top.map(r=>`<tr><td class="t n">${esc(r[0])}</td><td class="t">${esc(r[1])}</td><td>${nf(r[2])}</td><td>${nf(r[3])}</td><td>${nf(r[4],2)}</td></tr>`))}`+loaded(sn)
+      :gap("consolidation",D.hu,D.hu?"The stock export was loaded before this page existed. Load it again to fill this in. "+loadHint("SAP stock export"):"No stock export loaded yet. "+loadHint("SAP stock export")))+"</div></section>");
+
+  /* inventory differences */
+  P.push(panel("Inventory differences","../inventory-differences/",df&&df.n?tiles([["Differences",nf(df.n)],["Not closed",nf(df.open),df.open?"p2":"ok"],["Priority 1 open",nf(df.p1),df.p1?"p1":""],["Short picks",nf(df.sn)],["Units short",nf(df.sq,2)],["Over picks",nf(df.on)],["Units over",nf(df.oq,2)]])
+      +`<div class="sec">Short and over picks by day</div>`+bars(df.days.map(d=>d[0]),[{name:"Short picks",c:"--accent",v:df.days.map(d=>d[1])},{name:"Over picks",c:"--info",v:df.days.map(d=>d[2])}],"Short and over picks by day")
+      +`<div class="sec">Bins with the most differences</div><div class="scroll"><table><thead><tr><th class="t">Bin</th><th class="t">Product</th><th>Differences</th><th>Not closed</th><th>Units short</th><th>Units over</th></tr></thead><tbody>`
+      +df.top.map(b=>`<tr><td class="t n">${esc(b.b||"(blank)")}</td><td class="t">${esc(b.p||"(blank)")}</td><td class="n">${b.n}</td><td>${b.open||""}</td><td class="neg">${b.sq?nf(b.sq,2):""}</td><td class="pos">${b.oq?nf(b.oq,2):""}</td></tr>`).join("")+"</tbody></table></div>"+loaded(df.last)
+    :gap("differences",D.inv,"No short or over picks in "+rangeWords()+".")));
+
+  /* audits */
+  const dayAcc=(o,word)=>`<div class="sec">${word} by day</div>`+bars(o.days.map(d=>d[0]),[{name:word,c:"--accent",v:o.days.map(d=>d[2])}],word+" by day");
+  P.push(panel("Picking audit","../picking-audit/",pk&&pk.n?tiles([["Picks",nf(pk.n)],["Accuracy",pct(pk.n-pk.er,pk.n),"info"],["Variances",nf(pk.er),pk.er?"p1":"ok"],["Short picks",nf(pk.sh)],["Over picks",nf(pk.ov)],["Found by audit",nf(pk.found)],["Not closed out yet",nf(pk.left),pk.left?"p2":"ok"]])
+      +dayAcc(pk,"Variances")+loaded(pk.last):gap("picking",D.pick,"No picks in "+rangeWords()+".")));
+  const TL={bin:"Wrong bin",qty:"Wrong quantity",prod:"Wrong product",missing:"Not found in bin",label:"Label or handling unit",damage:"Damaged",other:"Other"};
+  P.push(panel("Putaway audit","../putaway-audit/",pw&&pw.n?tiles([["Putaways",nf(pw.n)],["Accuracy",pct(pw.n-pw.er,pw.n),"info"],["Errors",nf(pw.er),pw.er?"p1":"ok"],["Not closed out yet",nf(pw.left),pw.left?"p2":"ok"]])
+      +(pw.er?`<div class="sec">Errors by kind</div><div class="quiet">${Object.entries(pw.types).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<span class="pill">${esc(TL[k]||"Other")} · ${v}</span>`).join(" ")}</div>`:"")
+      +dayAcc(pw,"Errors")+loaded(pw.last):gap("putaway",D.put,"No putaways in "+rangeWords()+".")));
+
+  /* consolidation */
+  P.push(panel("HU consolidation","../consolidation/",hu&&!hu.old?tiles([["SKUs to consolidate",nf(hu.skus),hu.skus?"p2":"ok"],["HUs that can be freed",nf(hu.free),"info"],["SKUs consolidated",nf(hu.done),"ok"],["Left as is",nf(hu.leave)],["HUs in stock",nf(hu.hus)]])
+      +(hu.top.length?`<div class="sec">Biggest opportunities</div><div class="scroll"><table><thead><tr><th class="t">Product</th><th class="t">Stock type</th><th>HUs now</th><th>Partial HUs</th><th>HUs after</th><th>HUs freed</th></tr></thead><tbody>`
+        +hu.top.map(s=>`<tr><td class="t n" title="${esc(s.d)}">${esc(s.p)}</td><td class="t">${esc(s.sk)}</td><td>${s.n}</td><td>${s.part}</td><td>${s.after}</td><td class="n">${s.freed}</td></tr>`).join("")+"</tbody></table></div>":'<div class="quiet">No SKU is waiting to be consolidated.</div>')+loaded(hu)
+    :gap("consolidation",D.hu,hu&&hu.old?"The stock export was saved in an older layout. Load it again.":"No stock export loaded yet. "+loadHint("SAP stock export"))));
+
+  /* action tracker */
+  const due=x=>x.d<0?`<span class="pill late">${-x.d} ${x.d===-1?"day":"days"} late</span>`:x.d===0?'<span class="pill soon">Due today</span>':`<span class="pill soon">${x.d} ${x.d===1?"day":"days"} left</span>`;
+  P.push(panel("Inventory action tracker","../action-tracker/",tk&&tk.total?tiles([["Open actions",nf(tk.open)],["Overdue",nf(tk.late),tk.late?"p1":"ok"],["Due in 7 days",nf(tk.soon),tk.soon?"p2":""],["On hold or blocked",nf(tk.hold),tk.hold?"p2":""],["Complete",nf(tk.co),"ok"],["Overall complete",Math.round(tk.pct)+"%","info"]])
+      +(tk.list.length?`<div class="sec">Overdue and due this week</div><div class="scroll"><table><thead><tr><th class="t">#</th><th class="t">Action</th><th class="t">Owner</th><th class="t">Due</th><th class="t">Status</th></tr></thead><tbody>`
+        +tk.list.map(x=>`<tr><td class="t n">${esc(x.a.n)}</td><td class="t w">${esc(str(x.a.item,200))}</td><td class="t">${esc(String(x.a.own||"").split(/\n+/).map(s=>s.trim()).filter(Boolean).join(", "))}</td><td class="t">${due(x)}</td><td class="t">${esc(x.a.status||"")}</td></tr>`).join("")+"</tbody></table></div>"
+        +(tk.more?`<div class="p-sub">${nf(tk.more)} more in the tracker.</div>`:""):'<div class="quiet">Nothing is overdue or due in the next 7 days.</div>')
+    :gap("tracker",D.atrk,"No actions in the tracker yet.")));
+
+  /* warehouse transactions */
+  P.push(panel("Warehouse transactions","../transactions/",wt&&wt.n?tiles([["Tasks confirmed",nf(wt.n)],["Units",nf(wt.units)],["Average per day",nf(wt.n/wt.days.length)],["Associates",nf(wt.users.size)],["Open tasks",open?nf(open.count):"n/a",open&&open.count?"p2":""]])
+      +`<div class="sec">Tasks confirmed by day</div>`+bars(wt.days.map(d=>d[0]),TYPES.filter(t=>wt.by[t[0]]).map(t=>({name:t[0],c:t[1],v:wt.days.map(d=>d[1][t[0]]||0)})),"Tasks confirmed by day and activity")+loaded(wt.last)
+    :gap("transactions",D.wt,"No confirmed tasks in "+rangeWords()+". "+loadHint("SAP warehouse task export"))));
+  $("grid").innerHTML=P.join("");
+  $("note").innerHTML=`This page keeps no data of its own. It adds up what the other tools hold, with the same rules each tool uses, so a number here matches the tool it links to. Numbers by day (differences, audits, transactions) cover ${rangeWords()}, counted back from today; stock on hand, cycle counts, HU consolidation and the action tracker show where things stand now. Stock on hand comes from the SAP stock export, the same file HU consolidation uses; age is days since goods receipt on the day the file was loaded. `
+    +`Pick accuracy is picks with no short or over pick and no audit variance, out of all picks from storage bins. Putaway accuracy is putaways with no audit error entered, out of all putaways from the GR-ZONE; a putaway nobody has audited yet counts as correct, so read it next to “Not closed out yet”. `
+    +`Cycle count location accuracy is items (a bin, product and stock type) whose latest count matched the book quantity, out of all items counted; a recount replaces the count before it. Unit accuracy is 1 minus the absolute variance over the book quantity. Each part follows your access to its tool.`}
+$("rangeBtns").addEventListener("click",e=>{const b=e.target.closest("button[data-r]");if(b&&b.dataset.r!==S.range){S.range=b.dataset.r;if(S.role)startDays()}});
+
+/* ---------- sign-in gate (same accounts, roles and access requests as the other CEVA tools) ---------- */
+function showGate(mode,waitText){
+  const ready=mode==="ready";$("gate").hidden=ready;$("app").hidden=!ready;
+  $("gateWait").hidden=mode!=="wait";if(waitText)$("gateWait").textContent=waitText;
+  $("gateSetup").hidden=mode!=="setup";$("gateLogin").hidden=mode!=="login";$("gateRequest").hidden=mode!=="request";$("gateDenied").hidden=mode!=="denied";
+  if(mode==="denied")renderDenied();
+}
+function renderDenied(){const em=S.authUser?S.authUser.email||"":"";$("dEmail").textContent=em;$("dEmailP").textContent=em;$("dPending").hidden=!S.myReq;$("dNone").hidden=!!S.myReq}
+function reqErrMsg(c){return c==="auth/email-already-in-use"?"That email already has a login. Go back and sign in, or use Forgot password."
+  :c==="auth/invalid-email"?"That doesn’t look like an email address.":c==="auth/weak-password"?"Use a password of at least 8 characters."
+  :c==="auth/network-request-failed"?"No connection. Check the network and try again.":"Couldn’t send the request. Try again in a moment."}
+function fileRequest(user,name,note){const {Fs,fs}=S.fb;return Fs.setDoc(Fs.doc(fs,"requests",user.uid),{name:str(name,40),email:str(user.email||"",80),company:"ceva",note:str(note,120),at:Date.now()})}
+$("gateLogin").addEventListener("submit",async e=>{e.preventDefault();const email=$("lEmail").value.trim(),pass=$("lPass").value,err=$("lErr");err.hidden=true;
+  if(!email||!pass){err.textContent="Enter your email and password.";err.hidden=false;return}
+  if(!S.fb)return;$("lGo").disabled=true;
+  try{await S.fb.F.signInWithEmailAndPassword(S.fb.auth,email,pass);$("lPass").value=""}
+  catch(x){const c=x&&x.code;err.textContent=c==="auth/too-many-requests"?"Too many tries. Wait a few minutes, then try again.":c==="auth/network-request-failed"?"No connection. Check the network and try again.":"That email and password don’t match an account on this tool.";err.hidden=false}
+  finally{$("lGo").disabled=false}});
+$("lForgot").addEventListener("click",async()=>{const email=$("lEmail").value.trim(),err=$("lErr");err.hidden=true;
+  if(!email){err.textContent="Type your email above first, then select this again.";err.hidden=false;$("lEmail").focus();return}
+  if(!S.fb)return;
+  try{await S.fb.F.sendPasswordResetEmail(S.fb.auth,email);toast("Reset link sent to "+email+". Check spam too; the link expires, so use it soon.")}
+  catch(x){err.textContent="Couldn’t send the reset link. Check the email address and the connection, then try again.";err.hidden=false}});
+$("lRequest").addEventListener("click",()=>{$("qEmail").value=$("lEmail").value;showGate("request");setTimeout(()=>$("qName").focus(),30)});
+$("qBack").addEventListener("click",()=>showGate("login"));
+$("gateRequest").addEventListener("submit",async e=>{e.preventDefault();const name=str($("qName").value,40),email=$("qEmail").value.trim(),pass=$("qPass").value,note=str($("qNote").value,120),err=$("qErr");err.hidden=true;
+  const bad=!name?"Enter your name so the admin knows who is asking.":!email?"Enter your work email.":pass.length<8?"Use a password of at least 8 characters.":"";
+  if(bad){err.textContent=bad;err.hidden=false;return}
+  if(!S.fb)return;$("qGo").disabled=true;S.pendingReq={name,note};
+  try{await S.fb.F.createUserWithEmailAndPassword(S.fb.auth,email,pass);$("qPass").value=""}
+  catch(x){S.pendingReq=null;err.textContent=reqErrMsg(x&&x.code);err.hidden=false}
+  finally{$("qGo").disabled=false}});
+$("dRequest").addEventListener("submit",async e=>{e.preventDefault();const name=str($("dName").value,40),note=str($("dNote").value,120),err=$("dReqErr");err.hidden=true;
+  if(!name){err.textContent="Enter your name so the admin knows who is asking.";err.hidden=false;return}
+  if(!S.fb||!S.authUser)return;$("dReqGo").disabled=true;
+  try{await fileRequest(S.authUser,name,note);toast("Request sent")}catch(x){err.textContent=reqErrMsg(x&&x.code);err.hidden=false}finally{$("dReqGo").disabled=false}});
+const signOut=()=>{if(S.fb)S.fb.F.signOut(S.fb.auth)};
+$("dOut").addEventListener("click",signOut);$("signOut").addEventListener("click",signOut);
+
+(async function connect(){
+  const cfg=window.FIREBASE_CONFIG;
+  if(!cfg||!cfg.apiKey||/PASTE/i.test(cfg.apiKey+cfg.projectId)){showGate("setup");return}
+  let A,F,Fs;
+  try{[A,F,Fs]=await Promise.all([import(FB+"firebase-app.js"),import(FB+"firebase-auth.js"),import(FB+"firebase-firestore.js")])}
+  catch(_){showGate("wait","Can’t reach Firebase from this network. Ask IT to allow gstatic.com, googleapis.com and firebaseapp.com, then reload.");return}
+  const app=A.initializeApp(cfg),auth=F.getAuth(app);let fs;
+  try{fs=Fs.initializeFirestore(app,{localCache:Fs.persistentLocalCache({tabManager:Fs.persistentMultipleTabManager()})})}catch(_){fs=Fs.getFirestore(app)}
+  S.fb={auth,F,Fs,fs};
+  let roleUnsub=null,reqUnsub=null;
+  F.onAuthStateChanged(auth,user=>{
+    if(roleUnsub){roleUnsub();roleUnsub=null}if(reqUnsub){reqUnsub();reqUnsub=null}
+    stopData();S.authUser=user;S.role=null;S.canLoad=false;S.myReq=null;S.lv={};
+    if(!user){showGate("login");return}
+    if(S.pendingReq){const q=S.pendingReq;S.pendingReq=null;fileRequest(user,q.name,q.note).then(()=>toast("Request sent. An admin will approve it."),()=>toast("Signed up, but the request didn’t send. Fill in the form below."))}
+    showGate("wait","Checking access…");
+    reqUnsub=Fs.onSnapshot(Fs.doc(fs,"requests",user.uid),s=>{S.myReq=s.exists();if(!S.role&&!$("gateDenied").hidden)renderDenied()},()=>{});
+    roleUnsub=CevaAccess.watch(Fs,fs,user.uid,"dashboard",snap=>{
+      const d=snap.exists()?(snap.data()||{}):{},role=d.role;
+      if(d.noAccess){S.role=null;stopData();showGate("wait",CevaAccess.NO_ACCESS);return}
+      if(!ROLE_LABEL[role]){if(snap.metadata.fromCache){showGate("wait","Waiting for the network…");return}S.role=null;stopData();showGate("denied");return}
+      /* the level this person has in each tool the dashboard reads from */
+      const lv={},grp={tools:d.groupTools||{}};for(const k in PARTS)lv[k]=CevaAccess.levelOf(d.raw,grp,k);
+      const same=S.role&&Object.keys(PARTS).every(k=>lv[k]===S.lv[k]);
+      S.role=role;S.myName=str(d.name,40);S.canLoad=!!d.canLoad;S.who=d.groupName+" · "+CevaAccess.LEVEL_LABEL[d.level];S.lv=lv;
+      if(!same){stopData();startData();showGate("ready")}
+      draw();
+    },()=>{S.role=null;stopData();showGate("denied")});
+  });
+})();
+</script>
+</body>
+</html>

@@ -279,6 +279,25 @@ service cloud.firestore {
       allow delete: if canFull('consolidation');
     }
 
+    // ───────── Inventory operations dashboard ─────────
+
+    // The dashboard reads the other tools' collections, each under that tool's own access level,
+    // so a group sees a part of the dashboard only when it can see the tool behind it.
+    // ccount/current is the one document of its own: the newest SAP physical inventory (cycle
+    // count) export cut down to the final count of each bin, product and stock type, as JSON
+    // text. Each load replaces it. Groups with view on the dashboard read; groups with edit on
+    // Data upload load; full access removes it.
+    match /ccount/{docId} {
+      allow read: if canView('dashboard') || canEdit('data');
+      allow create, update: if canEdit('data')
+        && docId == 'current'
+        && request.resource.data.by == request.auth.uid
+        && request.resource.data.rows is string
+        && request.resource.data.rows.size() < 1000000
+        && request.resource.data.size() <= 12;
+      allow delete: if canFull('dashboard');
+    }
+
     // ───────── Inventory action tracker ─────────
 
     // atrk/{id} is one action of the Inventory Action Tracker: number, category, action item, details,

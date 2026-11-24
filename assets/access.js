@@ -25,6 +25,7 @@
 const TOOLS=[
   {key:"dock",name:"Receiving dock board",href:"dock-board/",view:"View the board",edit:"Update trucks and notices",full:"Update trucks and notices, change board settings"},
   {key:"inbound",name:"Inbound exceptions",href:"nci-inbound/",view:"Read issues and the board",edit:"Raise and work issues",full:"Work and delete issues, change settings"},
+  {key:"dashboard",name:"Inventory operations dashboard",href:"dashboard/",view:"View the dashboard (each part also needs view on its tool)",edit:"View the dashboard",full:"View the dashboard, remove the cycle counts"},
   {key:"transactions",name:"Warehouse transactions",href:"transactions/",view:"View the dashboard",edit:"View the dashboard",full:"View the dashboard, remove days"},
   {key:"differences",name:"Inventory differences",href:"inventory-differences/",view:"View the differences",edit:"Work the differences",full:"Work differences, remove days, set thresholds"},
   {key:"putaway",name:"Putaway audit",href:"putaway-audit/",view:"View putaways and errors",edit:"Print sheets, enter audit results and close out",full:"Enter audit results, remove days and results"},

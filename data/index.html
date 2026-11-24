@@ -263,7 +263,7 @@ a.btn{text-decoration:none}
     <section class="b-panel"><header class="p-head"><h2>What each tool has now</h2><span class="p-page">Updates on its own</span></header>
       <div class="p-body scroll"><table id="tHas"></table></div></section>
   </div>
-  <div class="note">The SAP warehouse task export uses the same layout for every pull. Loading it here, or with the load button inside Warehouse transactions, Inventory differences, Putaway audit or Picking audit, does the same thing: the file is read once and every tool that uses it is updated. Days already loaded are refreshed, not doubled, and the inventory differences, putaway and pick lists only grow. HU consolidation uses a second file, the SAP stock export (stock by storage bin and handling unit); load it here or on its own page and each load replaces the one before. The receiving dock board and inbound exceptions are entered by hand and do not use the export.</div>
+  <div class="note">The SAP warehouse task export uses the same layout for every pull. Loading it here, or with the load button inside Warehouse transactions, Inventory differences, Putaway audit or Picking audit, does the same thing: the file is read once and every tool that uses it is updated. Days already loaded are refreshed, not doubled, and the inventory differences, putaway and pick lists only grow. HU consolidation uses a second file, the SAP stock export (stock by storage bin and handling unit); load it here or on its own page and each load replaces the one before; the same load fills in stock on hand on the Inventory operations dashboard. The dashboard's cycle counts come from a third file, the SAP physical inventory export, loaded here; each load replaces the one before. The receiving dock board and inbound exceptions are entered by hand and do not use the export.</div>
 </div>
 <div class="toast" id="toast" role="status" hidden></div>
 
@@ -290,9 +290,10 @@ function startData(){
     snap=>{set(snap.docs.length?snap.docs[0].data()||{}:null);render()},()=>{set(null);render()}));
   newest("wtdays",x=>S.wt=x);newest("invdays",x=>S.inv=x);newest("putdays",x=>S.put=x);newest("pickdays",x=>S.pick=x);
   S.unsubs.push(Fs.onSnapshot(Fs.doc(fs,"hucons","current"),snap=>{S.hu=snap.exists()?snap.data():null;render()},()=>{S.hu=null;render()}));
+  S.unsubs.push(Fs.onSnapshot(Fs.doc(fs,"ccount","current"),snap=>{S.cc=snap.exists()?snap.data():null;render()},()=>{S.cc=null;render()}));
   S.unsubs.push(Fs.onSnapshot(Fs.doc(fs,"wt","open"),snap=>{S.open=snap.exists()?snap.data():null;render()},()=>{S.open=null;render()}));
 }
-function stopData(){S.unsubs.forEach(u=>{try{u()}catch(_){}});S.unsubs=[];S.wt=S.open=S.inv=S.put=S.pick=S.hu=undefined;S.last=null}
+function stopData(){S.unsubs.forEach(u=>{try{u()}catch(_){}});S.unsubs=[];S.wt=S.open=S.inv=S.put=S.pick=S.hu=S.cc=undefined;S.last=null}
 function load(f){
   if(!f)return;
   if(!S.canLoad){toast("Your user group cannot load an export.");return}
@@ -300,7 +301,7 @@ function load(f){
   const rd=new FileReader();rd.onload=async()=>{
     S.busy=true;$("loadBtn").classList.add("busy");$("msg").hidden=true;toast("Reading the export…",true);
     try{S.last=await SapExport.loadAll({Fs:S.fb.Fs,fs:S.fb.fs,uid:S.authUser.uid,byName:S.myName||S.authUser.email||""},new Uint8Array(rd.result),f.name,t=>toast(t,true));
-      const bad=SapExport.describe(S.last).filter(x=>!x.ok||x.skipped).length;toast(bad?"Loaded, but "+bad+" tool"+(bad===1?" was":"s were")+" not updated. See the list on this page.":S.last.stock?"Loaded. HU consolidation is updated.":"Loaded. Every tool that uses the warehouse task export is updated.");render()}
+      const bad=SapExport.describe(S.last).filter(x=>!x.ok||x.skipped).length;toast(bad?"Loaded, but "+bad+" tool"+(bad===1?" was":"s were")+" not updated. See the list on this page.":S.last.stock?"Loaded. HU consolidation and the dashboard's stock on hand are updated.":S.last.counts?"Loaded. The dashboard's cycle counts are updated.":"Loaded. Every tool that uses the warehouse task export is updated.");render()}
     catch(e){$("msg").textContent=e.message;$("msg").hidden=false;$("toast").hidden=true}
     finally{S.busy=false;$("loadBtn").classList.remove("busy")}
   };rd.readAsArrayBuffer(f)}
@@ -314,7 +315,7 @@ function render(){
   if(!S.role)return;
   $("status").innerHTML=`<span>Signed in as <b>${esc(S.myName||S.authUser.email||"")}</b></span><span>${(S.who||ROLE_LABEL[S.role])}</span>`;
   $("loadBtn").hidden=!S.canLoad;
-  $("dzText").textContent=S.canLoad?"Choose the SAP warehouse task export (.xlsx) or drag it onto this page. It is read once and saved for Warehouse transactions, Inventory differences, Putaway audit and Picking audit together. The SAP stock export goes here too: the page tells the two files apart and updates HU consolidation from it."
+  $("dzText").textContent=S.canLoad?"Choose the SAP warehouse task export (.xlsx) or drag it onto this page. It is read once and saved for Warehouse transactions, Inventory differences, Putaway audit and Picking audit together. The SAP stock export (for HU consolidation and the dashboard's stock on hand) and the SAP physical inventory export (for the dashboard's cycle counts) go here too: the page tells the files apart by their columns."
     :"Someone with edit access loads the SAP warehouse task export here. Every tool updates on its own when they do.";
   $("pRes").hidden=!S.last;
   if(S.last){$("resFile").textContent=S.last.file;
@@ -327,7 +328,9 @@ function render(){
     +`<tr><td><a href="../inventory-differences/">Inventory differences</a></td>${cells(S.inv,S.inv?mdy(S.inv.date)+", "+nf(S.inv.n)+(+S.inv.n===1?" difference":" differences")+" that day":"")}</tr>`
     +`<tr><td><a href="../putaway-audit/">Putaway audit</a></td>${cells(S.put,S.put?mdy(S.put.date)+", "+nf(S.put.n)+(+S.put.n===1?" putaway":" putaways")+" that day":"")}</tr>`
     +`<tr><td><a href="../picking-audit/">Picking audit</a></td>${cells(S.pick,S.pick?mdy(S.pick.date)+", "+nf(S.pick.n)+(+S.pick.n===1?" pick":" picks")+" that day":"")}</tr>`
-    +`<tr><td><a href="../consolidation/">HU consolidation</a>, from the stock export</td>${cells(S.hu,S.hu?S.hu.free==null?"Saved by location; load it again":nf(S.hu.n)+(+S.hu.n===1?" SKU":" SKUs")+" to consolidate, "+nf(S.hu.free)+" of "+nf(S.hu.hus)+" HUs can be freed":"")}</tr></tbody>`;
+    +`<tr><td><a href="../consolidation/">HU consolidation</a>, from the stock export</td>${cells(S.hu,S.hu?S.hu.free==null?"Saved by location; load it again":nf(S.hu.n)+(+S.hu.n===1?" SKU":" SKUs")+" to consolidate, "+nf(S.hu.free)+" of "+nf(S.hu.hus)+" HUs can be freed":"")}</tr>`
+    +`<tr><td><a href="../dashboard/">Inventory dashboard</a>, stock on hand from the stock export</td>${cells(S.hu,S.hu?S.hu.snap?nf(S.hu.lines)+" stock lines in "+nf(S.hu.bins)+" bins":"Load the stock export again to fill this in":"")}</tr>`
+    +`<tr><td><a href="../dashboard/">Inventory dashboard</a>, cycle counts from the physical inventory export</td>${cells(S.cc,S.cc?nf(S.cc.n)+(+S.cc.n===1?" item":" items")+" counted, "+nf(S.cc.ok)+" with no variance, "+nf(S.cc.open)+" open":"")}</tr></tbody>`;
 }
 
 /* ---------- sign-in gate (same accounts, roles and access requests as the other CEVA tools) ---------- */
