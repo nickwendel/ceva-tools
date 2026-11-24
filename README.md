@@ -13,6 +13,7 @@ Operational tools for CEVA sites, served with GitHub Pages.
 | HU consolidation | [`consolidation/`](consolidation/) | Works out from the SAP stock export how to get each SKU onto as few handling units as possible: which partial handling units to merge, a printed move sheet, and tracking of what is done. |
 | Training documents | [`training-docs/`](training-docs/) | The site's training library: work instructions, procedures and guides by category, uploaded as files (up to 20 MB) or links, with every version kept. Supervisors and admins add and update; everyone at CEVA with a login can open and download. |
 | Rewards board | [`rewards/`](rewards/) | Rewards people for taking part, not for productivity numbers: points for 5S, bin checks, the Safety Committee and Employee Engagement meetings, weekend support and the like, with a leaderboard, badges and a TV view for the floor. |
+| Inventory operations dashboard | [`dashboard/`](dashboard/) | One page across inventory operations: stock on hand, cycle count accuracy, pick and putaway accuracy, open inventory differences, HU consolidation, overdue actions and tasks confirmed. It adds up what the other tools hold and links each part to its tool. |
 | Data upload | [`data/`](data/) | One place to load the SAP warehouse task export. The file is read once and every tool that uses it (warehouse transactions, inventory differences, putaway audit, picking audit) is updated together. Also takes the SAP stock export for HU consolidation. Shows what each tool holds now. |
 | Access and people | [`access/`](access/) | One page to sign in, request access, see what your user group opens in each tool and change your password. Admins approve requests, place people in user groups and set each group's access to each tool here. |
 | Warehouse transactions | [`transactions/`](transactions/) | Dashboard of SAP EWM warehouse tasks: completed work by hour, activity, process type and associate, open task aging, and trends over time. A supervisor loads the SAP export and everyone signed in sees it. |
@@ -337,3 +338,17 @@ Shows, SKU by SKU, how to get the stock onto as few handling units (HUs) as poss
 **Columns used:** `Storage Bin`, `Handling Unit`, `Product`, `Quantity`, `Product Short Description`, `Stock Type`, `Storage Type` and `Goods Receipt Date`.
 
 **Data.** `hucons/current` holds the SKUs on two or more HUs from the newest stock export (each load replaces it), `huconsst/{product|stock type}` the status of each SKU and any full quantity set by hand. The rules for both did not change when the tool moved from locations to SKUs.
+
+## Inventory operations dashboard
+
+**Live page:** `https://nickwendel.github.io/ceva-tools/dashboard/`
+
+One page that shows where inventory operations stand. It keeps almost nothing of its own: it reads what the other tools already hold and adds it up with the same rules each tool uses, so a number here matches the tool it links to.
+
+- **Headline tiles:** stock on hand, cycle count accuracy, pick accuracy, putaway accuracy, open differences, HUs that can be freed, overdue actions, open warehouse tasks and tasks confirmed. Each tile links to its tool.
+- **Date range:** 7, 30 or 90 days, counted back from today. It applies to the numbers kept by day (differences, audits, transactions). Stock on hand, cycle counts, HU consolidation and the action tracker show where things stand now.
+- **Stock on hand:** from the SAP stock export, the same file HU consolidation uses, so one load fills both. Units, products, bins, handling units, lines with no HU, stock by stock type, by storage type and by age since goods receipt, shelf life, and the products on the most stock lines. The loader saves this summary as `snap` on `hucons/current`.
+- **Cycle counts:** from the SAP physical inventory export, loaded on the Data upload page (the loader tells it apart by its columns). An item is a storage bin, product and stock type, and its result is its latest count, so a recount replaces the count before it. Open documents (status ACTI) are counted as open, not as counted. Location accuracy is items with no variance out of items counted; unit accuracy is 1 minus the absolute variance over the book quantity. Saved as `ccount/current`; each load replaces the one before.
+- **Pick accuracy:** picks with no short or over pick and no audit variance, out of all picks from storage bins. **Putaway accuracy:** putaways with no audit error, out of all putaways from the GR-ZONE; a putaway nobody has audited counts as correct, so read it next to "Not closed out yet".
+- **Access:** the `dashboard` level in a user group opens the page and the cycle counts. Every other part follows the group's level on the tool behind it (stock on hand follows HU consolidation), and says so when the group cannot see it.
+

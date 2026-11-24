@@ -352,7 +352,7 @@ function load(f){
   const rd=new FileReader();rd.onload=async()=>{
     S.busy=true;$("loadBtn").classList.add("busy");$("msg").hidden=true;toast("Reading the export…",true);
     try{const r=await SapExport.loadAll({Fs:S.fb.Fs,fs:S.fb.fs,uid:S.authUser.uid,byName:S.myName||S.authUser.email||""},new Uint8Array(rd.result),f.name,t=>toast(t,true)),x=r.stock;
-      if(!x){$("msg").textContent="That file is the SAP warehouse task export, so the other tools were updated from it: "+SapExport.summary(r)+" This page needs the SAP stock export, the one with a Handling Unit and a Storage Bin column.";$("msg").hidden=false;$("toast").hidden=true;return}
+      if(!x){$("msg").textContent=(r.counts?"That file is the SAP physical inventory export, so the dashboard's cycle counts were updated from it: ":"That file is the SAP warehouse task export, so the other tools were updated from it: ")+SapExport.summary(r)+" This page needs the SAP stock export, the one with a Handling Unit and a Storage Bin column.";$("msg").hidden=false;$("toast").hidden=true;return}
       if(x.error){$("msg").textContent=x.error;$("msg").hidden=false;$("toast").hidden=true;return}
       S.q="";$("q").value="";S.stype="";S.stat="open";S.show=PAGE;
       toast(SapExport.summary(r),15000);render()}

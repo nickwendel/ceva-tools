@@ -7,6 +7,9 @@
    So loading the export on any page, or on the Data upload page, updates all of them.
    The SAP stock export (stock by storage bin and handling unit) is a different file. loadAll tells the two apart by their columns:
      HU consolidation         hucons/current (every SKU on two or more handling units; each load replaces it)
+     Inventory dashboard      the same document's "snap": stock on hand added up by stock type, storage type, age and product
+   The SAP physical inventory (cycle count) export is a third file, told apart the same way:
+     Inventory dashboard      ccount/current (the final count of every bin, product and stock type counted; each load replaces it)
    To feed a new tool from the export, add its parse and save step here and one entry to loadAll's result.
    Needs SheetJS (window.XLSX) loaded first. */
 (function(){
@@ -206,18 +209,33 @@ function parseStock(sheets,name){
   const a=stockSheet(sheets);if(!a)throw new Error("This file is missing these columns: "+STOCK_COLS.filter(n=>!heads(sheets[0]||[]).includes(n)).join(", ")+". Load the SAP stock export.");
   const h=heads(a),c=n=>h.indexOf(n),v=(r,n)=>c(n)<0?"":r[c(n)],g=(r,n)=>String(v(r,n)??"").trim();
   const hus=new Map(),bins=new Set(),desc={};let lines=0;
+  /* the whole-warehouse picture for the inventory dashboard, added up from every line (with or without a handling unit) */
+  const today=Math.floor(wallNow()/86400),AGE=[[30,"0 to 30 days"],[90,"31 to 90 days"],[180,"91 to 180 days"],[365,"181 to 365 days"],[Infinity,"Over 365 days"]];
+  const sn={units:0,noHu:0,exp:0,exp90:0,st:new Map(),sty:new Map(),age:AGE.map(x=>[x[1],0,0]),noDate:0,pr:new Map()},r3=x=>Math.round(x*1000)/1000;
   for(let i=1;i<a.length;i++){const r=a[i],b=g(r,"Storage Bin"),p=g(r,"Product");if(!b||!p)continue;lines++;bins.add(b);
-    const hu=g(r,"Handling Unit");if(!hu)continue;const gr=toDayNum(v(r,"Goods Receipt Date"));
+    const hu=g(r,"Handling Unit"),gr=toDayNum(v(r,"Goods Receipt Date")),q=+v(r,"Quantity")||0,skc=g(r,"Stock Type"),sty=g(r,"Storage Type")||"(blank)",ex=toDayNum(v(r,"Shelf Life Expiration Date"));
+    sn.units+=q;if(!hu)sn.noHu++;if(ex>=0){if(ex<today)sn.exp++;else if(ex<=today+90)sn.exp90++}
+    let o1=sn.st.get(skc);if(!o1){o1=[skc||"(blank)",g(r,"Description of Stock Type").slice(0,40),0,0];sn.st.set(skc,o1)}o1[2]++;o1[3]+=q;
+    let o2=sn.sty.get(sty);if(!o2){o2={l:0,q:0,b:new Set()};sn.sty.set(sty,o2)}o2.l++;o2.q+=q;o2.b.add(b);
+    if(gr<0)sn.noDate++;else{const ag=sn.age[AGE.findIndex(x=>today-gr<=x[0])];ag[1]++;ag[2]+=q}
+    let o3=sn.pr.get(p);if(!o3){o3={q:0,l:0,b:new Set()};sn.pr.set(p,o3)}o3.q+=q;o3.l++;o3.b.add(b);
+    if(!desc[p])desc[p]=g(r,"Product Short Description").slice(0,60);
+    if(!hu)continue;
     let o=hus.get(hu);if(!o){o={hu,b,st:g(r,"Storage Type"),q:0,gr:-1,p:new Set(),sk:new Set()};hus.set(hu,o)}
-    o.q+=+v(r,"Quantity")||0;o.p.add(p);o.sk.add(g(r,"Stock Type"));if(gr>=0&&(o.gr<0||gr<o.gr))o.gr=gr;
-    if(!desc[p])desc[p]=g(r,"Product Short Description").slice(0,60)}
+    o.q+=q;o.p.add(p);o.sk.add(skc);if(gr>=0&&(o.gr<0||gr<o.gr))o.gr=gr;
+}
   if(!lines)throw new Error("No stock lines were found in this file.");
   const m=new Map();let mixed=0;
   for(const o of hus.values()){if(o.p.size>1||o.sk.size>1){mixed++;continue}
     const p=[...o.p][0],sk=[...o.sk][0],k=p+"|"+sk;let s=m.get(k);if(!s){s={p,sk,d:desc[p]||"",h:[]};m.set(k,s)}
     s.h.push([o.hu,o.b,o.st,Math.round(o.q*1000)/1000,o.gr])}
   const skus=[...m.values()].filter(s=>s.h.length>1).sort((x,y)=>x.p<y.p?-1:x.p>y.p?1:x.sk<y.sk?-1:1);
-  return {file:fileName(name),lines,bins:bins.size,hus:hus.size,mixed,skuAll:m.size,skus}}
+  const snap={v:1,day:today,lines,units:r3(sn.units),bins:bins.size,hus:hus.size,prods:sn.pr.size,noHu:sn.noHu,exp:sn.exp,exp90:sn.exp90,noDate:sn.noDate,
+    st:[...sn.st.values()].map(x=>[x[0],x[1],x[2],r3(x[3])]).sort((x,y)=>y[2]-x[2]).slice(0,12),
+    sty:[...sn.sty].map(([k,o])=>[k.slice(0,20),o.l,o.b.size,r3(o.q)]).sort((x,y)=>y[1]-x[1]).slice(0,20),
+    age:sn.age.map(x=>[x[0],x[1],r3(x[2])]),
+    top:[...sn.pr].map(([k,o])=>[k.slice(0,40),desc[k]||"",o.l,o.b.size,r3(o.q)]).sort((x,y)=>y[2]-x[2]).slice(0,8)};
+  return {file:fileName(name),lines,bins:bins.size,hus:hus.size,mixed,skuAll:m.size,skus,snap}}
 /* The quantity a full handling unit of a SKU holds is not in the export, so it is worked out from the stock: the quantity that most
    of the SKU's units sit at (the most common handling unit quantity, weighted by quantity, so a few picked-down leftovers do not win). */
 function fullQty(h){const m=new Map();for(const x of h)m.set(x[3],(m.get(x[3])||0)+x[3]);
@@ -235,19 +253,54 @@ function planSku(h,full){
 async function saveStock(ctx,d){
   const {Fs,fs}=ctx,rows=JSON.stringify({v:2,skus:d.skus});if(rows.length>900000)throw new Error("too-big");
   let found=0,free=0;for(const s of d.skus){const f=planSku(s.h,0).freed;if(f){found++;free+=f}}
-  await Fs.setDoc(Fs.doc(fs,"hucons","current"),{n:found,free,bins:d.bins,hus:d.hus,lines:d.lines,rows,file:d.file,by:ctx.uid,byName:ctx.byName,at:Date.now()});
+  await Fs.setDoc(Fs.doc(fs,"hucons","current"),{n:found,free,bins:d.bins,hus:d.hus,lines:d.lines,snap:JSON.stringify(d.snap),rows,file:d.file,by:ctx.uid,byName:ctx.byName,at:Date.now()});
   return {lines:d.lines,bins:d.bins,hus:d.hus,found,free}}
+
+/* ---------- Cycle counts ----------
+   Reads the SAP physical inventory export: one line per count of a product in a storage bin. Status COUN is a count, RECO a count that
+   was sent for recount (the later document replaces it) and ACTI an open document nobody has counted yet. An item is a storage bin,
+   product and stock type; its result is its latest count, so a recount replaces the count before it. Each item is kept as
+   [bin, product, description, stock type, book qty, counted qty, difference, times counted, count day, counter, 1 when a recount is still owed]. */
+const COUNT_COLS=["Physical Inventory Document","Storage Bin","Product","Book Quantity","Counted Quantity","Physical Inventory Status"];
+const countSheet=sheets=>sheets.find(x=>{const h=heads(x);return COUNT_COLS.every(n=>h.includes(n))});
+function parseCounts(sheets,name){
+  const a=countSheet(sheets);if(!a)throw new Error("This file is missing these columns: "+COUNT_COLS.filter(n=>!heads(sheets[0]||[]).includes(n)).join(", ")+". Load the SAP physical inventory export.");
+  const h=heads(a),c=n=>h.indexOf(n),v=(r,n)=>c(n)<0?"":r[c(n)],g=(r,n)=>String(v(r,n)??"").trim(),r3=x=>Math.round((+x||0)*1000)/1000;
+  const m=new Map(),per=new Map();let lines=0,open=0,minDay=Infinity,maxDay=-1;
+  for(let i=1;i<a.length;i++){const r=a[i],b=g(r,"Storage Bin"),p=g(r,"Product");if(!b||!p)continue;lines++;
+    const st=g(r,"Physical Inventory Status").toUpperCase();if(st==="ACTI"){open++;continue}
+    const dt=toDayNum(v(r,"Count Date"));if(dt<0)continue;
+    const x={doc:g(r,"Physical Inventory Document"),b,p,d:g(r,"Product Short Description").slice(0,60),sk:g(r,"Stock Type"),bk:r3(v(r,"Book Quantity")),ct:r3(v(r,"Counted Quantity")),
+      st,ts:dt*86400+Math.max(0,toSec(v(r,"Count Time"))),dt,by:g(r,"Counter").slice(0,40),hu:g(r,"Higher-Level Handling Unit")||g(r,"Handling Unit")};
+    x.df=c("Difference Quantity")>=0?r3(v(r,"Difference Quantity")):r3(x.ct-x.bk);x.k=b+"|"+p+"|"+x.sk;
+    const dk=x.doc+"|"+x.k;per.set(dk,(per.get(dk)||0)+1);(m.get(x.k)||m.set(x.k,[]).get(x.k)).push(x)}
+  if(!lines)throw new Error("No count lines were found in this file.");
+  const items=[];
+  for(const list of m.values()){
+    /* an empty line with no handling unit next to a real line of the same item in the same document adds nothing */
+    const L=list.filter(x=>!(per.get(x.doc+"|"+x.k)>1&&!x.hu&&!x.bk&&!x.ct)).sort((x,y)=>x.ts-y.ts);if(!L.length)continue;
+    const l=L[L.length-1];if(l.dt<minDay)minDay=l.dt;if(l.dt>maxDay)maxDay=l.dt;
+    items.push([l.b,l.p,l.d,l.sk,l.bk,l.ct,l.df,L.length,l.dt,l.by,l.st==="RECO"?1:0])}
+  return {file:fileName(name),lines,open,items,minDay,maxDay}}
+/* Each load replaces the one before: the export is the set of counts pulled for one period. */
+async function saveCounts(ctx,d){
+  const {Fs,fs}=ctx,rows=JSON.stringify({v:1,items:d.items});if(rows.length>900000)throw new Error("too-big");
+  const ok=d.items.filter(x=>!x[6]).length;
+  await Fs.setDoc(Fs.doc(fs,"ccount","current"),{n:d.items.length,ok,open:d.open,lines:d.lines,from:d.minDay,to:d.maxDay,rows,file:d.file,by:ctx.uid,byName:ctx.byName,at:Date.now()});
+  return {lines:d.lines,items:d.items.length,ok,open:d.open,minDay:d.minDay,maxDay:d.maxDay}}
 
 /* ---------- one load for every tool ----------
    ctx: {Fs, fs, uid, byName}. buf: the file as a Uint8Array. say: called with short progress text.
    Throws when the file is neither export. For the warehouse task export returns
      {file, tasks, diffs, putaways, picks}  each one the saved result, {skipped:"why"} or {error:"what went wrong"}.
-   For the stock export returns the same shape with every task tool skipped, plus {stock}: the saved result or {error}. */
+   For the stock export returns the same shape with every task tool skipped, plus {stock}: the saved result or {error}.
+   For the physical inventory export the same again, with {counts} in place of {stock}. */
 function failText(e,what){
   if(e&&e.message==="too-big")return what==="tasks"?"One day in this file has too many task lines to save. Split the export into smaller date ranges and load them one at a time."
     :what==="putaways"?"One day in this file has too many putaways to save. Tell the tool owner."
     :what==="picks"?"One day in this file has too many picks to save. Tell the tool owner."
     :what==="stock"?"This export has too many handling units to save in one piece. Tell the tool owner."
+    :what==="counts"?"This export has too many counts to save in one piece. Load a shorter date range."
     :"One day in this file has too many differences to save. Tell the tool owner.";
   return "The file could not be saved"+(e&&e.code==="permission-denied"?" because Firebase refused it. Either your account is not a supervisor or admin, or the latest security rules have not been published yet.":". Check the connection and load it again.")}
 async function loadAll(ctx,buf,name,say){
@@ -255,6 +308,10 @@ async function loadAll(ctx,buf,name,say){
   if(stockSheet(sheets)){const s=parseStock(sheets,name),why="This file is the SAP stock export, so it was read for HU consolidation only. Load the SAP warehouse task export to update this tool.";
     const o={file:s.file,stock:null,tasks:{skipped:why,dates:[],dup:{same:0,legs:0}},diffs:{skipped:why},putaways:{skipped:why},picks:{skipped:why}};
     say("Saving "+nf(s.skus.length)+" SKUs…");try{o.stock=await saveStock(ctx,s)}catch(e){o.stock={error:failText(e,"stock")}}
+    return o}
+  if(countSheet(sheets)){const s=parseCounts(sheets,name),why="This file is the SAP physical inventory export, so it was read for cycle counts only. Load the SAP warehouse task export to update this tool.";
+    const o={file:s.file,counts:null,tasks:{skipped:why,dates:[],dup:{same:0,legs:0}},diffs:{skipped:why},putaways:{skipped:why},picks:{skipped:why}};
+    say("Saving "+nf(s.items.length)+" counts…");try{o.counts=await saveCounts(ctx,s)}catch(e){o.counts={error:failText(e,"counts")}}
     return o}
   const d=parseTasks(sheets,name),out={file:d.file,tasks:null,diffs:null,putaways:null,picks:null};let x=null;
   try{x=parseDiffs(sheets,name)}catch(_){out.diffs={skipped:"This layout of the export has no difference quantity column, so no differences were read from it."}}
@@ -275,6 +332,9 @@ function describe(r){
   const out=[],t=r.tasks,x=r.diffs,w=r.putaways,k=r.picks,s=r.stock;
   if(s)return [s.error?{tool:"HU consolidation",ok:false,text:s.error}
     :{tool:"HU consolidation",ok:true,text:"Read "+nf(s.bins)+" locations with stock and "+nf(s.hus)+" handling units. "+(s.found?nf(s.found)+(s.found===1?" SKU":" SKUs")+" can go onto fewer handling units, which would free "+nf(s.free)+(s.free===1?" handling unit.":" handling units."):"No SKU can go onto fewer handling units.")}];
+  const cc=r.counts;
+  if(cc)return [cc.error?{tool:"Cycle counts",ok:false,text:cc.error}
+    :{tool:"Cycle counts",ok:true,text:"Read "+nf(cc.lines)+" count lines: "+nf(cc.items)+(cc.items===1?" item":" items")+" counted, "+nf(cc.ok)+" with no variance"+(cc.items?" ("+(cc.ok/cc.items*100).toFixed(1)+"%)":"")+", and "+nf(cc.open)+" open count "+(cc.open===1?"document":"documents")+" not counted yet."}];
   if(t.error)out.push({tool:"Warehouse transactions",ok:false,text:t.error});
   else{const dup=t.dup.same+t.dup.legs;
     out.push({tool:"Warehouse transactions",ok:true,text:(t.dates.length?"Loaded "+(t.dates.length===1?mdy(t.dates[0]):t.dates.length+" days, "+mdy(t.dates[0])+" to "+mdy(t.dates[t.dates.length-1]))
@@ -294,5 +354,5 @@ function describe(r){
   return out}
 const summary=r=>describe(r).map(x=>x.tool+": "+x.text).join(" ");
 
-window.SapExport={loadAll,describe,summary,typ,readSheets,parseTasks,parseDiffs,parsePutaways,parsePicks,parseStock,planSku,fullQty,mdyDay};
+window.SapExport={loadAll,describe,summary,typ,readSheets,parseTasks,parseDiffs,parsePutaways,parsePicks,parseStock,planSku,fullQty,parseCounts,mdyDay};
 })();
